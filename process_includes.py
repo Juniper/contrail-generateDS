@@ -172,6 +172,8 @@ def collect_inserts_aux(child, params, inserts, options):
                     comment.tail = '\n'
                     inserts.append(comment)
                     inserts.append(child1)
+            else: # is comment
+                inserts.append(child1)
         collect_inserts(root, params, inserts, options)
     params.base_url = save_base_url
 
