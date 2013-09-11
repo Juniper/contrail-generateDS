@@ -1621,7 +1621,7 @@ class PyGenerator(object):
                 name = 'anytypeobjs_'
             else:
                 name = self._PGenr.mapName(self._PGenr.cleanupName(child.getName()))
-            wrt('            "%s" : self.%s,\n' %(name, name))
+            wrt('            "%s" : self.%s,\n' %(child.getName(), name))
         wrt('        }\n')
         wrt("        return (name_, obj_dict)\n")
 

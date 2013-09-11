@@ -248,7 +248,7 @@ public class %(cls)s extends ApiObjectBase {
                 file.write(decl)
             elif ident.isLinkHas(link_info):
                 child = ident.getLinkTo(link_info)
-                decl = '    private List<ObjectReference<%s>> %s;\n' % (link_type, child.getCIdentifierName())
+                decl = '    private List<ObjectReference<%s>> %ss;\n' % (link_type, child.getCIdentifierName())
                 file.write(decl) 
 
         for back_link in ident.getBackLinksInfo():
@@ -405,7 +405,7 @@ public void set%(caml)s(%(type)s %(field)s) {
         child = ident.getLinkTo(link_info)
         getter = """
     public List<ObjectReference<%(attrtype)s>> get%(caml)ss() {
-        return %(id)s;
+        return %(id)ss;
     }
 """ % {'attrtype': getLinkInfoType(ident, link_info), 'caml': child.getCppName(), 'id': child.getCIdentifierName() }
 
