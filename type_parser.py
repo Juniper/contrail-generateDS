@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#
+# Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
+#
 
 class TypeParserGenerator(object):
     def __init__(self, cTypeDict):

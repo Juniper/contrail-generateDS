@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 """
 idl_parser.py
 
 Parse IDL statements embedded in a XML schema file.
 
-Copyright (c) 2012 Contrail Systems. All rights reserved.
+Copyright (c) 2013 Contrail Systems. All rights reserved.
 """
 
 import logging

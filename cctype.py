@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#
+# Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
+#
 
 import idl_parser
 from type_model import ComplexType, ComplexTypeLocate

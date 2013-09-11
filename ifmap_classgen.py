@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#
+# Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
+#
 
 """
 Generate the class definition corresponding to a given IFMap DB object.

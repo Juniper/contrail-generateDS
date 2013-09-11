@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
+#
+
 from ifmap_global import CamelCase
 from ifmap_model import IFMapIdentifier, IFMapProperty, IFMapLink, IFMapLinkAttr
 from TypeGenerator import TypeGenerator
