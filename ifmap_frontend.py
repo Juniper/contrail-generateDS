@@ -1163,7 +1163,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        content = self._request_server(rest.OP_GET,")
             write(gen_file, "                       %sClientGen.create_uri," %(camel_name))
             write(gen_file, "                       data = filt)")
-            write(gen_file, "        return content")
+            write(gen_file, "        return json.loads(content)")
             write(gen_file, "    #end %ss_list" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def %s_delete(self, fq_name = None, id = None, ifmap_id = None):" \
