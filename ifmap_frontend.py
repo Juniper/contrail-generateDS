@@ -1391,7 +1391,10 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            refs = obj_dict.get('%s_refs'%(obj_type), None)")
                 write(gen_file, "            if refs:")
                 write(gen_file, "                for ref in refs:")
-                write(gen_file, "                    ref_uuid = db_conn.fq_name_to_uuid(obj_type, ref['to'])")
+                write(gen_file, "                    try:")
+                write(gen_file, "                        ref_uuid = db_conn.fq_name_to_uuid(obj_type, ref['to'])")
+                write(gen_file, "                    except NoIdError as e:")
+                write(gen_file, "                        abort(404, str(e))")
                 write(gen_file, "                    (ok, status) = self._permissions.check_perms_link(request, ref_uuid)")
                 write(gen_file, "                    if not ok:")
                 write(gen_file, "                        (code, err_msg) = status")
@@ -1828,7 +1831,7 @@ class IFMapApiGenerator(object):
                 prop_field = prop_name.replace('-', '_')
                 prop_type = prop.getXsdType()
                 write(gen_file, "        field = obj_dict.get('%s', None)" %(prop_field))
-                write(gen_file, "        if field:")
+                write(gen_file, "        if field is not None:")
                 if not prop.getCType():
                     # simple type
                     write(gen_file, "            meta = str(Metadata('%s' , str(obj_dict['%s'])," %(prop_name, prop_field))
@@ -2359,7 +2362,7 @@ class IFMapApiGenerator(object):
                 if prop_method_name == 'id_perms':
                     write(gen_file, "        field['created'] = datetime.datetime.utcnow().isoformat()")
                     write(gen_file, "        field['last_modified'] = field['created']")
-                write(gen_file, "        if field:")
+                write(gen_file, "        if field is not None:")
                 write(gen_file, "            self._create_prop(bch, obj_ids['uuid'], '%s', field)" %(prop_method_name))
                 write(gen_file, "")
             write(gen_file, "")
