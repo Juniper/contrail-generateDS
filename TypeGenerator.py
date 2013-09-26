@@ -1146,7 +1146,21 @@ class PyGenerator(object):
                 s1 = ''.join(lines1)
                 retrieved = 1
         if not retrieved:
-            s1 = '        pass\n'
+            st = self._PGenr.SimpleTypeDict.get(stName)
+            if st and st.getBase() == "xsd:string" and st.values:
+                s1 = '        error = False\n'
+                s1+= '        if isinstance(value, list):\n'
+                s1+= '            error = set(value) - set(' + str(st.values) +')\n'
+                s1+= '        else:\n'
+                s1+= '            error = value not in ' + str(st.values) + '\n'
+                s1+= '        if error:\n'
+                errorStr = stName + ' must be one of ' + str(st.values)
+                s1+= '            raise ValueError("' + errorStr + '")\n'
+            elif st and st.getBase() == "xsd:integer":
+                #import pdb; pdb.set_trace()
+                s1 = '        pass\n'
+            else:
+                s1 = '        pass\n'
         return s1
 
     def generateExport(self, wrt, namespace, element):

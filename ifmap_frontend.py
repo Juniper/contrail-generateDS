@@ -740,7 +740,8 @@ class IFMapApiGenerator(object):
                 else:
                     if len(parents) > 1:
                         parent_fq_names = [parent_ident.getDefaultFQName() for (parent_ident, meta) in parents]
-                        write(gen_file, "        raise AmbiguousParentError(\"%s\")" %(parent_fq_names))
+                        write(gen_file, "        if not self._parent_fixt:")
+                        write(gen_file, "            raise AmbiguousParentError(\"%s\")" %(parent_fq_names))
                     else: # single parent in schema
                         (parent_ident, meta) = parents[0]
                         parent_name = parent_ident.getName()
@@ -748,7 +749,9 @@ class IFMapApiGenerator(object):
                         write(gen_file, "        if not self._parent_fixt:")
                         write(gen_file, "            self._parent_fixt = self.useFixture(%sTestFixtureGen(self._conn_drv, 'default-%s'))" \
                                                                                          %(parent_class_name, parent_name))
-                        write(gen_file, "        self._obj = %s(self._name, self._parent_fixt.getObj ())" %(class_name))
+                    write(gen_file, "")
+                    write(gen_file, "        self._obj = %s(self._name, self._parent_fixt.getObj ())" %(class_name))
+
             else: # no parents
                 write(gen_file, "        self._obj = %s(self._name)" %(class_name))
                 
@@ -1203,6 +1206,39 @@ class IFMapApiGenerator(object):
         write(gen_file, "ConnectionDriverBase.register (%s)" % (class_name))
     #end _generate_client_impl
 
+    def _add_validate(self, gen_file, ident):
+        for prop in ident.getProperties():
+            prop_name = prop.getName()
+            prop_field = prop_name.replace('-', '_')
+            prop_type = prop.getXsdType()
+            if not prop.getElement().isComplex():
+                continue
+            write(gen_file, "        prop_dict = obj_dict.get('%s')"%(prop_field))
+            write(gen_file, "        if prop_dict:")
+            write(gen_file, "            buf = cStringIO.StringIO()")
+            write(gen_file, "            xx_%s = %s(**prop_dict)" %(prop_field, prop_type))
+            write(gen_file, "            xx_%s.export(buf)" %(prop_field))
+            write(gen_file, "            node = etree.fromstring(buf.getvalue())")
+            write(gen_file, "            xx_%s = %s()" %(prop_field, prop_type))
+            write(gen_file, "            xx_%s.build(node)" %(prop_field))
+
+        for link_info in ident.getLinksInfo():
+            if not ident.isLinkRef(link_info):
+                continue
+            link = ident.getLinkTo(link_info)
+            link_name = link.getName()
+            link_field = link_name.replace('-', '_')
+            link_type = ident.getLink(link_info).getXsdType()
+            if not link_type or ':' in link_type:
+                continue
+            write(gen_file, "        for ref_dict in obj_dict.get('%s_refs') or []:" %(link_field))
+            write(gen_file, "            buf = cStringIO.StringIO()")
+            write(gen_file, "            xx_%s = %s(**ref_dict['attr'])" %(link_field, link_type))
+            write(gen_file, "            xx_%s.export(buf)" %(link_field))
+            write(gen_file, "            node = etree.fromstring(buf.getvalue())")
+            write(gen_file, "            xx_%s.build(node)" %(link_field))
+    #end _add_validate
+
     def _generate_server_impl(self, gen_fname, gen_type_pfx):
         gen_file = self._xsd_parser.makeFile(gen_fname)
         write(gen_file, "")
@@ -1221,6 +1257,8 @@ class IFMapApiGenerator(object):
         write(gen_file, "from gen.%s_xsd import *" %(gen_type_pfx))
         write(gen_file, "from gen.%s_common import *" %(gen_type_pfx))
         write(gen_file, "from gen.%s_server import *" %(gen_type_pfx))
+        write(gen_file, "import cStringIO")
+        write(gen_file, "from lxml import etree")
         write(gen_file, "")
 
         # Grab idents for which collection link has to be advertised
@@ -1362,6 +1400,8 @@ class IFMapApiGenerator(object):
             write(gen_file, "    def %s_http_put(self, id):" %(method_name))
             write(gen_file, "        key = '%s'" %(ident_name))
             write(gen_file, "        obj_dict = request.json[key]")
+
+            self._add_validate(gen_file, ident)
             write(gen_file, "        # common handling for all resource put")
             write(gen_file, "        (ok, result) = self._put_common(request, '%s', obj_dict, id)" % (method_name))
             write(gen_file, "        if not ok:")
@@ -1528,6 +1568,8 @@ class IFMapApiGenerator(object):
             write(gen_file, "    def %ss_http_post(self):" %(method_name))
             write(gen_file, "        key = '%s'" %(ident_name))
             write(gen_file, "        obj_dict = request.json[key]")
+
+            self._add_validate(gen_file, ident)
             write(gen_file, "        # common handling for all resource create")
             write(gen_file, "        (ok, result) = self._post_common(request, '%s', obj_dict)" %(ident_name))
             write(gen_file, "        if not ok:")
