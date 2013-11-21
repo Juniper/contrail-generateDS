@@ -58,7 +58,9 @@ class IFMapIdentifier(IFMapObject):
         self._links = []
         self._back_links = []
         self._parents = None
-        self._children = None
+        self._children = []
+        self._references = []
+        self._back_references = []
         self._is_derived = False
 
     def getCppName(self):
@@ -92,6 +94,12 @@ class IFMapIdentifier(IFMapObject):
     def getChildren(self):
         return self._children
 
+    def getReferences(self):
+        return self._references
+
+    def getBackReferences(self):
+        return self._back_references
+
     def getDefaultFQName(self, parent_type = None):
         if not self._parents:
             if self._name == 'config-root':
@@ -122,15 +130,14 @@ class IFMapIdentifier(IFMapObject):
         link_info = (meta, to_ident, attrs)
         self._links.append(link_info)
         if (self.isLinkHas(link_info)):
-            if not self._children:
-                self._children = [to_ident]
-            else:
-                self._children.append(to_ident)
+            self._children.append(to_ident)
 
             to_ident.setParent(self, meta)
             if self.isLinkDerived(link_info):
                 to_ident._is_derived = True
         elif self.isLinkRef(link_info):
+            self._references.append(to_ident)
+
             # relax back-ref check on delete
             if self.isLinkDerived(link_info):
                 self._is_derived = True
@@ -161,6 +168,8 @@ class IFMapIdentifier(IFMapObject):
         return 'derived' in attrs
 
     def addBackLinkInfo(self, meta, from_ident, attrs):
+        self._back_references.append(from_ident)
+
         back_link_info = (meta, from_ident, attrs)
         self._back_links.append(back_link_info)
 
