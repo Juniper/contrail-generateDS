@@ -1498,6 +1498,8 @@ class IFMapApiGenerator(object):
             if not link_type or ':' in link_type:
                 continue
             write(gen_file, "        for ref_dict in obj_dict.get('%s_refs') or []:" %(link_field))
+            write(gen_file, "            if fq_name == ref_dict['to']:")
+            write(gen_file, "                abort(404, 'Cannot add reference to self')")
             write(gen_file, "            buf = cStringIO.StringIO()")
             write(gen_file, "            xx_%s = %s(**ref_dict['attr'])" %(link_field, link_type))
             write(gen_file, "            xx_%s.export(buf)" %(link_field))
@@ -1859,6 +1861,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "    def %ss_http_post(self):" %(method_name))
             write(gen_file, "        key = '%s'" %(ident_name))
             write(gen_file, "        obj_dict = request.json[key]")
+            write(gen_file, "        fq_name = obj_dict['fq_name']")
 
             self._add_validate(gen_file, ident)
             write(gen_file, "        # common handling for all resource create")
