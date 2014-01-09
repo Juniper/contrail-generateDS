@@ -84,6 +84,7 @@ public:
     virtual void EncodeUpdate(pugi::xml_node *parent) const;
     static bool Decode(const pugi::xml_node &parent, std::string *id_name,
                        %(class)s *ptr);
+    virtual boost::crc_32_type::value_type CalculateCrc();
 """ % {'class': self.getName() }
         file.write(public_methods)
 
@@ -166,6 +167,7 @@ public:
         self._GenClearProperty(file)
         self._GenToString(file)
         self._GenEmpty(file);
+        self._GenProcessPropertyDiff(file)
 
     def _GenConstructor(self, file):
         file.write('%s::%s() ' %
@@ -272,6 +274,78 @@ bool %s::empty() const {
 """ % self.getName()            
             file.write(cdecl)
 
+    def _GenProcessPropertyDiff(self, file):
+        if len(self._identifier.getProperties()) > 0:
+            header = """
+boost::crc_32_type::value_type %s::CalculateCrc() {
+""" % self.getName()
+            file.write(header)
+
+            indent_l1 = ' ' * 4
+            indent_l11 = ' ' * 9
+            indent_l2 = ' ' * 8
+            file.write(indent_l1 + 'boost::crc_32_type crc;\n')
+            for prop in self._identifier.getProperties():
+                membername = prop.getPropertyName() + '_'
+                info = prop.getMemberInfo()
+                assert info
+                if info.isSequence:
+                    file.write(indent_l1 + 'for (%s::iterator iter = \n'
+                               %(info.ctypename))
+                    file.write(indent_l11 + '%s.begin();\n' %(membername))
+                    file.write(indent_l11 + 'iter != %s.end(); ++iter) {\n' 
+                               %(membername))
+
+                    # code inside the for loop
+                    sequencetype = info.sequenceType
+                    if sequencetype == 'int':
+                        file.write(indent_l2 +
+                             '%s *obj = static_cast<%s *>(iter.operator->());\n'
+                             %(sequencetype, sequencetype))
+                        file.write(indent_l2 +
+                                   'crc.process_bytes(obj, sizeof(*obj));\n')
+                    elif sequencetype == 'std::string':
+                        file.write(indent_l2 + 'std::string &str = *iter;\n');
+                        file.write(indent_l2 +
+                            'crc.process_bytes(str.c_str(), str.size());\n')
+                    elif info.isComplex:
+                        # vector of non-basic type
+                        file.write(indent_l2 +
+                            '%s *obj = iter.operator->();\n' %sequencetype)
+                        file.write(indent_l2 + 'obj->CalculateCrc(&crc);\n')
+                    else:
+                        assert()
+
+                    file.write(indent_l1 + '}\n')
+                elif info.isComplex:
+                    file.write(indent_l1 + '%s.CalculateCrc(&crc);\n'
+                               % (membername))
+                else:
+                    cpptype = info.ctypename
+                    if (cpptype == 'int' or cpptype == 'bool' or 
+                        cpptype == 'uint64_t'):
+                        file.write(indent_l1 +
+                                   'crc.process_bytes(&%s, sizeof(%s));\n'
+                                   %(membername, membername));
+                    elif (cpptype == 'std::string'):
+                        file.write(indent_l1 +
+                                   'crc.process_bytes(%s.c_str(), %s.size());\n'
+                                   %(membername, membername));
+                    else:
+                        assert()
+
+            file.write(indent_l1 + 'return crc.checksum();\n');
+
+            retval = "}\n\n"
+            file.write(retval)
+        else:
+            function = """
+boost::crc_32_type::value_type %s::CalculateCrc() {
+    return 0xffffffff;
+}\n
+""" % self.getName()
+            file.write(function)
+
 class IFMapGenLinkAttr(IFMapGenBase):
     def __init__(self, TypeDict, meta):
         self._TypeDict = TypeDict
@@ -308,6 +382,7 @@ public:
     virtual void EncodeUpdate(pugi::xml_node *parent) const;
     static bool Decode(const pugi::xml_node &parent, std::string *id_name,
                        %(class)s *ptr);
+    virtual boost::crc_32_type::value_type CalculateCrc();
     virtual bool SetData(const AutogenProperty *data);
 
     const %(datatype)s &data() const { return data_; }
@@ -333,6 +408,7 @@ private:
         self._GenConstructor(file)
         self._GenToString(file)
         self._GenSetData(file)
+        self._GenProcessPropertyDiff(file)
 
     def _GenConstructor(self, file):
         if self._meta.getCType():
@@ -382,6 +458,24 @@ bool %s::SetData(const AutogenProperty *data) {
 """
         file.write(cdecl)
 
+    def _GenProcessPropertyDiff(self, file):
+        header = """
+boost::crc_32_type::value_type %s::CalculateCrc() { """ % self.getName()
+        file.write(header)
+
+        ctypename = self._meta.getCTypename()
+        if self._meta.getCType():
+            cdecl = """
+    boost::crc_32_type crc;
+    data_.CalculateCrc(&crc);
+    return crc.checksum();
+}
+"""
+        else:
+            cdecl = """
+}
+"""
+        file.write(cdecl)
 
 class IFMapClassGenerator(object):
     def __init__(self, cTypeDict):
@@ -396,6 +490,7 @@ class IFMapClassGenerator(object):
     def Generate(self, file, IdentifierDict, MetaDict):
         module_name = GetModuleName(file, '_types.h')
 
+#include <boost/cstdint.hpp>  // for boost::uint16_t
         header = """
 // autogenerated file --- DO NOT EDIT ---
 #ifndef __SCHEMA__%(modname)s_TYPES_H__
@@ -403,6 +498,7 @@ class IFMapClassGenerator(object):
 #include <vector>
 
 #include <boost/dynamic_bitset.hpp>
+#include <boost/crc.hpp>      // for boost::crc_32_type
 namespace pugi {
 class xml_node;
 }  // namespace pugi
