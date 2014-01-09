@@ -37,6 +37,7 @@ class TypeClassGenerator(object):
     static bool XmlParseProperty(const pugi::xml_node &node,
                                  std::auto_ptr<AutogenProperty> *resultp);
     void Encode(pugi::xml_node *node) const;
+    void CalculateCrc(boost::crc_32_type *crc);
 };
 """ % (ctype.getName())
         file.write(tail)
@@ -54,6 +55,7 @@ class TypeClassGenerator(object):
 #include <vector>
 
 #include <boost/dynamic_bitset.hpp>
+#include <boost/crc.hpp>      // for boost::crc_32_type
 namespace pugi {
 class xml_node;
 class xml_document;
@@ -110,6 +112,57 @@ void %s::Copy(const %s &rhs) {
             else:
                 fmt = '    %s = rhs.%s;\n'
             file.write(fmt % (member.membername, member.membername))
+
+        file.write('};\n')
+
+        crcdef = """
+void %s::CalculateCrc(boost::crc_32_type *crc) {
+""" % ctype.getName()
+        file.write(crcdef)
+        indent_l1 = ' ' * 4
+        indent_l11 = ' ' * 9
+        indent_l2 = ' ' * 8
+        for member in ctype.getDataMembers():
+            cpptype = member.ctypename
+            if member.isSequence:
+                file.write(indent_l1 + 'for (%s::iterator iter = \n' %(cpptype))
+                file.write(indent_l11 + '%s.begin();\n' %(member.membername))
+                file.write(indent_l11 + 'iter != %s.end(); ++iter) {\n'
+                           %(member.membername))
+
+                # code inside the for loop
+                sequencetype = member.sequenceType
+                if sequencetype == 'std::string':
+                    file.write(indent_l2 + 'std::string &str = *iter;\n');
+                    file.write(indent_l2 +
+                               'crc->process_bytes(str.c_str(), str.size());\n')
+                elif (sequencetype == 'int' or sequencetype == 'uint64_t' or
+                      sequencetype == 'bool'):
+                    file.write(indent_l2 + '%s *obj = iter.operator->();\n'
+                               % member.sequenceType)
+                    file.write(indent_l2 +
+                               'crc->process_bytes(obj, sizeof(*obj));\n')
+                elif member.isComplex:
+                    file.write(indent_l2 + '%s *obj = iter.operator->();\n'
+                               % member.sequenceType)
+                    file.write(indent_l2 + 'obj->CalculateCrc(crc);\n')
+                else:
+                    assert()
+
+                file.write(indent_l1 + '}\n')
+            elif member.isComplex: # complex but not sequence
+                file.write(indent_l1 +
+                           '%s.CalculateCrc(crc);\n' % member.membername)
+            elif (cpptype == 'int' or cpptype == 'uint64_t' or
+                  cpptype == 'time_t' or cpptype == 'bool'):
+                file.write(indent_l1 + 'crc->process_bytes(&%s, sizeof(%s));\n'
+                           %(member.membername, member.membername));
+            elif (cpptype == 'std::string'):
+                file.write(indent_l1 + 
+                           'crc->process_bytes(%s.c_str(), %s.size());\n'
+                           %(member.membername, member.membername));
+            else:
+                assert()
 
         file.write('};\n')
 
