@@ -1471,6 +1471,7 @@ class IFMapApiGenerator(object):
     #end _generate_client_impl
 
     def _add_validate(self, gen_file, ident):
+        method_name = ident.getName().replace('-', '_')
         for prop in ident.getProperties():
             prop_name = prop.getName()
             prop_field = prop_name.replace('-', '_')
@@ -1496,8 +1497,10 @@ class IFMapApiGenerator(object):
             if not link_type or ':' in link_type:
                 continue
             write(gen_file, "        for ref_dict in obj_dict.get('%s_refs') or []:" %(link_field))
-            write(gen_file, "            if fq_name == ref_dict['to']:")
-            write(gen_file, "                abort(404, 'Cannot add reference to self')")
+            # self referential checking only if ident and link types are same
+            if method_name == link_field:
+                write(gen_file, "            if fq_name == ref_dict['to']:")
+                write(gen_file, "                abort(404, 'Cannot add reference to self')")
             write(gen_file, "            buf = cStringIO.StringIO()")
             write(gen_file, "            xx_%s = %s(**ref_dict['attr'])" %(link_field, link_type))
             write(gen_file, "            xx_%s.export(buf)" %(link_field))
