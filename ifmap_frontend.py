@@ -1686,7 +1686,10 @@ class IFMapApiGenerator(object):
             write(gen_file, "        obj_dict = request.json[key]")
             write(gen_file, "")
             write(gen_file, "        db_conn = self._db_conn")
-            write(gen_file, "        fq_name = db_conn.uuid_to_fq_name(id)")
+            write(gen_file, "        try:")
+            write(gen_file, "            fq_name = db_conn.uuid_to_fq_name(id)")
+            write(gen_file, "        except NoIdError as e:")
+            write(gen_file, "            abort(404, str(e))")
 
             self._add_validate(gen_file, ident)
             write(gen_file, "        # common handling for all resource put")
