@@ -482,10 +482,29 @@ class IFMapClassGenerator(object):
         self._cTypeDict = cTypeDict
         self._generated_types = { }
         self._TypeGenerator = TypeClassGenerator(cTypeDict)
+        self._generated_props = { }
 
     def _GenerateProperty(self, file, prop):
         ctype = prop.getCType()
         self._TypeGenerator.GenerateType(file, ctype)
+
+    def _GenerateSimpleProperty(self, file, prop):
+        name = prop.getCppName() + 'Type'
+        if name in self._generated_props:
+            return
+        self._generated_props[name] = name
+        info = prop.getMemberInfo()
+        cdecl = """
+class %(class)s {
+  public:
+    struct %(typename)s : public AutogenProperty {
+        %(ctype)s data;
+    };
+};
+""" % {'class': name,
+       'typename': SimpleTypeWrapper(info),
+       'ctype': info.ctypename}
+        file.write(cdecl)
 
     def Generate(self, file, IdentifierDict, MetaDict):
         module_name = GetModuleName(file, '_types.h')
@@ -521,6 +540,8 @@ namespace autogen {
             for prop in properties:
                 if prop._xelement.isComplex():
                     self._GenerateProperty(file, prop)
+                elif prop.getParent() == 'all':
+                    self._GenerateSimpleProperty(file, prop)
 
         for meta in MetaDict.values():
             if type(meta) is IFMapLinkAttr:
