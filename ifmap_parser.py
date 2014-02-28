@@ -186,6 +186,11 @@ class IFMapGenProperty(object):
         self._meta = meta
 
     def GenerateParser(self, DecoderDict, file):
+        def getMetaParentName(meta):
+            if meta.getParent() == 'all':
+                return meta.getCppName() + 'Type'
+            return meta.getParent().getCppName()
+
         meta = self._meta
         fnname = '%s_ParseMetadata' % meta.getCppName()
 	decl = """
@@ -202,7 +207,7 @@ bool %s(const pugi::xml_node &parent, std::auto_ptr<AutogenProperty > *resultp) 
             cdecl = """
     %(class)s::%(wtype)s *data = new %(class)s::%(wtype)s();
     resultp->reset(data);
-""" % {'class': meta.getParent().getCppName(), 'wtype': SimpleTypeWrapper(info)}
+""" % {'class': getMetaParentName(meta), 'wtype': SimpleTypeWrapper(info)}
             file.write(cdecl)
             if info.ctypename == 'std::string':
                 file.write(indent + 'data->data = parent.child_value();\n')
