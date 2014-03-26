@@ -84,7 +84,7 @@ public:
     virtual void EncodeUpdate(pugi::xml_node *parent) const;
     static bool Decode(const pugi::xml_node &parent, std::string *id_name,
                        %(class)s *ptr);
-    virtual boost::crc_32_type::value_type CalculateCrc();
+    virtual boost::crc_32_type::value_type CalculateCrc() const;
 """ % {'class': self.getName() }
         file.write(public_methods)
 
@@ -277,7 +277,7 @@ bool %s::empty() const {
     def _GenProcessPropertyDiff(self, file):
         if len(self._identifier.getProperties()) > 0:
             header = """
-boost::crc_32_type::value_type %s::CalculateCrc() {
+boost::crc_32_type::value_type %s::CalculateCrc() const {
 """ % self.getName()
             file.write(header)
 
@@ -290,7 +290,7 @@ boost::crc_32_type::value_type %s::CalculateCrc() {
                 info = prop.getMemberInfo()
                 assert info
                 if info.isSequence:
-                    file.write(indent_l1 + 'for (%s::iterator iter = \n'
+                    file.write(indent_l1 + 'for (%s::const_iterator iter = \n'
                                %(info.ctypename))
                     file.write(indent_l11 + '%s.begin();\n' %(membername))
                     file.write(indent_l11 + 'iter != %s.end(); ++iter) {\n' 
@@ -300,18 +300,18 @@ boost::crc_32_type::value_type %s::CalculateCrc() {
                     sequencetype = info.sequenceType
                     if sequencetype == 'int':
                         file.write(indent_l2 +
-                             '%s *obj = static_cast<%s *>(iter.operator->());\n'
+                             'const %s *obj = static_cast<%s *>(iter.operator->());\n'
                              %(sequencetype, sequencetype))
                         file.write(indent_l2 +
                                    'crc.process_bytes(obj, sizeof(*obj));\n')
                     elif sequencetype == 'std::string':
-                        file.write(indent_l2 + 'std::string &str = *iter;\n');
+                        file.write(indent_l2 + 'const std::string &str = *iter;\n');
                         file.write(indent_l2 +
                             'crc.process_bytes(str.c_str(), str.size());\n')
                     elif info.isComplex:
                         # vector of non-basic type
                         file.write(indent_l2 +
-                            '%s *obj = iter.operator->();\n' %sequencetype)
+                            'const %s *obj = iter.operator->();\n' %sequencetype)
                         file.write(indent_l2 + 'obj->CalculateCrc(&crc);\n')
                     else:
                         assert()
@@ -340,7 +340,7 @@ boost::crc_32_type::value_type %s::CalculateCrc() {
             file.write(retval)
         else:
             function = """
-boost::crc_32_type::value_type %s::CalculateCrc() {
+boost::crc_32_type::value_type %s::CalculateCrc() const {
     return 0xffffffff;
 }\n
 """ % self.getName()
@@ -382,7 +382,7 @@ public:
     virtual void EncodeUpdate(pugi::xml_node *parent) const;
     static bool Decode(const pugi::xml_node &parent, std::string *id_name,
                        %(class)s *ptr);
-    virtual boost::crc_32_type::value_type CalculateCrc();
+    virtual boost::crc_32_type::value_type CalculateCrc() const;
     virtual bool SetData(const AutogenProperty *data);
 
     const %(datatype)s &data() const { return data_; }
@@ -460,7 +460,7 @@ bool %s::SetData(const AutogenProperty *data) {
 
     def _GenProcessPropertyDiff(self, file):
         header = """
-boost::crc_32_type::value_type %s::CalculateCrc() { """ % self.getName()
+boost::crc_32_type::value_type %s::CalculateCrc() const { """ % self.getName()
         file.write(header)
 
         ctypename = self._meta.getCTypename()
