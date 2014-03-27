@@ -300,7 +300,7 @@ boost::crc_32_type::value_type %s::CalculateCrc() const {
                     sequencetype = info.sequenceType
                     if sequencetype == 'int':
                         file.write(indent_l2 +
-                             'const %s *obj = static_cast<%s *>(iter.operator->());\n'
+                             'const %s *obj = static_cast<const %s *>(iter.operator->());\n'
                              %(sequencetype, sequencetype))
                         file.write(indent_l2 +
                                    'crc.process_bytes(obj, sizeof(*obj));\n')
