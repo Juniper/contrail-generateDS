@@ -801,7 +801,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "# AUTO-GENERATED file from %s. Do Not Edit!" \
               %(self.__class__.__name__))
         write(gen_file, "")
-        write(gen_file, "from gen.%s_common import *" %(gen_filename_pfx))
+        write(gen_file, "from %s_common import *" %(gen_filename_pfx))
         write(gen_file, "")
 
         for ident in self._non_exclude_idents():
@@ -1520,9 +1520,9 @@ class IFMapApiGenerator(object):
         write(gen_file, "import cfgm_common")
         write(gen_file, "from cfgm_common.rest import LinkObject, hdr_server_tenant")
         write(gen_file, "from cfgm_common.exceptions import *")
-        write(gen_file, "from gen.%s_xsd import *" %(gen_type_pfx))
-        write(gen_file, "from gen.%s_common import *" %(gen_type_pfx))
-        write(gen_file, "from gen.%s_server import *" %(gen_type_pfx))
+        write(gen_file, "from %s_xsd import *" %(gen_type_pfx))
+        write(gen_file, "from %s_common import *" %(gen_type_pfx))
+        write(gen_file, "from %s_server import *" %(gen_type_pfx))
         write(gen_file, "import cStringIO")
         write(gen_file, "from lxml import etree")
         write(gen_file, "")
@@ -3109,7 +3109,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "import fixtures")
         write(gen_file, "import testtools")
         write(gen_file, "")
-        write(gen_file, "from gen.%s_test import *" %(gen_type_pfx))
+        write(gen_file, "from %s_test import *" %(gen_type_pfx))
         write(gen_file, "")
         class_name = CamelCase(os.path.basename(gen_fname.split('.py')[0]))
         write(gen_file, "class %s(testtools.TestCase, fixtures.TestWithFixtures):" %(class_name))
