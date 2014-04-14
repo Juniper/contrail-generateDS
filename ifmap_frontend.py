@@ -2584,9 +2584,9 @@ class IFMapApiGenerator(object):
             for prop in ident.getProperties():
                 prop_name = prop.getName()
                 prop_method_name = prop_name.replace('-', '_')
-                write(gen_file, "        if ('%s' in new_obj_dict) and (new_obj_dict['%s'] == None):" \
-                                              %(prop_method_name, prop_method_name))
-                write(gen_file, "            self._delete_id_self_meta(ifmap_id, '%s')" %(prop_name))
+                write(gen_file, "        if ('contrail:%s' in existing_metas) and ('%s' not in new_obj_dict):" \
+                                              %(prop_name, prop_method_name))
+                write(gen_file, "            self._delete_id_self_meta(ifmap_id, 'contrail:%s')" %(prop_name))
                 write(gen_file, "")
 
             write(gen_file, "        # remove refs that are no longer active")
