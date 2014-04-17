@@ -222,14 +222,6 @@ public class %(cls)s extends ApiObjectBase {
 """ % {'cls': ident.getCppName() }
         file.write(header)
 
-        parents = ident.getParents()
-        if parents:
-            decl = """
-    private transient String parent_name;
-    private transient String parent_uuid;
-"""
-            file.write(decl)
-
         for prop in ident.getProperties():
             if prop.getName() == 'id-perms':
                 continue
