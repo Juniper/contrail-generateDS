@@ -1893,7 +1893,7 @@ class IFMapApiGenerator(object):
                     continue
 
                 child_method = child_ident.getName().replace('-', '_')
-                child_default_name = child_ident.getDefaultFQName()[-1]
+                child_default_name = child_ident.getDefaultFQName(parent_type = ident_name)[-1]
                 write(gen_file, "                %ss = read_result.get('%ss', None)" %(child_method, child_method))
                 write(gen_file, "                if %ss:" %(child_method))
                 write(gen_file, "                    has_infos = read_result['%ss']" %(child_method))
