@@ -1893,7 +1893,7 @@ class IFMapApiGenerator(object):
                     continue
 
                 child_method = child_ident.getName().replace('-', '_')
-                child_default_name = child_ident.getDefaultFQName()[-1]
+                child_default_name = child_ident.getDefaultFQName(parent_type = ident_name)[-1]
                 write(gen_file, "                %ss = read_result.get('%ss', None)" %(child_method, child_method))
                 write(gen_file, "                if %ss:" %(child_method))
                 write(gen_file, "                    has_infos = read_result['%ss']" %(child_method))
@@ -2097,10 +2097,10 @@ class IFMapApiGenerator(object):
             write(gen_file, "        elif 'parent_id' in request.query:")
             write(gen_file, "            parent_ids = request.query.parent_id.split(',')")
             write(gen_file, "            parent_uuids = [str(uuid.UUID(p_uuid)) for p_uuid in parent_ids]")
-            write(gen_file, "        elif 'back_ref_id' in request.query:")
+            write(gen_file, "        if 'back_ref_id' in request.query:")
             write(gen_file, "            back_ref_ids = request.query.back_ref_id.split(',')")
             write(gen_file, "            back_ref_uuids = [str(uuid.UUID(b_uuid)) for b_uuid in back_ref_ids]")
-            write(gen_file, "        elif 'obj_uuids' in request.query:")
+            write(gen_file, "        if 'obj_uuids' in request.query:")
             write(gen_file, "            obj_uuids = request.query.obj_uuids.split(',')")
             write(gen_file, "")
             write(gen_file, "        # common handling for all resource get")
@@ -3162,7 +3162,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "                    sorted_children = sorted(unsorted_fq_names_uuids, key = itemgetter('tstamp'))")
             write(gen_file, "                    # re-write result's children without timestamp")
             write(gen_file, "                    children_fq_names_uuids = [(child['fq_name'], child['uuid']) for child in sorted_children]")
-            write(gen_file, "        elif back_ref_uuids:")
+            write(gen_file, "        if back_ref_uuids:")
             write(gen_file, "            # go from anchor to backrefs")
             write(gen_file, "            obj_uuid_cf = self._obj_uuid_cf")
             write(gen_file, "            col_start = 'backref:%s:'" %(method_name))
@@ -3192,7 +3192,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "                    if obj_uuids and obj_uuid not in obj_uuids:")
             write(gen_file, "                        continue")
             write(gen_file, "                    children_fq_names_uuids.append((fq_name, obj_uuid))")
-            write(gen_file, "        else:")
+            write(gen_file, "        if not parent_uuids and not back_ref_uuids:")
             write(gen_file, "            # grab all resources of this type")
             write(gen_file, "            obj_fq_name_cf = self._obj_fq_name_cf")
             write(gen_file, "            try:")
