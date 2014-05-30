@@ -2017,7 +2017,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            fq_name_str = ':'.join(obj_dict['fq_name'])")
             write(gen_file, "            self.config_object_error(None, fq_name_str, '%s', 'http_post', result)" % (method_name))
             write(gen_file, "            abort(code, msg)")
-            write(gen_file, "        cleanup_on_failure.append(('dbe_release', ['%s', fq_name]))" % (method_name))
+            write(gen_file, "        cleanup_on_failure.append((db_conn.dbe_release, ['%s', fq_name]))" % (method_name))
             write(gen_file, "")
             write(gen_file, "        obj_ids = result")
             write(gen_file, "")
