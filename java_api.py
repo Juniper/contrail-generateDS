@@ -365,7 +365,17 @@ public void set%(caml)s(%(type)s %(field)s) {
         %(field)s_refs.add(new ObjectReference<%(datatype)s>(obj.getQualifiedName(), data));
     }
 
+    public void remove%(caml)s(%(linktype)s obj, %(datatype)s data) {
+        if (%(field)s_refs != null) {
+            %(field)s_refs.remove(new ObjectReference<%(datatype)s>(obj.getQualifiedName(), data));
+        }
+    }
+
     public void clear%(caml)s() {
+        if (%(field)s_refs != null) {
+            %(field)s_refs.clear();
+            return;
+        }
         %(field)s_refs = null;
     }
 
