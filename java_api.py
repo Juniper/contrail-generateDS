@@ -374,9 +374,11 @@ public void set%(caml)s(%(type)s %(field)s) {
     public void clear%(caml)s() {
         if (%(field)s_refs != null) {
             %(field)s_refs.clear();
+            %(field)s_refs = new ArrayList<ObjectReference<%(datatype)s>>();
             return;
         }
         %(field)s_refs = null;
+        %(field)s_refs = new ArrayList<ObjectReference<%(datatype)s>>();
     }
 
 """ % {'caml': link_to.getCppName(), 'linktype': link_to.getCppName(),
@@ -396,6 +398,7 @@ public void set%(caml)s(%(type)s %(field)s) {
     }
     public void clear%(caml)s() {
         %(field)s_refs = null;
+        %(field)s_refs = new ArrayList<ObjectReference<ApiPropertyBase>>();
     }
 """ % {'caml': link_to.getCppName(), 'linktype': link_to.getCppName(),
        'field': link_to.getCIdentifierName()}
