@@ -1569,7 +1569,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "# AUTO-GENERATED file from %s. Do Not Edit!" \
               %(self.__class__.__name__))
         write(gen_file, "")
-        write(gen_file, "from bottle import route, abort, request, response")
+        write(gen_file, "from bottle import abort, request, response")
         write(gen_file, "")
         write(gen_file, "import json")
         write(gen_file, "import uuid")
@@ -1600,16 +1600,16 @@ class IFMapApiGenerator(object):
                 continue
             method_name = ident_name.replace('-', '_')
             write(gen_file, "        # leaf resource")
-            write(gen_file, "        route('%s/%s/<id>', 'GET', obj.%s_http_get)" \
+            write(gen_file, "        obj.route('%s/%s/<id>', 'GET', obj.%s_http_get)" \
                                                    %(_BASE_URL, ident_name, method_name))
-            write(gen_file, "        route('%s/%s/<id>', 'PUT', obj.%s_http_put)" \
+            write(gen_file, "        obj.route('%s/%s/<id>', 'PUT', obj.%s_http_put)" \
                                                    %(_BASE_URL, ident_name, method_name))
-            write(gen_file, "        route('%s/%s/<id>', 'DELETE', obj.%s_http_delete)" \
+            write(gen_file, "        obj.route('%s/%s/<id>', 'DELETE', obj.%s_http_delete)" \
                                                    %(_BASE_URL, ident_name, method_name))
             write(gen_file, "        # collections")
-            write(gen_file, "        route('%s/%ss', 'POST', obj.%ss_http_post)" \
+            write(gen_file, "        obj.route('%s/%ss', 'POST', obj.%ss_http_post)" \
                                                    %(_BASE_URL, ident_name, method_name))
-            write(gen_file, "        route('%s/%ss', 'GET', obj.%ss_http_get)" \
+            write(gen_file, "        obj.route('%s/%ss', 'GET', obj.%ss_http_get)" \
                                                    %(_BASE_URL, ident_name, method_name))
         write(gen_file, "        return obj")
         write(gen_file, "    #end __new__")
