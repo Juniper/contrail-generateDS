@@ -2177,6 +2177,9 @@ class IFMapApiGenerator(object):
             write(gen_file, "            (ok, result) = db_conn.dbe_read_multi('%s', obj_ids_list, obj_fields)" \
                                                                                 %(ident_name))
             write(gen_file, "")
+            write(gen_file, "            if not ok:")
+            write(gen_file, "                abort(404, result)")
+            write(gen_file, "")
             write(gen_file, "            for obj_result in result:")
             write(gen_file, "                obj_dict = {}")
             write(gen_file, "                obj_dict['name'] = obj_result['fq_name'][-1]")
