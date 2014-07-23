@@ -2403,9 +2403,10 @@ class IFMapApiGenerator(object):
             write(gen_file, "")
 
             # IFMAP_SET (helper for create and update to set props and refs)
-            set_args = "self, my_imid, obj_dict"
+            set_args = "self, my_imid, existing_metas, obj_dict"
             write(gen_file, "    def _ifmap_%s_set(%s):" %(method_name, set_args))
             write(gen_file, "        # Properties Meta")
+            write(gen_file, "        update = {}")
             for prop in ident.getProperties():
                 prop_name = prop.getName()
                 prop_field = prop_name.replace('-', '_')
@@ -2414,9 +2415,8 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        if field is not None:")
                 if not prop.getCType():
                     # simple type
-                    write(gen_file, "            meta = str(Metadata('%s' , str(obj_dict['%s'])," %(prop_name, prop_field))
-                    write(gen_file, "                   {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail'))")
-                    write(gen_file, "            self._publish_id_self_meta(my_imid, meta)")
+                    write(gen_file, "            meta = Metadata('%s' , str(obj_dict['%s'])," %(prop_name, prop_field))
+                    write(gen_file, "                   {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail')")
                 else: # it is complex type, use TypeGenerator's class
                     export_args = "buf, level = 1, name_ = '%s', pretty_print = False" %(prop_name)
                     write(gen_file, "            # construct object of xsd-type and get its xml repr")
@@ -2430,10 +2430,16 @@ class IFMapApiGenerator(object):
                     write(gen_file, "                field.exportChildren(%s)" %(export_args))
                     write(gen_file, "            %s_xml = buf.getvalue()" %(prop_field))
                     write(gen_file, "            buf.close()")
-                    write(gen_file, "            meta = str(Metadata('%s' , ''," %(prop_name))
+                    write(gen_file, "            meta = Metadata('%s' , ''," %(prop_name))
                     write(gen_file, "                   {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail',")
-                    write(gen_file, "                   elements = %s_xml))" %(prop_field))
-                    write(gen_file, "            self._publish_id_self_meta(my_imid, meta)")
+                    write(gen_file, "                   elements = %s_xml)" %(prop_field))
+                write(gen_file, "")
+                write(gen_file, "            if (existing_metas and '%s' in existing_metas and" %(prop_name))
+                write(gen_file, "                str(existing_metas['%s'][0]['meta']) == str(meta)):" %(prop_name))
+                write(gen_file, "                # no change")
+                write(gen_file, "                pass")
+                write(gen_file, "            else:")
+                write(gen_file, "                self._update_id_self_meta(update, meta)")
                 write(gen_file, "")
 
             write(gen_file, "        # Ref Link Metas")
@@ -2463,12 +2469,13 @@ class IFMapApiGenerator(object):
                     write(gen_file, "                    %s(**ref_data).exportChildren(%s)" %(link_type, export_args))
                     write(gen_file, "                    %s_xml = %s_xml + buf.getvalue()" %(link_field, link_field))
                     write(gen_file, "                    buf.close()")
-                write(gen_file, "                meta = str(Metadata('%s' , ''," %(link_name))
+                write(gen_file, "                meta = Metadata('%s' , ''," %(link_name))
                 write(gen_file, "                       {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail',")
-                write(gen_file, "                       elements = %s_xml))" %(link_field))
-                write(gen_file, "                self._publish_id_pair_meta(my_imid, to_imid, meta)")
+                write(gen_file, "                       elements = %s_xml)" %(link_field))
+                write(gen_file, "                self._update_id_pair_meta(update, to_imid, meta)")
                 write(gen_file, "")
             write(gen_file, "")
+            write(gen_file, "        self._publish_update(my_imid, update)")
             write(gen_file, "        return (True, '')")
             write(gen_file, "    #end _ifmap_%s_set" %(method_name))
             write(gen_file, "")
@@ -2491,13 +2498,15 @@ class IFMapApiGenerator(object):
             if parents:
                 # TODO 'contrail' can be had from some self var?
                 write(gen_file, "        # Parent Link Meta")
+                write(gen_file, "        update = {}")
                 write(gen_file, "        parent_link_meta = self._parent_metas[parent_type]['%s']" %(ident_name))
-                write(gen_file, "        meta = str(Metadata(parent_link_meta, '',")
-                write(gen_file, "                   {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail'))")
-                write(gen_file, "        self._publish_id_pair_meta(parent_imid, obj_ids['imid'], meta)")
+                write(gen_file, "        meta = Metadata(parent_link_meta, '',")
+                write(gen_file, "                   {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail')")
+                write(gen_file, "        self._update_id_pair_meta(update, obj_ids['imid'], meta)")
+                write(gen_file, "        self._publish_update(parent_imid, update)")
                 write(gen_file, "")
 
-            write(gen_file, "        (ok, result) = self._ifmap_%s_set(obj_ids['imid'], obj_dict)" \
+            write(gen_file, "        (ok, result) = self._ifmap_%s_set(obj_ids['imid'], None, obj_dict)" \
                                                                 %(method_name))
             write(gen_file, "        return (ok, result)")
             write(gen_file, "    #end _ifmap_%s_create" %(method_name))
@@ -2689,8 +2698,9 @@ class IFMapApiGenerator(object):
             write(gen_file, "                        other_type = 'extended'))")
             write(gen_file, "        # if id-perms missing, identity doesn't exist")
             
+            meta_names = [mns_name.replace('contrail:', '') for mns_name in meta_ns_names]
             write(gen_file, "")
-            write(gen_file, "        all_metas = %s" %(meta_ns_names))
+            write(gen_file, "        all_metas = %s" %(meta_names))
             write(gen_file, "        if not field_names:")
             write(gen_file, "            metas_to_read = all_metas")
             write(gen_file, "        else: # read only requested fields")
@@ -2704,40 +2714,16 @@ class IFMapApiGenerator(object):
                 else: # property
                     field_name = "%s" %(meta_name.replace('-', '_'))
                 write(gen_file, "            if field_names.has_key('%s'):" %(field_name))
-                write(gen_file, "                req_metas.append('contrail:%s')" %(meta_name))
+                write(gen_file, "                req_metas.append('%s')" %(meta_name))
             write(gen_file, "")
             write(gen_file, "            metas_to_read = set(all_metas) & set(req_metas)")
             write(gen_file, "")
-            write(gen_file, "        srch_meta = ' or '.join(metas_to_read)")
-            write(gen_file, "        srch_result = self._search(start_id, srch_meta)")
-            write(gen_file, "")
-            write(gen_file, "        result_list = self.parse_result_items(srch_result, ifmap_id)")
-            write(gen_file, "        if (len(result_list) == 1 and ")
-            write(gen_file, "            result_list[0][2] == None):")
-            write(gen_file, "            return (False, '%s ' + ifmap_id + 'does not exist')" %(ident_name))
-            write(gen_file, "")
-
-            write(gen_file, "        # metas is a dict where key is meta-name and val is list of tuples")
-            write(gen_file, "        # of form (ident1, ident2, meta)")
+            write(gen_file, "        # metas is a dict where key is meta-name and val is list of dict")
+            write(gen_file, "        # of form [{'meta':meta}, {'id':id1, 'meta':meta}, {'id':id2, 'meta':meta}]")
             write(gen_file, "        metas = {}")
-            write(gen_file, "        for r_elem in result_list:")
-            write(gen_file, "            r_meta = r_elem[2]")
-            write(gen_file, "            # create contrail:<tag>")
-            write(gen_file, "            meta_name = r_meta.prefix + ':' + re.sub('{.*}', '', r_meta.tag)")
-            write(gen_file, "")
-            write(gen_file, "            if (")
-            for mi_idx in range(len(meta_info)):
-                (meta_name, xsd_info, to_name) = meta_info[mi_idx]
-                if (mi_idx == (len(meta_info) - 1)): # last meta in list
-                    write(gen_file, "                (meta_name == '%s')" %(meta_name))
-                else:
-                    write(gen_file, "                (meta_name == '%s') or" %(meta_name))
-            write(gen_file, "               ):")
-            write(gen_file, "                if metas.has_key(meta_name):")
-            write(gen_file, "                    metas[meta_name].append(r_elem)")
-            write(gen_file, "                else: # first ident for this link-type")
-            write(gen_file, "                    metas[meta_name] = [r_elem]")
-            write(gen_file, "")
+            write(gen_file, "        for meta_name in metas_to_read:")
+            write(gen_file, "            if meta_name in self._id_to_metas[ifmap_id]:")
+            write(gen_file, "                metas[meta_name] = self._id_to_metas[ifmap_id][meta_name]")
             write(gen_file, "        return metas")
             write(gen_file, "    #end _ifmap_%s_read_to_meta_index" %(ident_name))
             write(gen_file, "")
@@ -2752,12 +2738,13 @@ class IFMapApiGenerator(object):
             for prop in ident.getProperties():
                 prop_name = prop.getName()
                 prop_method_name = prop_name.replace('-', '_')
-                write(gen_file, "        if ('contrail:%s' in existing_metas) and ('%s' not in new_obj_dict):" \
+                write(gen_file, "        if ('%s' in existing_metas) and ('%s' not in new_obj_dict):" \
                                               %(prop_name, prop_method_name))
-                write(gen_file, "            self._delete_id_self_meta(ifmap_id, 'contrail:%s')" %(prop_name))
+                write(gen_file, "            self._delete_id_self_meta(ifmap_id, '%s')" %(prop_name))
                 write(gen_file, "")
 
-            write(gen_file, "        # remove refs that are no longer active")
+            if ident.getLinksInfo():
+                write(gen_file, "        # remove refs that are no longer active")
             for link_info in ident.getLinksInfo():
                 if not ident.isLinkRef(link_info):
                     continue
@@ -2766,17 +2753,12 @@ class IFMapApiGenerator(object):
                 to_ident = ident.getLinkTo(link_info)
                 to_name = to_ident.getName().replace('-', '_')
                 write(gen_file, "        old_refs = []")
-                write(gen_file, "        if ('contrail:%s' in existing_metas):" %(link_name))
-                write(gen_file, "            result_elems = existing_metas['contrail:%s']" %(link_name))
-                write(gen_file, "            for r_elem in result_elems:")
-                write(gen_file, "                # the referred ident could appears at idx 0 or 1")
-                write(gen_file, "                if ifmap_id == r_elem[0].attrib['name']:")
-                write(gen_file, "                    old_ref_ifmap_id = r_elem[1].attrib['name']")
-                write(gen_file, "                else:")
-                write(gen_file, "                    old_ref_ifmap_id = r_elem[0].attrib['name']")
-                write(gen_file, "")
-                write(gen_file, "                old_ref_fq_name = self._db_client_mgr.ifmap_id_to_fq_name(old_ref_ifmap_id)")
-                write(gen_file, "                old_refs.append(old_ref_fq_name)")
+                write(gen_file, "        if ('%s' in existing_metas):" %(link_name))
+                write(gen_file, "             for meta_info in existing_metas['%s']:" %(link_name))
+                write(gen_file, "                 ref_imid = meta_info['id']")
+                write(gen_file, "                 meta = meta_info['meta']")
+                write(gen_file, "                 old_ref_fq_name = self._db_client_mgr.ifmap_id_to_fq_name(ref_imid)")
+                write(gen_file, "                 old_refs.append(old_ref_fq_name)")
                 write(gen_file, "        old_set = set([tuple(ref) for ref in old_refs])")
                 write(gen_file, "")
                 write(gen_file, "        new_refs = []")
@@ -2790,7 +2772,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            self._delete_id_pair_meta(ifmap_id, to_imid, 'contrail:%s')" %(link_name))
                 write(gen_file, "")
 
-            write(gen_file, "        (ok, result) = self._ifmap_%s_set(ifmap_id, new_obj_dict)" \
+            write(gen_file, "        (ok, result) = self._ifmap_%s_set(ifmap_id, existing_metas, new_obj_dict)" \
                                                                 %(method_name))
             write(gen_file, "        return (ok, result)")
             write(gen_file, "    #end _ifmap_%s_update" %(method_name))
@@ -2851,7 +2833,6 @@ class IFMapApiGenerator(object):
                 write(gen_file, "                continue")
                 write(gen_file, "            to_imid = to_ident.attrib['name']")
                 write(gen_file, "            r_meta = r_elem[2]")
-                write(gen_file, "            # create contrail:<tag>")
                 write(gen_file, "            meta_name = r_meta.prefix + ':' + re.sub('{.*}', '', r_meta.tag)")
                 write(gen_file, "            self._delete_id_pair_meta(ifmap_id, to_imid, meta_name)")
                 write(gen_file, "")
