@@ -1,0 +1,11 @@
+Code-Review+1: opencontrail-admin <ci-admin@opencontrail.org>
+Verified+2: opencontrail-admin <ci-admin@opencontrail.org>
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Approved+1: Pedro Marques <roque@juniper.net>
+Code-Review+2: Pedro Marques <roque@juniper.net>
+Code-Review+1: Édouard Thuleau <edouard.thuleau@cloudwatt.com>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Fri, 25 Jul 2014 11:04:29 -0700
+Reviewed-on: https://review.opencontrail.org/954
+Project: Juniper/contrail-generateDS
+Branch: refs/heads/R1.06
