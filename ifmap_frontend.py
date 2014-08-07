@@ -2740,7 +2740,7 @@ class IFMapApiGenerator(object):
                 prop_method_name = prop_name.replace('-', '_')
                 write(gen_file, "        if ('%s' in existing_metas) and ('%s' not in new_obj_dict):" \
                                               %(prop_name, prop_method_name))
-                write(gen_file, "            self._delete_id_self_meta(ifmap_id, '%s')" %(prop_name))
+                write(gen_file, "            self._delete_id_self_meta(ifmap_id, 'contrail:%s')" %(prop_name))
                 write(gen_file, "")
 
             if ident.getLinksInfo():
