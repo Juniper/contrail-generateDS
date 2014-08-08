@@ -89,7 +89,7 @@ public:
         file.write(public_methods)
 
         property_methods = """
-    virtual bool SetProperty(const std::string &property, AutogenProperty *data);
+    virtual void SetProperty(const std::string &property, AutogenProperty *data);
     virtual void ClearProperty(const std::string &property);
 """
         file.write(property_methods)
@@ -194,7 +194,7 @@ public:
 
     def _GenSetProperty(self, file):
         header = """
-bool %s::SetProperty(const string &property, AutogenProperty *data) {
+void %s::SetProperty(const string &property, AutogenProperty *data) {
 """ % self.getName()
         file.write(header)
         test_else = ''
@@ -227,15 +227,7 @@ bool %s::SetProperty(const string &property, AutogenProperty *data) {
 """ % prop.getPropertyId()
             file.write(cdecl)
 
-        retval = """
-    if (property_set_.is_subset_of(old_property_set_)) {
-        return false;
-    } else {
-        return true;
-    }
-}
-"""
-        file.write(retval)
+        file.write('}\n')
 
     def _GenClearProperty(self, file):
         cdecl = """
