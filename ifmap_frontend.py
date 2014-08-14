@@ -2834,7 +2834,8 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            to_imid = to_ident.attrib['name']")
                 write(gen_file, "            r_meta = r_elem[2]")
                 write(gen_file, "            meta_name = r_meta.prefix + ':' + re.sub('{.*}', '', r_meta.tag)")
-                write(gen_file, "            self._delete_id_pair_meta(ifmap_id, to_imid, meta_name)")
+                write(gen_file, "            # For symmetrical links, to_ident could be same as ifmap_id, so pass r_elem[0]")
+                write(gen_file, "            self._delete_id_pair_meta(r_elem[0].attrib['name'], to_imid, meta_name)")
                 write(gen_file, "")
 
             write(gen_file, "")
