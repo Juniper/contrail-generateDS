@@ -207,9 +207,7 @@ using namespace std;
 namespace autogen {
 static bool ParseInteger(const pugi::xml_node &node, int *valuep) {
     char *endp;
-    string value(node.child_value());
-    boost::trim(value);
-    *valuep = strtoul(value.c_str(), &endp, 10);
+    *valuep = strtoul(node.child_value(), &endp, 10);
     return endp[0] == '\\0';
 }
 
