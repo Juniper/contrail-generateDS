@@ -207,17 +207,15 @@ using namespace std;
 namespace autogen {
 static bool ParseInteger(const pugi::xml_node &node, int *valuep) {
     char *endp;
-    string value(node.child_value());
-    boost::trim(value);
-    *valuep = strtoul(value.c_str(), &endp, 10);
+    *valuep = strtoul(node.child_value(), &endp, 10);
+    while (isspace(*endp)) endp++;
     return endp[0] == '\\0';
 }
 
 static bool ParseUnsignedLong(const pugi::xml_node &node, uint64_t *valuep) {
     char *endp;
-    string value(node.child_value());
-    boost::trim(value);
-    *valuep = strtoull(value.c_str(), &endp, 10);
+    *valuep = strtoull(node.child_value(), &endp, 10);
+    while (isspace(*endp)) endp++;
     return endp[0] == '\\0';
 }
 
