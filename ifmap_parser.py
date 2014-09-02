@@ -467,6 +467,7 @@ IFMapObject* %(class)sAgentParse(xml_node &node, DB *db, std::string *id_name) {
 
     %(class)s *data = static_cast<%(class)s *>(table->AllocObject());
     if (%(class)s::Decode(node, id_name, data) == false) {
+        delete data;
         return NULL;
     };
 
