@@ -281,14 +281,17 @@ boost::crc_32_type::value_type %s::CalculateCrc() const {
 """ % self.getName()
             file.write(header)
 
-            indent_l1 = ' ' * 4
-            indent_l11 = ' ' * 9
-            indent_l2 = ' ' * 8
-            file.write(indent_l1 + 'boost::crc_32_type crc;\n')
+            indent_l0 = ' ' * 4
+            indent_l1 = ' ' * 8
+            indent_l11 = ' ' * 13
+            indent_l2 = ' ' * 12
+            file.write(indent_l0 + 'boost::crc_32_type crc;\n')
             for prop in self._identifier.getProperties():
                 membername = prop.getPropertyName() + '_'
                 info = prop.getMemberInfo()
                 assert info
+                file.write(indent_l0 + 
+                           'if (IsPropertySet(%s)) {\n' % prop.getPropertyId())
                 if info.isSequence:
                     file.write(indent_l1 + 'for (%s::const_iterator iter = \n'
                                %(info.ctypename))
@@ -333,8 +336,9 @@ boost::crc_32_type::value_type %s::CalculateCrc() const {
                                    %(membername, membername));
                     else:
                         assert()
+                file.write(indent_l0 + '} \n')
 
-            file.write(indent_l1 + 'return crc.checksum();\n');
+            file.write(indent_l0 + 'return crc.checksum();\n');
 
             retval = "}\n\n"
             file.write(retval)
