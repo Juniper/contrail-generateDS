@@ -2942,10 +2942,10 @@ class IFMapApiGenerator(object):
                 prop_name = prop.getName()
                 prop_method_name = prop_name.replace('-', '_')
                 write(gen_file, "        field = obj_dict.get('%s', None)" %(prop_method_name))
-                if prop_method_name == 'id_perms':
-                    write(gen_file, "        field['created'] = datetime.datetime.utcnow().isoformat()")
-                    write(gen_file, "        field['last_modified'] = field['created']")
                 write(gen_file, "        if field is not None:")
+                if prop_method_name == 'id_perms':
+                    write(gen_file, "            field['created'] = datetime.datetime.utcnow().isoformat()")
+                    write(gen_file, "            field['last_modified'] = field['created']")
                 write(gen_file, "            self._create_prop(bch, obj_ids['uuid'], '%s', field)" %(prop_method_name))
                 write(gen_file, "")
             write(gen_file, "")
