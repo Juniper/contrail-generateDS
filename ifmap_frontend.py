@@ -2183,7 +2183,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            for obj_result in result:")
             write(gen_file, "                obj_dict = {}")
             write(gen_file, "                obj_dict['name'] = obj_result['fq_name'][-1]")
-            write(gen_file, "                obj_dict['href'] = self.generate_url('%s', obj_uuid)" %(ident_name))
+            write(gen_file, "                obj_dict['href'] = self.generate_url('%s', obj_result['uuid'])" %(ident_name))
             write(gen_file, "                obj_dict.update(obj_result)")
             write(gen_file, "                obj_dicts.append({'%s': obj_dict})" %(ident_name))
             write(gen_file, "") 
