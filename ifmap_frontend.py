@@ -1540,7 +1540,10 @@ class IFMapApiGenerator(object):
             write(gen_file, "            xx_%s.export(buf)" %(prop_field))
             write(gen_file, "            node = etree.fromstring(buf.getvalue())")
             write(gen_file, "            xx_%s = %s()" %(prop_field, prop_type))
-            write(gen_file, "            xx_%s.build(node)" %(prop_field))
+            write(gen_file, "            try:")
+            write(gen_file, "                xx_%s.build(node)" %(prop_field))
+            write(gen_file, "            except Exception as e:")
+            write(gen_file, "                abort(400, str(e))")
 
         for link_info in ident.getLinksInfo():
             if not ident.isLinkRef(link_info):
@@ -1560,7 +1563,10 @@ class IFMapApiGenerator(object):
             write(gen_file, "            xx_%s = %s(**ref_dict['attr'])" %(link_field, link_type))
             write(gen_file, "            xx_%s.export(buf)" %(link_field))
             write(gen_file, "            node = etree.fromstring(buf.getvalue())")
-            write(gen_file, "            xx_%s.build(node)" %(link_field))
+            write(gen_file, "            try:")
+            write(gen_file, "                xx_%s.build(node)" %(link_field))
+            write(gen_file, "            except Exception as e:")
+            write(gen_file, "                abort(400, str(e))")
     #end _add_validate
 
     def _generate_server_impl(self, gen_fname, gen_type_pfx):
