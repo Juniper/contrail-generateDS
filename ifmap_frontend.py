@@ -1754,7 +1754,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        if (not result['id_perms'].get('user_visible', True) and")
             write(gen_file, "            not self.is_admin_request()):")
             write(gen_file, "            result = 'This object is not visible by users: %s' % id")
-            write(gen_file, "            self.config_object_error(id, None, 'virtual_network', 'http_get', result)")
+            write(gen_file, "            self.config_object_error(id, None, '%s', 'http_get', result)" % (method_name))
             write(gen_file, "            abort(404, result)")
             write(gen_file, "")
             write(gen_file, "        rsp_body = {}")
