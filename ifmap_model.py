@@ -262,7 +262,7 @@ class IFMapMetadata(IFMapObject):
     """ Base class for all metadata elements (properties, links)
     """
     def __init__(self, name):
-        super(IFMapMeta, self).__init__(name)
+        super(IFMapMetadata, self).__init__(name)
         self._annotation = None
 
     def SetAnnotation(self, annotation):
@@ -289,7 +289,7 @@ class IFMapProperty(IFMapMetadata):
     """ Property associated with a single identifier
     """
     def __init__(self, name):
-        super(IFMapMetadata, self).__init__(name)
+        super(IFMapProperty, self).__init__(name)
         self._parent = None
         self._cppname = CamelCase(name)
         self._complexType = None
@@ -350,7 +350,7 @@ class IFMapLink(IFMapMetadata):
     """ Link metadata with no attributes
     """
     def __init__(self, name):
-        super(IFMapMetadata, self).__init__(name)
+        super(IFMapLink, self).__init__(name)
 
     def getCType(self):
         return None
@@ -359,7 +359,7 @@ class IFMapLinkAttr(IFMapMetadata):
     """ Link metadata with attributes
     """
     def __init__(self, name):
-        super(IFMapMetadata, self).__init__(name)
+        super(IFMapLinkAttr, self).__init__(name)
         self._cppname = CamelCase(name)
         self._complexType = None
 
