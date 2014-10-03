@@ -1660,13 +1660,14 @@ class IFMapApiGenerator(object):
         write(gen_file, "")
 
         # context helper methods
-        write(gen_file, "    def is_admin_request(self):")
-        write(gen_file, "        env = request.headers.environ")
-        write(gen_file, "        if 'HTTP_X_API_ROLE' in env:")
-        write(gen_file, "            roles = env['HTTP_X_API_ROLE'].split(',')")
-        write(gen_file, "            return 'admin' in [x.lower() for x in roles]")
-        write(gen_file, "        return False")
-        write(gen_file, "")
+        write(gen_file, "    def is_admin_request(self):")                                                                 
+        write(gen_file, "        env = request.headers.environ")                                                           
+        write(gen_file, "        for field in ('HTTP_X_API_ROLE', 'HTTP_X_ROLE'):")                                        
+        write(gen_file, "            if field in env:")                                                                    
+        write(gen_file, "                roles = env[field].split(',')")                                                   
+        write(gen_file, "                return 'admin' in [x.lower() for x in roles]")                                    
+        write(gen_file, "        return False")                                                                            
+        write(gen_file, "")  
 
         for ident in self._non_exclude_idents():
             ident_name = ident.getName()
