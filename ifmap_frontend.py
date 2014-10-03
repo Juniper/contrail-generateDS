@@ -18,7 +18,7 @@ _BASE_PARENT_IMID = 'contrail:config-root:root'
 def write(gen_file, gen_str):
     gen_file.write("%s\n" %(gen_str))
 #end write
-    
+
 class IFMapApiGenerator(object):
     def __init__(self, xsd_parser, xsd_root, ident_dict, metadata_dict):
         self._xsd_parser = xsd_parser
@@ -78,7 +78,7 @@ class IFMapApiGenerator(object):
     def _generate_package(self, gendir):
         gen_file = self._xsd_parser.makeFile(gendir + "__init__.py")
     #end _generate_package
- 
+
     def _generate_common_classes(self, gen_filepath_pfx):
         # XSD types to python classes
         type_genr = TypeGenerator(self._xsd_parser)
@@ -181,7 +181,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        kwargs_parent_type = kwargs.get('parent_type', None)")
                 write(gen_file, "        kwargs_fq_name = kwargs.get('fq_name', None)")
                 write(gen_file, "        if parent_obj:")
-                write(gen_file, "            self.parent_type = parent_obj._type") 
+                write(gen_file, "            self.parent_type = parent_obj._type")
                 write(gen_file, "            # copy parent's fq_name")
                 write(gen_file, "            self.fq_name = list(parent_obj.fq_name)")
                 write(gen_file, "            self.fq_name.append(name)")
@@ -266,7 +266,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        return ':'.join(self.fq_name[:-1])")
                 write(gen_file, "    #end get_parent_fq_name_str")
                 write(gen_file, "")
-            
+
             # Getters and Setters for common fields
             write(gen_file, "    @property")
             write(gen_file, "    def uuid(self):")
@@ -781,7 +781,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "    #end get_%ss" %(child_method_name))
                 write(gen_file, "")
             write(gen_file, "")
-            
+
             # Getters for back reference links
             for back_link_info in ident.getBackLinksInfo():
                 if not ident.isLinkRef(back_link_info):
@@ -1013,7 +1013,7 @@ class IFMapApiGenerator(object):
                         write(gen_file, "            self.add_link('%s', cfixture.ConrtailLink('%s', '%s', '%s', %s, (lo, ref)))" % (
                                         ident.getLinkTo(link_info).getName().replace ('-', '_'),
                                         ident.getLinkTo(link_info).getName().replace ('-', '_'),
-                                        ident.getName().replace ('-', '_'), 
+                                        ident.getName().replace ('-', '_'),
                                         ident.getLinkTo(link_info).getName().replace('-', '_'),
                                         str (link_info[2])))
                     else:
@@ -1034,7 +1034,7 @@ class IFMapApiGenerator(object):
                         write(gen_file, "            self.add_link('%s', cfixture.ConrtailLink('%s', '%s', '%s', %s, lo))" % (
                                         ident.getLinkTo(link_info).getName().replace ('-', '_'),
                                         ident.getLinkTo(link_info).getName().replace ('-', '_'),
-                                        ident.getName().replace ('-', '_'), 
+                                        ident.getName().replace ('-', '_'),
                                         ident.getLinkTo(link_info).getName().replace('-', '_'),
                                         str (link_info[2])))
                     write(gen_file, "    #end add_%s_link" % (ident.getLinkTo(link_info).getName().replace ('-', '_')))
@@ -1083,7 +1083,7 @@ class IFMapApiGenerator(object):
                     write(gen_file, "        self._obj = vnc_api.%s(self._name, self._parent_fixt.getObj ())" %(class_name))
             else: # no parents
                 write(gen_file, "        self._obj = vnc_api.%s(self._name)" %(class_name))
-                
+
             write(gen_file, "        try:")
             write(gen_file, "            self._obj = self._conn_drv.%s_read (fq_name=self._obj.get_fq_name())" %(method_name))
             write(gen_file, "            self._update_links (update_server=True)")
@@ -1128,11 +1128,11 @@ class IFMapApiGenerator(object):
                 non_derived_child_idents.append(child_method)
 
             back_ref_exists = None
-            if non_derived_back_refs: 
+            if non_derived_back_refs:
                 back_refs = ' or '.join (['self._obj.get_%s()' % (back_method) for back_method in non_derived_back_refs])
                 write(gen_file, "        if %s:" % (back_refs))
                 write(gen_file, "            return")
-            
+
             child_exists = None
             if non_derived_child_idents:
                 child_exists = ' or '.join (['self._obj.get_%s()' % (child_method) for child_method in non_derived_child_idents])
@@ -1662,9 +1662,10 @@ class IFMapApiGenerator(object):
         # context helper methods
         write(gen_file, "    def is_admin_request(self):")
         write(gen_file, "        env = request.headers.environ")
-        write(gen_file, "        if 'HTTP_X_ROLE' in env:")
-        write(gen_file, "            roles = env['HTTP_X_ROLE'].split(',')")
-        write(gen_file, "            return 'admin' in [x.lower() for x in roles]")
+        write(gen_file, "        for field in ('HTTP_X_API_ROLE', 'HTTP_X_ROLE'):")
+        write(gen_file, "            if field in env:")
+        write(gen_file, "                roles = env[field].split(',')")
+        write(gen_file, "                return 'admin' in [x.lower() for x in roles]")
         write(gen_file, "        return False")
         write(gen_file, "")
 
@@ -1701,13 +1702,13 @@ class IFMapApiGenerator(object):
             write(gen_file, "            (code, msg) = result")
             write(gen_file, "            self.config_object_error(id, None, '%s', 'http_get', msg)" % (method_name))
             write(gen_file, "            abort(code, msg)")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        # type-specific hook")
             write(gen_file, "        r_class = self._resource_classes.get('%s', None)" \
                                                                            %(ident_name))
             write(gen_file, "        if r_class:")
             write(gen_file, "            r_class.http_get(id)")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        db_conn = self._db_conn")
             write(gen_file, "        if etag:")
             write(gen_file, "            obj_ids = {'uuid': id}")
@@ -1799,7 +1800,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            (code, msg) = result")
             write(gen_file, "            self.config_object_error(id, None, '%s', 'http_put', msg)" % (method_name))
             write(gen_file, "            abort(code, msg)")
-            write(gen_file, "") 
+            write(gen_file, "")
             #write(gen_file, "        # last part of url is uuid")
             #write(gen_file, "        id = request.path.split('/')[-1]")
             ref_list = [ident.getLinkTo(link_info).getName().replace('-', '_') for link_info in ident.getLinksInfo()]
@@ -1833,7 +1834,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        callable = getattr(r_class, 'http_put_fail', None)")
             write(gen_file, "        if callable:")
             write(gen_file, "            cleanup_on_failure.append((callable, [id, fq_name, obj_dict, self._db_conn]))")
-            write(gen_file, "") 
+            write(gen_file, "")
             #write(gen_file, "        ifmap_id = db_conn.uuid_to_ifmap_id(id)")
             #write(gen_file, "        obj_ids = {'uuid': id, 'imid': ifmap_id}")
             write(gen_file, "        obj_ids = {'uuid': id}")
@@ -1847,7 +1848,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "                    fail_cleanup_callable(*cleanup_args)")
             write(gen_file, "            self.config_object_error(id, None, '%s', 'http_put', result)" % (method_name))
             write(gen_file, "            abort(404, result)")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        rsp_body = {}")
             write(gen_file, "        rsp_body['uuid'] = id")
             write(gen_file, "        rsp_body['href'] = self.generate_url('%s', id)" %(ident_name))
@@ -1859,7 +1860,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "")
             write(gen_file, "        return {'%s': rsp_body} " %(ident_name))
             write(gen_file, "    #end %s_http_put" %(method_name))
-            write(gen_file, "") 
+            write(gen_file, "")
 
             # DELETE on resource
             write(gen_file, "    def %s_http_delete(self, id):" %(method_name))
@@ -1877,7 +1878,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            self._extension_mgrs['resourceApi'].map_method('pre_%s_delete', id)" %(method_name))
             write(gen_file, "        except Exception as e:")
             write(gen_file, "            pass")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        # read in obj from db (accepting error) to get details of it")
             write(gen_file, "        obj_ids = {'uuid': id}")
             back_ref_fields = ['%s_back_refs' %(back_ref_ident.getName().replace('-', '_')) for back_ref_ident in ident.getBackReferences()]
@@ -1897,17 +1898,17 @@ class IFMapApiGenerator(object):
             write(gen_file, "            (code, msg) = del_result")
             write(gen_file, "            self.config_object_error(id, None, '%s', 'http_delete', msg)" % (method_name))
             write(gen_file, "            abort(code, msg)")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        fq_name = read_result['fq_name']")
             write(gen_file, "        ifmap_id = cfgm_common.imid.get_ifmap_id_from_fq_name('%s', fq_name)" %(ident_name))
             write(gen_file, "        obj_ids['imid'] = ifmap_id")
             write(gen_file, "        if parent_type:")
             write(gen_file, "            parent_imid = cfgm_common.imid.get_ifmap_id_from_fq_name(parent_type, fq_name[:-1])")
             write(gen_file, "            obj_ids['parent_imid'] = parent_imid")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        # State modification starts from here. Ensure that cleanup is done for all state changes")
             write(gen_file, "        cleanup_on_failure = []")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        # type-specific hook")
             write(gen_file, "        r_class = self._resource_classes.get('%s', None)" \
                                                                            %(ident_name))
@@ -1977,7 +1978,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "                callable = getattr(r_class, 'http_delete_fail', None)")
             write(gen_file, "                if callable:")
             write(gen_file, "                    cleanup_on_failure.append((callable, [id, read_result, db_conn]))")
-            write(gen_file, "            #end if read_ok") 
+            write(gen_file, "            #end if read_ok")
             write(gen_file, "")
             write(gen_file, "        try:")
             write(gen_file, "            (ok, del_result) = db_conn.dbe_delete('%s', obj_ids, read_result)" %(ident_name))
@@ -1989,7 +1990,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "                    fail_cleanup_callable(*cleanup_args)")
             write(gen_file, "            self.config_object_error(id, None, '%s', 'http_delete', del_result)" % (method_name))
             write(gen_file, "            abort(409, del_result)")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "    #end %s_http_delete" %(method_name))
 
             # POST on collection
@@ -2012,13 +2013,13 @@ class IFMapApiGenerator(object):
             write(gen_file, "            fq_name_str = ':'.join(obj_dict.get('fq_name', []))")
             write(gen_file, "            self.config_object_error(None, fq_name_str, '%s', 'http_post', msg)" % (method_name))
             write(gen_file, "            abort(code, msg)")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        name = obj_dict['fq_name'][-1]")
             write(gen_file, "        fq_name = obj_dict['fq_name']")
             # TODO if fq_name exists already in cassandra, abort with 409
             write(gen_file, "")
             write(gen_file, "        db_conn = self._db_conn")
-            write(gen_file, "") 
+            write(gen_file, "")
             if parents:
                 write(gen_file, "        # if client gave parent_type of config-root, ignore and remove")
                 write(gen_file, "        if 'parent_type' in obj_dict and obj_dict['parent_type'] == '%s':" %(_BASE_PARENT))
@@ -2072,7 +2073,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "")
             write(gen_file, "        env = request.headers.environ")
             write(gen_file, "        tenant_name = env.get(hdr_server_tenant(), 'default-project')")
-            write(gen_file, "") 
+            write(gen_file, "")
             # TODO below shouldn't be needed
             #write(gen_file, "        # Remove given tenant name in fq_name and replace with one")
             #write(gen_file, "        # received/authenticated in http header")
@@ -2094,7 +2095,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        callable = getattr(r_class, 'http_post_collection_fail', None)")
             write(gen_file, "        if callable:")
             write(gen_file, "            cleanup_on_failure.append((callable, [tenant_name, obj_dict, db_conn]))")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        try:")
             write(gen_file, "            (ok, result) = \\")
             write(gen_file, "                 db_conn.dbe_create('%s', obj_ids, obj_dict)" %(ident_name))
@@ -2125,7 +2126,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            self._extension_mgrs['resourceApi'].map_method('post_%s_create', obj_dict)" %(method_name))
             write(gen_file, "        except Exception as e:")
             write(gen_file, "            pass")
-            write(gen_file, "") 
+            write(gen_file, "")
             # TODO return type-specific contents in rsp_body
             write(gen_file, "        return {'%s': rsp_body} " %(ident_name))
             write(gen_file, "    #end %ss_http_post" %(method_name))
@@ -2170,17 +2171,17 @@ class IFMapApiGenerator(object):
             write(gen_file, "        if not ok:")
             write(gen_file, "            self.config_object_error(None, None, '%ss', 'http_get_collection', result)" % (method_name))
             write(gen_file, "            abort(404, result)")
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        # If only counting, return early")
             write(gen_file, "        if count:")
             write(gen_file, "            return {'%ss': {'count': result}}" %(ident_name))
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        if 'detail' in request.query:")
             write(gen_file, "            detail = 'true' in request.query.detail.lower()")
             write(gen_file, "        else:")
             write(gen_file, "            detail = False")
             write(gen_file, "")
-            write(gen_file, "        fq_names_uuids = result") 
+            write(gen_file, "        fq_names_uuids = result")
             write(gen_file, "        obj_dicts = []")
             write(gen_file, "        if not detail:")
             write(gen_file, "            if not self.is_admin_request():")
@@ -2210,7 +2211,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            obj_fields = %s + %s" %(prop_fields, ref_fields))
             write(gen_file, "            if 'fields' in request.query:")
             write(gen_file, "                obj_fields.extend(request.query.fields.split(','))")
-       
+
             write(gen_file, "            (ok, result) = db_conn.dbe_read_multi('%s', obj_ids_list, obj_fields)" \
                                                                                 %(ident_name))
             write(gen_file, "")
@@ -2225,7 +2226,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "                if (obj_dict['id_perms'].get('user_visible', True) or ")
             write(gen_file, "                    self.is_admin_request()):")
             write(gen_file, "                    obj_dicts.append({'%s': obj_dict})" %(ident_name))
-            write(gen_file, "") 
+            write(gen_file, "")
             write(gen_file, "        return {'%ss': obj_dicts} " %(ident_name))
             write(gen_file, "    #end %ss_http_get" %(method_name))
             write(gen_file, "")
@@ -2552,7 +2553,7 @@ class IFMapApiGenerator(object):
 
             # IFMAP_READ (2 methods. one that reads into meta index, another that renders to external format"
 
-            
+
             # Calculate ref-links + back-ref-links + properties for search
             meta_info = [] # tuple of meta-name + xsd-info + ident-name
             ref_links = [] # metas that are ref links
@@ -2657,12 +2658,12 @@ class IFMapApiGenerator(object):
                     write(gen_file, "                    ref_ifmap_id = r_elem[0].attrib['name']")
                     write(gen_file, "")
                     write(gen_file, "                try:")
-                    write(gen_file, "                    ref_fq_name = self._db_client_mgr.ifmap_id_to_fq_name(ref_ifmap_id)") 
+                    write(gen_file, "                    ref_fq_name = self._db_client_mgr.ifmap_id_to_fq_name(ref_ifmap_id)")
                     write(gen_file, "                except cfgm_common.exceptions.NoIdError:")
                     write(gen_file, "                    err_msg = 'Unknown fq_name for ref ' + ref_ifmap_id")
                     write(gen_file, "                    return (False, err_msg)")
                     write(gen_file, "                try:")
-                    write(gen_file, "                    ref_uuid = self._db_client_mgr.ifmap_id_to_uuid(ref_ifmap_id)") 
+                    write(gen_file, "                    ref_uuid = self._db_client_mgr.ifmap_id_to_uuid(ref_ifmap_id)")
                     write(gen_file, "                except cfgm_common.exceptions.NoIdError:")
                     write(gen_file, "                    err_msg = 'Unknown uuid for ref ' + ref_ifmap_id")
                     write(gen_file, "                    return (False, err_msg)")
@@ -2680,12 +2681,12 @@ class IFMapApiGenerator(object):
                     write(gen_file, "                has_ifmap_id = r_elem[1].attrib['name']")
                     write(gen_file, "")
                     write(gen_file, "                try:")
-                    write(gen_file, "                    has_fq_name = self._db_client_mgr.ifmap_id_to_fq_name(has_ifmap_id)") 
+                    write(gen_file, "                    has_fq_name = self._db_client_mgr.ifmap_id_to_fq_name(has_ifmap_id)")
                     write(gen_file, "                except cfgm_common.exceptions.NoIdError:")
                     write(gen_file, "                    err_msg = 'Unknown fq_name for child ' + has_ifmap_id")
                     write(gen_file, "                    return (False, err_msg)")
                     write(gen_file, "                try:")
-                    write(gen_file, "                    has_uuid = self._db_client_mgr.ifmap_id_to_uuid(has_ifmap_id)") 
+                    write(gen_file, "                    has_uuid = self._db_client_mgr.ifmap_id_to_uuid(has_ifmap_id)")
                     write(gen_file, "                except cfgm_common.exceptions.NoIdError:")
                     write(gen_file, "                    err_msg = 'Unknown uuid for child ' + has_ifmap_id")
                     write(gen_file, "                    return (False, err_msg)")
@@ -2708,7 +2709,7 @@ class IFMapApiGenerator(object):
                     write(gen_file, "                    err_msg = 'Unknown fq_name for backref ' + back_ref_ifmap_id")
                     write(gen_file, "                    return (False, err_msg)")
                     write(gen_file, "                try:")
-                    write(gen_file, "                    back_ref_uuid = self._db_client_mgr.ifmap_id_to_uuid(back_ref_ifmap_id)") 
+                    write(gen_file, "                    back_ref_uuid = self._db_client_mgr.ifmap_id_to_uuid(back_ref_ifmap_id)")
                     write(gen_file, "                except cfgm_common.exceptions.NoIdError:")
                     write(gen_file, "                    err_msg = 'Unknown uuid for backref ' + back_ref_ifmap_id")
                     write(gen_file, "                    return (False, err_msg)")
@@ -2735,7 +2736,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        start_id = str(Identity(name = ifmap_id, type = 'other',")
             write(gen_file, "                        other_type = 'extended'))")
             write(gen_file, "        # if id-perms missing, identity doesn't exist")
-            
+
             meta_names = [mns_name.replace('contrail:', '') for mns_name in meta_ns_names]
             write(gen_file, "")
             write(gen_file, "        all_metas = %s" %(meta_names))
@@ -3138,7 +3139,7 @@ class IFMapApiGenerator(object):
                 prop_method_name = prop_name.replace('-', '_')
                 write(gen_file, "        if '%s' in new_obj_dict:" %(prop_method_name))
                 write(gen_file, "            new_props['%s'] = new_obj_dict['%s']" %(prop_method_name, prop_method_name))
-                
+
             write(gen_file, "        # Gather column values for obj and updates to backrefs")
             write(gen_file, "        # in a batch and write it at the end")
             write(gen_file, "        obj_uuid_cf = self._obj_uuid_cf")
