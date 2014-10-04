@@ -2406,7 +2406,6 @@ class IFMapApiGenerator(object):
         class_name = CamelCase(os.path.basename(gen_fname.split('.py')[0]))
         write(gen_file, "class %s(object):" %(class_name))
         write(gen_file, "    def __init__(self):")
-        write(gen_file, "        self._db_client_mgr = None") 
         write(gen_file, "        self._parent_metas = {}")
         for ident in self._non_exclude_idents():
             ident_name = ident.getName()
