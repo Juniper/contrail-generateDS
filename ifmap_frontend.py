@@ -1996,6 +1996,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "    def %ss_http_post(self):" %(method_name))
             write(gen_file, "        key = '%s'" %(ident_name))
             write(gen_file, "        obj_dict = request.json[key]")
+            write(gen_file, "        self._post_validate(key, obj_dict=obj_dict)")
             write(gen_file, "        fq_name = obj_dict['fq_name']")
             write(gen_file, "")
             write(gen_file, "        try:")
