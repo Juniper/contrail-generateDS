@@ -1805,7 +1805,7 @@ class IFMapApiGenerator(object):
             ref_list = [ident.getLinkTo(link_info).getName().replace('-', '_') for link_info in ident.getLinksInfo()]
             if ref_list:
                 write(gen_file, "        # Validate perms")
-                write(gen_file, "        objtype_list = eval(\"%s\")" %(ref_list))
+                write(gen_file, "        objtype_list = %s" % ref_list)
                 write(gen_file, "        for obj_type in objtype_list:")
                 write(gen_file, "            refs = obj_dict.get('%s_refs'%(obj_type), None)")
                 write(gen_file, "            if refs:")
@@ -2043,7 +2043,7 @@ class IFMapApiGenerator(object):
             ref_list = [ident.getLinkTo(link_info).getName().replace('-', '_') for link_info in ident.getLinksInfo()]
             if ref_list:
                 write(gen_file, "        # Validate perms")
-                write(gen_file, "        objtype_list = eval(\"%s\")" %(ref_list))
+                write(gen_file, "        objtype_list = %s" % ref_list)
                 write(gen_file, "        for obj_type in objtype_list:")
                 write(gen_file, "            refs = obj_dict.get('%s_refs'%(obj_type), None)")
                 write(gen_file, "            if refs:")
