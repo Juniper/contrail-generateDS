@@ -2934,7 +2934,6 @@ class IFMapApiGenerator(object):
         class_name = CamelCase(os.path.basename(gen_fname.split('.py')[0]))
         write(gen_file, "class %s(object):" %(class_name))
         write(gen_file, "    def __init__(self):")
-        write(gen_file, "        self._db_client_mgr = None") 
         write(gen_file, "        self._re_match_parent = re.compile('parent:')")
         write(gen_file, "        self._re_match_prop = re.compile('prop:')")
         write(gen_file, "        self._re_match_ref = re.compile('ref:')")
