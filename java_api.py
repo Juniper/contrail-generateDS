@@ -223,8 +223,6 @@ public class %(cls)s extends ApiObjectBase {
         file.write(header)
 
         for prop in ident.getProperties():
-            if prop.getName() == 'id-perms':
-                continue
             decl = '    private %s %s;\n' % (prop.getJavaTypename(), prop.getCIdentifierName())
             file.write(decl)
             ctype = prop.getCType()
@@ -317,8 +315,6 @@ public class %(cls)s extends ApiObjectBase {
 
     def _GeneratePropertyAccessors(self, file, ident, indent_level):
         for prop in ident.getProperties():
-            if prop.getName() == 'id-perms':
-                continue
             gsname = prop.getCppName()
             if gsname.startswith(ident.getCppName()):
                 gsname = gsname[len(ident.getCppName()):]
