@@ -174,6 +174,11 @@ bool %(class)s::Decode(const xml_node &parent, std::string *id_name,
                     fmt = 'if (!autogen::ParseUnsignedLong(node, &ptr->%s)) return false;'
                     file.write(indent + fmt % info.membername)
                     file.write(indent + 'ptr->property_set_.set(%s);\n' % prop.getPropertyId())
+                elif info.ctypename == 'int':
+                    file.write(indent + 
+                               'ptr->%s = atoi(node.child_value());\n' %
+                               info.membername)
+                    file.write(indent + 'ptr->property_set_.set(%s);\n' % prop.getPropertyId())
                 else:
                     file.write(indent + '// TODO: unimplemented\n')
             indent = ' ' * 8
@@ -211,6 +216,9 @@ bool %s(const pugi::xml_node &parent, std::auto_ptr<AutogenProperty > *resultp) 
             file.write(cdecl)
             if info.ctypename == 'std::string':
                 file.write(indent + 'data->data = parent.child_value();\n')
+            elif info.ctypename == 'int':
+                file.write(indent +
+                           'data->data = atoi(parent.child_value());\n')
             file.write(indent + 'return true;\n')
 
 	file.write('}\n')
