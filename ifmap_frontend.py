@@ -2388,6 +2388,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "import cStringIO")
         write(gen_file, "from lxml import etree")
         write(gen_file, "")
+        write(gen_file, "from generatedssuper import quote_xml")
         write(gen_file, "from cfgm_common.ifmap.client import client, namespaces")
         write(gen_file, "from cfgm_common.ifmap.request import NewSessionRequest, RenewSessionRequest")
         write(gen_file, "from cfgm_common.ifmap.request import EndSessionRequest, PublishRequest")
@@ -2454,7 +2455,8 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        if field is not None:")
                 if not prop.getCType():
                     # simple type
-                    write(gen_file, "            meta = Metadata('%s' , str(obj_dict['%s'])," %(prop_name, prop_field))
+                    write(gen_file, "            norm_str = quote_xml(str(obj_dict['%s']))" %(prop_field))
+                    write(gen_file, "            meta = Metadata('%s', norm_str," %(prop_name))
                     write(gen_file, "                   {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail')")
                 else: # it is complex type, use TypeGenerator's class
                     export_args = "buf, level = 1, name_ = '%s', pretty_print = False" %(prop_name)
@@ -2905,6 +2907,10 @@ class IFMapApiGenerator(object):
             write(gen_file, "            parent_imid = 'contrail:' + parent_type + ':' + parent_fqn")
             write(gen_file, "        else: # parent is config-root")
             write(gen_file, "            parent_imid = '%s'" %(_BASE_PARENT_IMID))
+            write(gen_file, "")
+            write(gen_file, "        # Normalize/escape special chars")
+            write(gen_file, "        my_imid = quote_xml(my_imid)")
+            write(gen_file, "        parent_imid = quote_xml(parent_imid)")
             write(gen_file, "")
             write(gen_file, "        return (my_imid, parent_imid)")
             write(gen_file, "    #end %s_alloc_ifmap_id" %(method_name))
