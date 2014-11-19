@@ -886,7 +886,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "from vnc_api import vnc_api")
         write(gen_file, "from cfgm_common.exceptions import *")
         write(gen_file, "")
-        write(gen_file, "from generatedssuper import GeneratedsSuper")
+        write(gen_file, "from generatedssuper import GeneratedsSuper, quote_xml")
         write(gen_file, "")
 
         for ident in self._non_exclude_idents():
@@ -2905,6 +2905,10 @@ class IFMapApiGenerator(object):
             write(gen_file, "            parent_imid = 'contrail:' + parent_type + ':' + parent_fqn")
             write(gen_file, "        else: # parent is config-root")
             write(gen_file, "            parent_imid = '%s'" %(_BASE_PARENT_IMID))
+            write(gen_file, "")
+            write(gen_file, "        # Normalize/escape special chars")
+            write(gen_file, "        my_imid = quote_xml(my_imid)"
+            write(gen_file, "        parent_imid = quote_xml(parent_imid)")
             write(gen_file, "")
             write(gen_file, "        return (my_imid, parent_imid)")
             write(gen_file, "    #end %s_alloc_ifmap_id" %(method_name))
