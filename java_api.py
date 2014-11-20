@@ -81,7 +81,10 @@ import net.juniper.contrail.api.ApiPropertyBase;
 
         for member in ctype.getDataMembers():
             file.write(' ' * indent_level)
-            file.write('%s %s;\n' % (member.jtypename, member.membername))
+            if (member.jtypename == "java.util.Date"):
+                file.write('volatile %s %s;\n' % (member.jtypename, member.membername))
+            else:
+                file.write('%s %s;\n' % (member.jtypename, member.membername))
 
         # default constructor
         file.write(' ' * indent_level)
@@ -267,7 +270,7 @@ public class %(cls)s extends ApiObjectBase {
     def _GenerateTypename(self, file, ident):
         decl = """
     @Override
-    public String getType() {
+    public String getObjectType() {
         return "%s";
     }
 """ % ident.getName()
