@@ -24,6 +24,17 @@ JavaTypeMap = {
     'xsd:time': 'Long'
 }
 
+GoLangTypeMap = {
+    'string': 'string',
+    'xsd:string': 'string',
+    'xsd:integer': 'int',
+    'xsd:unsignedInt': 'uint',
+    'xsd:boolean': 'bool',
+    'xsd:unsignedLong' : 'uint64',
+    'xsd:dateTime': 'string',
+    'xsd:time': 'uint64'
+}
+
 def getCppType(xsd_simple_type):
     if not xsd_simple_type in CppTypeMap:
         return 'void'
@@ -33,6 +44,11 @@ def getJavaType(xsd_simple_type):
     if not xsd_simple_type in JavaTypeMap:
         return 'Object'
     return JavaTypeMap[xsd_simple_type]
+
+def getGoLangType(xsd_simple_type):
+    if not xsd_simple_type in GoLangTypeMap:
+        return 'interface{}'
+    return GoLangTypeMap[xsd_simple_type]
 
 def IsGeneratedType(ctype):
     for xtype in CppTypeMap.values():

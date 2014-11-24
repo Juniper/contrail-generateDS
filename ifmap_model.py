@@ -5,7 +5,8 @@
 import logging
 import re
 
-from ifmap_global import getCppType, getJavaType, IsGeneratedType, CamelCase
+from ifmap_global import getCppType, getJavaType, getGoLangType
+from ifmap_global import IsGeneratedType, CamelCase
 from type_model import ComplexType, ComplexTypeLocate, MemberInfo
 
 def ElementXsdType(xelement):
@@ -317,6 +318,10 @@ class IFMapProperty(IFMapMetadata):
             return self._complexType.getName()
         return getJavaType(self._xelement.getType())
 
+    def getGoLangTypename(self):
+        if self._xelement.isComplex():
+            return self._complexType.getName()
+        return getGoLangType(self._xelement.getType())
 
     def getMemberInfo(self):
         return self._memberinfo
