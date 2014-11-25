@@ -2395,6 +2395,7 @@ class IFMapApiGenerator(object):
             set_args = "self, my_imid, obj_dict"
             write(gen_file, "    def _ifmap_%s_set(%s):" %(method_name, set_args))
             write(gen_file, "        # Properties Meta")
+            write(gen_file, "        update = {}")
             for prop in ident.getProperties():
                 prop_name = prop.getName()
                 prop_field = prop_name.replace('-', '_')
@@ -2403,9 +2404,9 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        if field is not None:")
                 if not prop.getCType():
                     # simple type
-                    write(gen_file, "            meta = str(Metadata('%s' , str(obj_dict['%s'])," %(prop_name, prop_field))
-                    write(gen_file, "                   {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail'))")
-                    write(gen_file, "            self._publish_id_self_meta(my_imid, meta)")
+                    write(gen_file, "            meta = Metadata('%s' , str(obj_dict['%s'])," %(prop_name, prop_field))
+                    write(gen_file, "                   {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail')")
+                    write(gen_file, "            self._update_id_self_meta(update, meta)")
                 else: # it is complex type, use TypeGenerator's class
                     export_args = "buf, level = 1, name_ = '%s', pretty_print = False" %(prop_name)
                     write(gen_file, "            # construct object of xsd-type and get its xml repr")
@@ -2419,10 +2420,10 @@ class IFMapApiGenerator(object):
                     write(gen_file, "                field.exportChildren(%s)" %(export_args))
                     write(gen_file, "            %s_xml = buf.getvalue()" %(prop_field))
                     write(gen_file, "            buf.close()")
-                    write(gen_file, "            meta = str(Metadata('%s' , ''," %(prop_name))
+                    write(gen_file, "            meta = Metadata('%s' , ''," %(prop_name))
                     write(gen_file, "                   {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail',")
-                    write(gen_file, "                   elements = %s_xml))" %(prop_field))
-                    write(gen_file, "            self._publish_id_self_meta(my_imid, meta)")
+                    write(gen_file, "                   elements = %s_xml)" %(prop_field))
+                    write(gen_file, "            self._update_id_self_meta(update, meta)")
                 write(gen_file, "")
 
             write(gen_file, "        # Ref Link Metas")
@@ -2452,12 +2453,13 @@ class IFMapApiGenerator(object):
                     write(gen_file, "                    %s(**ref_data).exportChildren(%s)" %(link_type, export_args))
                     write(gen_file, "                    %s_xml = %s_xml + buf.getvalue()" %(link_field, link_field))
                     write(gen_file, "                    buf.close()")
-                write(gen_file, "                meta = str(Metadata('%s' , ''," %(link_name))
+                write(gen_file, "                meta = Metadata('%s' , ''," %(link_name))
                 write(gen_file, "                       {'ifmap-cardinality':'singleValue'}, ns_prefix = 'contrail',")
-                write(gen_file, "                       elements = %s_xml))" %(link_field))
-                write(gen_file, "                self._publish_id_pair_meta(my_imid, to_imid, meta)")
+                write(gen_file, "                       elements = %s_xml)" %(link_field))
+                write(gen_file, "                self._update_id_pair_meta(update, to_imid, meta)")
                 write(gen_file, "")
             write(gen_file, "")
+            write(gen_file, "        self._publish_update(my_imid, update)")
             write(gen_file, "        return (True, '')")
             write(gen_file, "    #end _ifmap_%s_set" %(method_name))
             write(gen_file, "")
