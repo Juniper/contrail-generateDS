@@ -3,6 +3,7 @@
 #
 
 import logging
+import re
 
 from ifmap_global import getCppType, getJavaType, IsGeneratedType, CamelCase
 
@@ -30,6 +31,11 @@ class ComplexType(object):
 
     def getName(self):
         return self._name
+
+    def getCIdentifierName(self):
+        expr = re.compile(r'\B[A-Z]')
+        name = expr.sub(lambda x: '_' + x.group().lower(), self._name)
+        return name.lower()
 
     def getDependentTypes(self):
         return self._data_types
