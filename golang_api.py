@@ -4,8 +4,10 @@
 
 import os
 import re
+import sys
 
 from ifmap_global import CamelCase, getGoLangType
+
 
 class GoLangApiGenerator(object):
     def __init__(self, parser, type_map, identifiers, metadata):
@@ -89,7 +91,8 @@ package types
 
         self._GenerateCType(ctype, file)
 
-        
+    # end _GenerateStructType
+
     def _GenerateCType(self, ctype, file):
         for deptype in ctype.getDependentTypes():
             if deptype.getName() in self._top_level_map:
@@ -124,13 +127,13 @@ type %(camel)s struct {
 func (obj *%(typecamel)s) Add%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
         obj.%(member)s = append(obj.%(member)s, %(ptr)svalue)
 }
-""" % {
-    'typecamel': ctype.getName(),
-    'fieldcamel': CamelCase(member.membername),
-    'fieldtype': membertype,
-    'ptr': '*' if member.isComplex else '',
-    'member': CamelCase(member.membername),
-    }
+""" \
+            % {'typecamel': ctype.getName(),
+               'fieldcamel': CamelCase(member.membername),
+               'fieldtype': membertype,
+               'ptr': '*' if member.isComplex else '',
+               'member': CamelCase(member.membername),
+               }
             file.write(decl)
 
     # end _GenerateCType
@@ -151,7 +154,7 @@ func (obj *%(typecamel)s) Add%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
                 inner_type_map[mtype] = [top_level]
 
             self._ExamineInnerTypes(inner_type_map, top_level, deptype)
-    
+
     def _PromoteInnerTypes(self):
         inner_type_map = {}
 
@@ -220,7 +223,7 @@ func (obj *%(typecamel)s) Add%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
         decl = """
 type %(camel)s struct {
         contrail.ObjectBase
-""" % {"camel": ident.getCppName() }
+""" % {"camel": ident.getCppName()}
         file.write(decl)
 
         for prop in ident.getProperties():
@@ -242,14 +245,13 @@ type %(camel)s struct {
                 child = ident.getLinkTo(link_info)
                 decl = '\t%ss contrail.ReferenceList\n' % \
                        child.getCIdentifierName()
-                file.write(decl) 
+                file.write(decl)
 
         for back_link in ident.getBackLinksInfo():
             link_from = ident.getBackLinkFrom(back_link)
             decl = '\t%s_back_refs contrail.ReferenceList\n' % \
                    link_from.getCIdentifierName()
             file.write(decl)
-
 
         decl = """        valid uint64
         modified uint64
@@ -294,26 +296,26 @@ func (obj *%(camel)s) SetParent(parent contrail.IObject) {
 }
 
 func (obj *%(camel)s) addChange(
-	name string, refList contrail.ReferenceList) {
-	if obj.originalMap == nil {
-		obj.originalMap = make(map[string]contrail.ReferenceList)
-	}
-	var refCopy contrail.ReferenceList
-	copy(refCopy, refList)
-	obj.originalMap[name] = refCopy
+        name string, refList contrail.ReferenceList) {
+        if obj.originalMap == nil {
+                obj.originalMap = make(map[string]contrail.ReferenceList)
+        }
+        var refCopy contrail.ReferenceList
+        copy(refCopy, refList)
+        obj.originalMap[name] = refCopy
 }
 
 func (obj *%(camel)s) UpdateDone() {
-	obj.modified = 0
-	obj.originalMap = nil
+        obj.modified = 0
+        obj.originalMap = nil
 }
 
-""" % {
-    "camel": ident.getCppName(),
-    "typename": ident.getName(),
-    "parent_fqn": parent_fqn,
-    "parent_type": parent_type
-}
+""" \
+        % {"camel": ident.getCppName(),
+           "typename": ident.getName(),
+           "parent_fqn": parent_fqn,
+           "parent_type": parent_type
+           }
         file.write(decl)
     # _GenerateGenericMethods
 
@@ -328,13 +330,14 @@ func (obj *%(typecamel)s) Set%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
         obj.%(fieldid)s = %(ptr)svalue
         obj.modified |= %(typeid)s_%(fieldid)s
 }
-""" % {'typecamel': ident.getCppName(),
-       'typeid': ident.getCIdentifierName(),
-       'fieldcamel': prop.getCppName(),
-       'fieldid': prop.getCIdentifierName(),
-       'fieldtype': prop.getGoLangTypename(),
-       'ptr': '*' if prop.getCType() else ''
-    }
+""" \
+            % {'typecamel': ident.getCppName(),
+               'typeid': ident.getCIdentifierName(),
+               'fieldcamel': prop.getCppName(),
+               'fieldid': prop.getCIdentifierName(),
+               'fieldtype': prop.getGoLangTypename(),
+               'ptr': '*' if prop.getCType() else ''
+               }
             file.write(decl)
     # end _GeneratePropertyMethods
 
@@ -363,7 +366,8 @@ func (obj *%(typecamel)s) Set%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
         for back_link in ident.getBackLinksInfo():
             link_from = ident.getBackLinkFrom(back_link)
             self._GenerateReferenceRead(ident, link_from, '_back_refs', file)
-            self._GenerateReferenceAccessor(ident, link_from, '_back_refs', file)
+            self._GenerateReferenceAccessor(ident, link_from, '_back_refs',
+                                            file)
     # end _GenerateBackRefsMethods
 
     def _MethodSuffix(self, suffix):
@@ -373,43 +377,45 @@ func (obj *%(typecamel)s) Set%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
     def _GenerateReferenceRead(self, ident, ref, suffix, file):
         decl = """
 func (obj *%(typecamel)s) read%(fieldcamel)s%(methodsuffix)s() error {
-	if !obj.IsTransient() &&
-		(obj.valid & %(typeid)s_%(fieldid)s%(suffix)s == 0) {
-		err := obj.GetField(obj, "%(fieldid)ss")
-		if err != nil {
-			return err
-		}
-		obj.valid |= %(typeid)s_%(fieldid)s%(suffix)s
-	}
-	return nil
+        if !obj.IsTransient() &&
+                (obj.valid & %(typeid)s_%(fieldid)s%(suffix)s == 0) {
+                err := obj.GetField(obj, "%(fieldid)ss")
+                if err != nil {
+                        return err
+                }
+                obj.valid |= %(typeid)s_%(fieldid)s%(suffix)s
+        }
+        return nil
 }
-""" % {'typecamel': ident.getCppName(),
-       'fieldcamel': ref.getCppName(),
-       'typeid': ident.getCIdentifierName(),
-       'fieldid': ref.getCIdentifierName(),
-       'methodsuffix': self._MethodSuffix(suffix),
-       'suffix': suffix
-}
+""" \
+        % {'typecamel': ident.getCppName(),
+           'fieldcamel': ref.getCppName(),
+           'typeid': ident.getCIdentifierName(),
+           'fieldid': ref.getCIdentifierName(),
+           'methodsuffix': self._MethodSuffix(suffix),
+           'suffix': suffix
+           }
         file.write(decl)
 
     # end _GenerateReferenceRead
 
     def _GenerateReferenceAccessor(self, ident, ref, suffix, file):
         decl = """
-func (obj *%(typecamel)s) Get%(fieldcamel)s%(methodsuffix)s() (contrail.ReferenceList, error) {
-	err := obj.read%(fieldcamel)s%(methodsuffix)s()
-	if err != nil {
-		return nil, err
-	}
-	return obj.%(fieldid)s%(suffix)s, nil
+func (obj *%(typecamel)s) Get%(fieldcamel)s%(methodsuffix)s() (
+        contrail.ReferenceList, error) {
+        err := obj.read%(fieldcamel)s%(methodsuffix)s()
+        if err != nil {
+                return nil, err
+        }
+        return obj.%(fieldid)s%(suffix)s, nil
 }
-""" % {
-    'typecamel': ident.getCppName(),
-    'fieldcamel': ref.getCppName(),
-    'fieldid': ref.getCIdentifierName(),
-    'methodsuffix': self._MethodSuffix(suffix),
-    'suffix': suffix,
-}
+""" \
+        % {'typecamel': ident.getCppName(),
+           'fieldcamel': ref.getCppName(),
+           'fieldid': ref.getCIdentifierName(),
+           'methodsuffix': self._MethodSuffix(suffix),
+           'suffix': suffix,
+           }
         file.write(decl)
     #end _GenerateReferenceAccessor
 
@@ -428,105 +434,108 @@ func (obj *%(typecamel)s) Get%(fieldcamel)s%(methodsuffix)s() (contrail.Referenc
         link_to = ident.getLinkTo(link_info)
 
         decl = """
-func (obj *%(typecamel)s) Add%(fieldcamel)s(rhs *%(fieldcamel)s%(datatype)s) error {
-	err := obj.read%(fieldcamel)sRefs()
-	if err != nil {
-		return err
-	}
+func (obj *%(typecamel)s) Add%(fieldcamel)s(
+        rhs *%(fieldcamel)s%(datatype)s) error {
+        err := obj.read%(fieldcamel)sRefs()
+        if err != nil {
+                return err
+        }
 
-	if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
-		obj.addChange("%(fieldname)s", obj.%(fieldid)s_refs)
-	}
+        if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
+                obj.addChange("%(fieldname)s", obj.%(fieldid)s_refs)
+        }
 
-	ref := contrail.Reference {
-		rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), %(data)s}
-	obj.%(fieldid)s_refs = append(obj.%(fieldid)s_refs, ref)
-	obj.modified |= %(typeid)s_%(fieldid)s_refs
-	return nil
+        ref := contrail.Reference {
+                rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), %(data)s}
+        obj.%(fieldid)s_refs = append(obj.%(fieldid)s_refs, ref)
+        obj.modified |= %(typeid)s_%(fieldid)s_refs
+        return nil
 }
 
 func (obj *%(typecamel)s) Delete%(fieldcamel)s(uuid string) error {
-	err := obj.read%(fieldcamel)sRefs()
-	if err != nil {
-		return err
-	}
+        err := obj.read%(fieldcamel)sRefs()
+        if err != nil {
+                return err
+        }
 
-	if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
-		obj.addChange("%(fieldname)s", obj.%(fieldid)s_refs)
-	}
+        if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
+                obj.addChange("%(fieldname)s", obj.%(fieldid)s_refs)
+        }
 
-	for i, ref := range obj.%(fieldid)s_refs {
-		if ref.Uuid == uuid {
-			obj.%(fieldid)s_refs = append(
-				obj.%(fieldid)s_refs[:i],
-				obj.%(fieldid)s_refs[i+1:]...)
-			break
-		}
-	}
-	obj.modified |= %(typeid)s_%(fieldid)s_refs
-	return nil
+        for i, ref := range obj.%(fieldid)s_refs {
+                if ref.Uuid == uuid {
+                        obj.%(fieldid)s_refs = append(
+                                obj.%(fieldid)s_refs[:i],
+                                obj.%(fieldid)s_refs[i+1:]...)
+                        break
+                }
+        }
+        obj.modified |= %(typeid)s_%(fieldid)s_refs
+        return nil
 }
 
 func (obj *%(typecamel)s) Clear%(fieldcamel)s() {
-	if obj.valid & %(typeid)s_%(fieldid)s_refs != 0 {
-		obj.addChange("%(fieldname)s", obj.%(fieldid)s_refs)
-	} else {
-		obj.addChange("%(fieldname)s", contrail.ReferenceList{})
-	}
-	obj.%(fieldid)s_refs = make([]contrail.Reference, 0)
-	obj.valid |= %(typeid)s_%(fieldid)s_refs
-	obj.modified |= %(typeid)s_%(fieldid)s_refs
+        if obj.valid & %(typeid)s_%(fieldid)s_refs != 0 {
+                obj.addChange("%(fieldname)s", obj.%(fieldid)s_refs)
+        } else {
+                obj.addChange("%(fieldname)s", contrail.ReferenceList{})
+        }
+        obj.%(fieldid)s_refs = make([]contrail.Reference, 0)
+        obj.valid |= %(typeid)s_%(fieldid)s_refs
+        obj.modified |= %(typeid)s_%(fieldid)s_refs
 }
 
 func (obj *%(typecamel)s) Set%(fieldcamel)sList(
-	refList []contrail.ReferencePair) {
-	obj.Clear%(fieldcamel)s()
-	obj.%(fieldid)s_refs = make([]contrail.Reference, len(refList))
-	for i, pair := range refList {
-		obj.%(fieldid)s_refs[i] = contrail.Reference {
-			pair.Object.GetFQName(),
-			pair.Object.GetUuid(),
-			pair.Object.GetHref(),
-			pair.Attribute,
-		}
-	}
+        refList []contrail.ReferencePair) {
+        obj.Clear%(fieldcamel)s()
+        obj.%(fieldid)s_refs = make([]contrail.Reference, len(refList))
+        for i, pair := range refList {
+                obj.%(fieldid)s_refs[i] = contrail.Reference {
+                        pair.Object.GetFQName(),
+                        pair.Object.GetUuid(),
+                        pair.Object.GetHref(),
+                        pair.Attribute,
+                }
+        }
 }
 
-""" % {'typecamel': ident.getCppName(),
-       'typeid': ident.getCIdentifierName(),
-       'fieldcamel': link_to.getCppName(),
-       'fieldid': link_to.getCIdentifierName(),
-       'fieldname': link_to.getName(),
-       'datatype': ', data %s' % datatype if datatype else '',
-       'data': 'data' if datatype else 'nil',
-   }
+""" \
+        % {'typecamel': ident.getCppName(),
+           'typeid': ident.getCIdentifierName(),
+           'fieldcamel': link_to.getCppName(),
+           'fieldid': link_to.getCIdentifierName(),
+           'fieldname': link_to.getName(),
+           'datatype': ', data %s' % datatype if datatype else '',
+           'data': 'data' if datatype else 'nil',
+           }
         file.write(decl)
     #end _GenerateReferenceModifiers
 
     def _GenerateMarshalJSON(self, ident, file):
         decl = """
 func (obj *%(camel)s) MarshalJSON() ([]byte, error) {
-	msg := map[string]*json.RawMessage {
-	}
-	err := obj.MarshalCommon(msg)
-	if err != nil {
-		return nil, err
-	}
+        msg := map[string]*json.RawMessage {
+        }
+        err := obj.MarshalCommon(msg)
+        if err != nil {
+                return nil, err
+        }
 """ % {'camel': ident.getCppName()}
         file.write(decl)
 
         for prop in ident.getProperties():
             decl = """
-	if obj.modified & %(typeid)s_%(fieldid)s != 0 {
-		var value json.RawMessage
-		value, err := json.Marshal(&obj.%(fieldid)s)
-		if err != nil {
-			return nil, err
-		}
-		msg["%(fieldid)s"] = &value
-	}
-""" % {'typeid': ident.getCIdentifierName(),
-       'fieldid': prop.getCIdentifierName()}
+        if obj.modified & %(typeid)s_%(fieldid)s != 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.%(fieldid)s)
+                if err != nil {
+                        return nil, err
+                }
+                msg["%(fieldid)s"] = &value
+        }
+""" \
+            % {'typeid': ident.getCIdentifierName(),
+               'fieldid': prop.getCIdentifierName()}
             file.write(decl)
 
         for link_info in ident.getLinksInfo():
@@ -534,14 +543,14 @@ func (obj *%(camel)s) MarshalJSON() ([]byte, error) {
                 continue
             link_to = ident.getLinkTo(link_info)
             decl = """
-	if len(obj.%(fieldid)s_refs) > 0 {
-		var value json.RawMessage
-		value, err := json.Marshal(&obj.%(fieldid)s_refs)
-		if err != nil {
-			return nil, err
-		}
-		msg["%(fieldid)s_refs"] = &value
-	}
+        if len(obj.%(fieldid)s_refs) > 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.%(fieldid)s_refs)
+                if err != nil {
+                        return nil, err
+                }
+                msg["%(fieldid)s_refs"] = &value
+        }
 """ % {'fieldid': link_to.getCIdentifierName()}
             file.write(decl)
 
@@ -556,22 +565,22 @@ func (obj *%(camel)s) MarshalJSON() ([]byte, error) {
     def _GenerateUnmarshalJSON(self, ident, file):
         decl = """
 func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
-	var m map[string]json.RawMessage
-	err := json.Unmarshal(body, &m)
-	if err != nil {
-		return err
-	}
-	err = obj.UnmarshalCommon(m)
-	if err != nil {
-		return err
-	}
-	for key, value := range m {
-		switch key {""" % {'camel': ident.getCppName()}
+        var m map[string]json.RawMessage
+        err := json.Unmarshal(body, &m)
+        if err != nil {
+                return err
+        }
+        err = obj.UnmarshalCommon(m)
+        if err != nil {
+                return err
+        }
+        for key, value := range m {
+                switch key {""" % {'camel': ident.getCppName()}
         file.write(decl)
 
         fields = [prop.getCIdentifierName() for prop in ident.getProperties()]
         fields.extend(self._IdentifierLinks(ident))
-            
+
         for field in fields:
             decl = """
                 case "%(field)s":
@@ -581,11 +590,11 @@ func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
 
         decl = """
                 }
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+                if err != nil {
+                        return err
+                }
+        }
+        return nil
 }
 """
         file.write(decl)
@@ -596,27 +605,28 @@ func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
         """
         decl = """
 func (obj *%(camel)s) UpdateObject() ([]byte, error) {
-	msg := map[string]*json.RawMessage {
-	}
-	err := obj.MarshalId(msg)
-	if err != nil {
-		return nil, err
-	}
+        msg := map[string]*json.RawMessage {
+        }
+        err := obj.MarshalId(msg)
+        if err != nil {
+                return nil, err
+        }
 """ % {'camel': ident.getCppName()}
         file.write(decl)
 
         for prop in ident.getProperties():
             decl = """
-	if obj.modified & %(typeid)s_%(fieldid)s != 0 {
-		var value json.RawMessage
-		value, err := json.Marshal(&obj.%(fieldid)s)
-		if err != nil {
-			return nil, err
-		}
-		msg["%(fieldid)s"] = &value
-	}
-""" % {'typeid': ident.getCIdentifierName(),
-       'fieldid': prop.getCIdentifierName()}
+        if obj.modified & %(typeid)s_%(fieldid)s != 0 {
+                var value json.RawMessage
+                value, err := json.Marshal(&obj.%(fieldid)s)
+                if err != nil {
+                        return nil, err
+                }
+                msg["%(fieldid)s"] = &value
+        }
+""" \
+            % {'typeid': ident.getCIdentifierName(),
+               'fieldid': prop.getCIdentifierName()}
             file.write(decl)
 
         for link_info in ident.getLinksInfo():
@@ -624,28 +634,31 @@ func (obj *%(camel)s) UpdateObject() ([]byte, error) {
                 continue
             link_to = ident.getLinkTo(link_info)
             decl = """
-	if obj.modified & %(typeid)s_%(fieldid)srefs == 0 {
-		if len(obj.%(fieldid)s_refs) == 0 {
-			msg["%(fieldid)s_refs"] = nil
-		} else {
-			prev := obj.originalMap["%(fieldname)s"]
-			if len(prev) == 0 {
-				var value json.RawMessage
-				value, err := json.Marshal(
-					&obj.%(fieldid)s_refs)
-				if err != nil {
-					return nil, err
-				}
-				msg["%(fieldid)s_refs"] = &value
-			}
-		}
-	}
+        if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
+                if len(obj.%(fieldid)s_refs) == 0 {
+                        msg["%(fieldid)s_refs"] = nil
+                } else {
+                        prev := obj.originalMap["%(fieldname)s"]
+                        if len(prev) == 0 {
+                                var value json.RawMessage
+                                value, err := json.Marshal(
+                                        &obj.%(fieldid)s_refs)
+                                if err != nil {
+                                        return nil, err
+                                }
+                                msg["%(fieldid)s_refs"] = &value
+                        }
+                }
+        }
 
-""" % {'typeid': ident.getCIdentifierName(),
-       'fieldid': link_to.getCIdentifierName(),
-       'fieldname': link_to.getName()}
+""" \
+            % {'typeid': ident.getCIdentifierName(),
+               'fieldid': link_to.getCIdentifierName(),
+               'fieldname': link_to.getName()}
+            file.write(decl)
+
         decl = """
-	return json.Marshal(msg)
+        return json.Marshal(msg)
 }
 """
         file.write(decl)
@@ -667,19 +680,21 @@ func (obj *%(camel)s) UpdateReferences() error {
                 continue
             link_to = ident.getLinkTo(link_info)
             decl = """
-	if obj.modified & %(typeid)s_%(fieldid)s_refs != 0 {
-		err := obj.UpdateReference(
-			obj, "%(fieldname)s",
-			obj.%(fieldid)s_refs,
-			obj.originalMap["%(fieldname)s"])
-		if err != nil {
-			return err
-		}
-	}
-""" % {'typeid': ident.getCIdentifierName(),
-       'fieldid': link_to.getCIdentifierName(),
-       'fieldname': link_to.getName()}
+        if obj.modified & %(typeid)s_%(fieldid)s_refs != 0 {
+                err := obj.UpdateReference(
+                        obj, "%(fieldname)s",
+                        obj.%(fieldid)s_refs,
+                        obj.originalMap["%(fieldname)s"])
+                if err != nil {
+                        return err
+                }
+        }
+""" \
+            % {'typeid': ident.getCIdentifierName(),
+               'fieldid': link_to.getCIdentifierName(),
+               'fieldname': link_to.getName()}
             file.write(decl)
+
         decl = """
         return nil
 }
@@ -698,12 +713,13 @@ func (obj *%(camel)s) UpdateReferences() error {
         self._GenerateTypeMap(dirname)
 
         for ident in self._identifier_map.values():
-            filename = os.path.join(dirname, ident.getCIdentifierName() + ".go")
+            filename = os.path.join(
+                dirname, ident.getCIdentifierName() + ".go")
             self._GenerateObject(ident, filename)
 
         self._PromoteInnerTypes()
 
         for ctype in self._top_level_map.values():
-            filename = os.path.join(dirname, ctype.getCIdentifierName() + ".go")
+            filename = os.path.join(
+                dirname, ctype.getCIdentifierName() + ".go")
             self._GenerateStructType(ctype, filename)
-
