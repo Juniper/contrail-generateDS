@@ -579,13 +579,67 @@ func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
         file.write(decl)
 
         fields = [prop.getCIdentifierName() for prop in ident.getProperties()]
-        fields.extend(self._IdentifierLinks(ident))
+        typedrefs = []
+        for link_info in ident.getLinksInfo():
+            if ident.isLinkRef(link_info):
+                suffix = '_refs'
+            elif ident.isLinkHas(link_info):
+                suffix = 's'
+            link_to = ident.getLinkTo(link_info)
+            name = link_to.getCIdentifierName() + suffix
+            attrtype = self._getAttrType(ident, link_info)
+            if attrtype:
+                typedrefs.append((name, attrtype))
+            else:
+                fields.append(name)
+
+        for back_link in ident.getBackLinksInfo():
+            link_from = ident.getBackLinkFrom(back_link)
+            name = link_from.getCIdentifierName() + '_back_refs'
+            attrtype = self._getAttrType(ident, back_link)
+            if attrtype:
+                typedrefs.append((name, attrtype))
+            else:
+                fields.append(name)
 
         for field in fields:
             decl = """
                 case "%(field)s":
                         err = json.Unmarshal(value, &obj.%(field)s)
                         break""" % {'field': field}
+            file.write(decl)
+
+        for field, attrtype in typedrefs:
+            decl = """
+                case "%(field)s": {
+                        var array []json.RawMessage
+                        err = json.Unmarshal(value, &array)
+                        if err != nil {
+                            break
+                        }
+                        obj.%(field)s = make(contrail.ReferenceList, 0)
+                        type ReferenceElement struct {
+                                To []string
+                                Uuid string
+                                Href string
+                                Attr %(typename)s
+                        }
+                        for _, item := range array {
+                                element := ReferenceElement{}
+                                err = json.Unmarshal(item, &element)
+                                if err != nil {
+                                        break
+                                }
+                                ref := contrail.Reference {
+                                        element.To,
+                                        element.Uuid,
+                                        element.Href,
+                                        element.Attr,
+                                }
+                                obj.%(field)s = append(obj.%(field)s, ref)
+                        }
+                        break
+                }""" % {'field': field, 'typename': attrtype}
             file.write(decl)
 
         decl = """
