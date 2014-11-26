@@ -683,9 +683,15 @@ func (obj *%(camel)s) UpdateObject() ([]byte, error) {
                 continue
             link_to = ident.getLinkTo(link_info)
             decl = """
-        if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
+        if obj.modified & %(typeid)s_%(fieldid)s_refs != 0 {
                 if len(obj.%(fieldid)s_refs) == 0 {
-                        msg["%(fieldid)s_refs"] = nil
+                        var value json.RawMessage
+                        value, err := json.Marshal(
+                                          make([]contrail.Reference, 0))
+                        if err != nil {
+                                return nil, err
+                        }
+                        msg["%(fieldid)s_refs"] = &value
                 } else {
                         prev := obj.originalMap["%(fieldname)s"]
                         if len(prev) == 0 {
