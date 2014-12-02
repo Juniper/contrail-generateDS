@@ -96,6 +96,9 @@ class IFMapApiGenerator(object):
         write(gen_file, '"""')
         write(gen_file, "")
 
+        write(gen_file, "from cfgm_common import vnc_unicode_utils")
+        write(gen_file, "")
+        write(gen_file, "")
         for ident in self._non_exclude_idents():
             class_name = CamelCase(ident.getName())
             ident_name = ident.getName()
@@ -174,6 +177,8 @@ class IFMapApiGenerator(object):
             write(gen_file, "        self._type = '%s'" %(ident_name))
             write(gen_file, "        if not name:")
             write(gen_file, "            name = u'%s'" %(my_name_default))
+            write(gen_file, "        else:")
+            write(gen_file, "            name = vnc_unicode_utils.check_and_encode_string(name)")
             write(gen_file, "        self.name = name")
             write(gen_file, "        self._uuid = None")
             if parents:
@@ -527,6 +532,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "# AUTO-GENERATED file from %s. Do Not Edit!" \
               %(self.__class__.__name__))
         write(gen_file, "")
+        write(gen_file, "from cfgm_common import vnc_unicode_utils")
         write(gen_file, "import vnc_api.gen.%s_common" %(gen_filename_pfx))
         write(gen_file, "import vnc_api.gen.%s_xsd" %(gen_filename_pfx))
         write(gen_file, "")
@@ -665,6 +671,7 @@ class IFMapApiGenerator(object):
                 #write(gen_file, "                obj.%s_back_refs.append(back_ref)" %(from_name))
 
             write(gen_file, "")
+            write(gen_file, "        vnc_unicode_utils.decode_str_list(obj.fq_name)")
             write(gen_file, "        return obj")
             write(gen_file, "    #end from_dict")
             write(gen_file, "")
