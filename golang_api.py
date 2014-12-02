@@ -24,8 +24,9 @@ class GoLangApiGenerator(object):
 package types
 
 import (
-        "contrail-go-api"
         "reflect"
+
+        "github.com/Juniper/contrail-go-api"
 )
 
 var (
@@ -60,8 +61,9 @@ func init() {
 package types
 
 import (
-        "contrail-go-api"
         "encoding/json"
+
+        "github.com/Juniper/contrail-go-api"
 )
 """
         file.write(header)
@@ -383,7 +385,6 @@ func (obj *%(typecamel)s) read%(fieldcamel)s%(methodsuffix)s() error {
                 if err != nil {
                         return err
                 }
-                obj.valid |= %(typeid)s_%(fieldid)s%(suffix)s
         }
         return nil
 }
@@ -606,7 +607,11 @@ func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
             decl = """
                 case "%(field)s":
                         err = json.Unmarshal(value, &obj.%(field)s)
-                        break""" % {'field': field}
+                        if err == nil {
+                                obj.valid |= %(typeid)s_%(field)s
+                        }
+                        break""" % {'typeid': ident.getCIdentifierName(),
+                                    'field': field}
             file.write(decl)
 
         for field, attrtype in typedrefs:
@@ -623,6 +628,7 @@ func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
                         if err != nil {
                             break
                         }
+                        obj.valid |= %(typeid)s_%(field)s
                         obj.%(field)s = make(contrail.ReferenceList, 0)
                         for _, element := range array {
                                 ref := contrail.Reference {
@@ -634,7 +640,8 @@ func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
                                 obj.%(field)s = append(obj.%(field)s, ref)
                         }
                         break
-                }""" % {'field': field, 'typename': attrtype}
+                }""" % {'typeid': ident.getCIdentifierName(),
+                        'field': field, 'typename': attrtype}
             file.write(decl)
 
         decl = """
