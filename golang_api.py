@@ -381,7 +381,7 @@ func (obj *%(typecamel)s) Set%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
 func (obj *%(typecamel)s) read%(fieldcamel)s%(methodsuffix)s() error {
         if !obj.IsTransient() &&
                 (obj.valid & %(typeid)s_%(fieldid)s%(suffix)s == 0) {
-                err := obj.GetField(obj, "%(fieldid)ss")
+                err := obj.GetField(obj, "%(fieldid)s%(suffix)s")
                 if err != nil {
                         return err
                 }
