@@ -1033,8 +1033,12 @@ if __name__ == '__main__':
             self.NonNegativeIntegerType : 'int',
             self.NonPositiveIntegerType : 'int',
             self.PositiveIntegerType : 'int',
+            self.DateTimeType : 'str',
+            self.DateType : 'str',
+            self.TimeType : 'str',
         }
         self.SchemaToPythonTypeMap.update(dict((x, 'int') for x in self.IntegerType))
+        self.SchemaToPythonTypeMap.update(dict((x, 'str') for x in self.StringType))
     
         #LG global SchemaToCppTypeMap
         self.SchemaToCppTypeMap = {

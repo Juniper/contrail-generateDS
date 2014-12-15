@@ -837,8 +837,8 @@ class PyGenerator(object):
                 else:
                     wrt('        self.anytypeobjs_ = anytypeobjs_\n')
             else:
+                child_type = child.getType()
                 if child.getMaxOccurs() > 1:
-                    child_type = child.getType()
                     wrt('        if (%s is None) or (%s == []):\n' % (name, name))
                     wrt('            self.%s = []\n' % (name, ))
                     wrt('        else:\n')
@@ -848,11 +848,24 @@ class PyGenerator(object):
                                                      %(child_type, name))
                         wrt('                self.%s = objs\n' % (name))
                         wrt('            else:\n')
+                        wrt('                all_type_ok = [isinstance(elem, %s) for elem in %s]\n' \
+                                                     % (child_type, name))
+                        wrt('                if not all(all_type_ok):\n')
+                        wrt('                    raise Exception("Atleast one element in %s is not of type %s")\n' \
+                                                     % (name, child_type))
                         wrt('                self.%s = %s\n' % (name, name))
+                        wrt('')
                     else:
+                        mapped_type = self._PGenr.SchemaToPythonTypeMap[child_type]
+                        wrt('            all_type_ok = [isinstance(elem, %s) for elem in %s]\n'  \
+                                                     % (mapped_type, name))
+                        wrt('            if not all(all_type_ok):\n')
+                        wrt('                raise Exception("Atleast one element in %s is not of type %s")\n' \
+                                                     % (name, mapped_type))
                         wrt('            self.%s = %s\n' % (name, name))
+                        wrt('')
                 else:
-                    typeObj = self._PGenr.ElementDict.get(child.getType())
+                    typeObj = self._PGenr.ElementDict.get(child_type)
                     if (child.getDefault() and
                         typeObj is not None and
                         typeObj.getSimpleContent()):
@@ -860,17 +873,30 @@ class PyGenerator(object):
                         wrt("            self.%s = globals()['%s']('%s')\n" % (name,
                             child.getType(), child.getDefault(), ))
                         wrt('        else:\n')
+                        wrt('            if %s is not None and not isinstance(%s, %s):\n' \
+                                            % (name, name, child.getType()))
+                        wrt('                raise Exception("%s is not of type %s")\n' % (name, child.getType()))
                         wrt('            self.%s = %s\n' % (name, name))
+                        wrt('')
                     else:
-                        child_type = child.getType()
                         if (child.isComplex()):
                             wrt('        if isinstance(%s, dict):\n' %(name))
                             wrt('            obj = %s(**%s)\n' %(child_type, name))
                             wrt('            self.%s = obj\n' % (name))
                             wrt('        else:\n')
+                            wrt('            if %s is not None and not isinstance(%s, %s):\n' \
+                                                % (name, name, child_type))
+                            wrt('                raise Exception("%s is not of type %s")\n' % (name, child.getType()))
                             wrt('            self.%s = %s\n' % (name, name))
+                            wrt('')
                         else:
+                            #import pdb; pdb.set_trace()
+                            mapped_type = self._PGenr.SchemaToPythonTypeMap[child_type]
+                            wrt('        if %s is not None and not isinstance(%s, %s):\n' \
+                                            % (name, name, mapped_type))
+                            wrt('            raise Exception("%s is not of type %s")\n' % (name, mapped_type))
                             wrt('        self.%s = %s\n' % (name, name))
+                            wrt('')
             member = 1
             nestedElements = 1
         eltype = element.getType()

@@ -2291,7 +2291,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "    def __init__(self):")
         write(gen_file, "        self.perms = {}")
         write(gen_file, "        default_perms = self._common_default_perms")
-        write(gen_file, "        id_perms = IdPermsType(default_perms, None, True, 0, 0)")
+        write(gen_file, "        id_perms = IdPermsType(default_perms, None, True)")
         for ident in self._non_exclude_idents():
             ident_name = ident.getName()
             write(gen_file, "        self.perms['%s'] = id_perms" %(ident_name))
