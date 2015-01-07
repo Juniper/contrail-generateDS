@@ -1991,7 +1991,13 @@ class IFMapApiGenerator(object):
             write(gen_file, "            self.config_object_error(id, None, '%s', 'http_delete', del_result)" % (method_name))
             write(gen_file, "            abort(409, del_result)")
             write(gen_file, "")
+            write(gen_file, "        try:")
+            write(gen_file, "            self._extension_mgrs['resourceApi'].map_method('post_%s_delete', id, read_result)" %(method_name))
+            write(gen_file, "        except Exception as e:")
+            write(gen_file, "            pass")
+            write(gen_file, "")
             write(gen_file, "    #end %s_http_delete" %(method_name))
+            write(gen_file, "")
 
             # POST on collection
             write(gen_file, "    def %ss_http_post(self):" %(method_name))
@@ -2366,7 +2372,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        pass")
             write(gen_file, "    #end pre_%s_delete" %(method_name))
             write(gen_file, "")
-            write(gen_file, "    def post_%s_delete(self, resource_id):" %(method_name))
+            write(gen_file, "    def post_%s_delete(self, resource_id, resource_dict):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called after %s is deleted" %(ident_name))
             write(gen_file, '        """')
