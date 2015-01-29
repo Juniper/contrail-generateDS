@@ -970,6 +970,8 @@ if __name__ == '__main__':
         self.NameTypes = (self.NameType, self.NCNameType, self.QNameType, )
         self.ListType = nameSpace + 'list'
         self.EnumerationType = nameSpace + 'enumeration'
+        self.MinInclusiveType = nameSpace + 'minInclusive'
+        self.MaxInclusiveType = nameSpace + 'maxInclusive'
         self.UnionType = nameSpace + 'union'
         self.AnnotationType = nameSpace + 'annotation'
         self.DocumentationType = nameSpace + 'documentation'
@@ -1919,6 +1921,8 @@ class XschemaHandler(handler.ContentHandler):
         SimpleTypeType = self._PGenr.SimpleTypeType
         RestrictionType = self._PGenr.RestrictionType
         EnumerationType = self._PGenr.EnumerationType
+        MinInclusiveType = self._PGenr.MinInclusiveType
+        MaxInclusiveType = self._PGenr.MaxInclusiveType
         UnionType = self._PGenr.UnionType
         WhiteSpaceType = self._PGenr.WhiteSpaceType
         ListType = self._PGenr.ListType
@@ -2098,12 +2102,14 @@ class XschemaHandler(handler.ContentHandler):
                     if 'base' in attrs.keys():
                         self.stack[-1].setRestrictionBase(attrs['base'])
             self.inRestrictionType = 1
-        elif name == EnumerationType:
-            if self.inAttribute and attrs.has_key('value'):
+        elif name in [EnumerationType, MinInclusiveType, MaxInclusiveType]:
+            if not attrs.has_key('value'):
+                return
+            if self.inAttribute:
                 # We know that the restriction is on an attribute and the
                 # attributes of the current element are un-ordered so the
                 # instance variable "lastAttribute" will have our attribute.
-                self.lastAttribute.values.append(attrs['value'])
+                values = self.lastAttribute.values
             elif self.inElement and attrs.has_key('value'):
                 # We're not in an attribute so the restriction must have
                 # been placed on an element and that element will still be
@@ -2119,10 +2125,19 @@ class XschemaHandler(handler.ContentHandler):
                     err_msg('Cannot find element to attach enumeration: %s\n' % (
                             attrs['value']), )
                     sys.exit(1)
-                element.values.append(attrs['value'])
+                values = element.values
             elif self.inSimpleType and attrs.has_key('value'):
                 # We've been defined as a simpleType on our own.
-                self.stack[-1].values.append(attrs['value'])
+                values = self.stack[-1].values
+            if name == EnumerationType:
+                values.append(attrs['value'])
+            else:
+                if len(values) == 0:
+                    values.extend([None, None])
+                if name == MinInclusiveType:
+                    values[0] = attrs['value']
+                else:
+                    values[1] = attrs['value']
         elif name == UnionType:
             # Union types are only used with a parent simpleType and we want
             # the parent to know what it's a union of.
@@ -2187,6 +2202,7 @@ class XschemaHandler(handler.ContentHandler):
         SimpleTypeType = self._PGenr.SimpleTypeType
         RestrictionType = self._PGenr.RestrictionType
         EnumerationType = self._PGenr.EnumerationType
+        MinInclusiveType = self._PGenr.MinInclusiveType
         UnionType = self._PGenr.UnionType
         WhiteSpaceType = self._PGenr.WhiteSpaceType
         ListType = self._PGenr.ListType
