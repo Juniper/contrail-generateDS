@@ -686,7 +686,6 @@ class PyGenerator(object):
             unmapped_name = self._PGenr.cleanupName(child.getName())
             cap_name = self._PGenr.make_gs_name(unmapped_name)
             get_max_occurs = child.getMaxOccurs()
-            #if name == 'acl_rule': import pdb; pdb.set_trace ()
             astr = '        obj.set_%s (%s)\n' % (name,
                     self.gen_populate_str (name, child))
 
@@ -1156,9 +1155,21 @@ class PyGenerator(object):
                 s1+= '        if error:\n'
                 errorStr = stName + ' must be one of ' + str(st.values)
                 s1+= '            raise ValueError("' + errorStr + '")\n'
-            elif st and st.getBase() == "xsd:integer":
-                #import pdb; pdb.set_trace()
-                s1 = '        pass\n'
+            elif st and st.getBase() == "xsd:integer" and st.values:
+                s1 = '        error = False\n'
+                s1+= '        if isinstance(value, list):\n'
+                s1+= '            v_int = map(int, value)\n'
+                s1+= '            v1, v2 = min(v_int), max(v_int)\n'
+                s1+= '        else:\n'
+                s1+= '            v1, v2 = int(value), int(value)\n'
+                if st.values[0]:
+                    s1+= '        error = (%s > v1)\n' % st.values[0]
+                if st.values[1]:
+                    s1+= '        error |= (v2 > %s)\n' % st.values[1]
+                errorStr = (stName + ' must be in the range %s-%s' %
+                            (st.values[0], st.values[1]))
+                s1+= '        if error:\n'
+                s1+= '            raise ValueError("' + errorStr + '")\n'
             else:
                 s1 = '        pass\n'
         return s1
@@ -2230,7 +2241,6 @@ class CppGenerator(object):
     def generateCtor(self, wrt, element):
         elName = element.getCleanName()
         childCount = self._PGenr.countChildren(element, 0)
-        #import pdb; pdb.set_trace()
         (s2, s3, s4) = self.buildCtorArgs_multilevel(element, childCount)
         wrt('public:\n')   
         wrt('    %s%s(%s):\n' % (self._Prefix, elName, s2))
