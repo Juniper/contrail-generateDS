@@ -10,7 +10,6 @@ import pprint
 import re
 import os
 
-# TODO move to common definition
 _BASE_URL = ""
 _BASE_PARENT = 'config-root'
 _BASE_PARENT_IMID = 'contrail:config-root:root'
@@ -159,6 +158,16 @@ class IFMapApiGenerator(object):
                 from_class_name = CamelCase(from_ident.getName())
                 write(gen_file, "        * list of :class:`.%s` objects" %(from_class_name))
             write(gen_file, '    """')
+            write(gen_file, "")
+
+            prop_fields = [prop.getName().replace('-', '_') for prop in ident.getProperties()]
+            ref_fields = ['%s_refs' %(ref_ident.getName().replace('-', '_')) for ref_ident in ident.getReferences()]
+            back_ref_fields = ['%s_back_refs' %(back_ref_ident.getName().replace('-', '_')) for back_ref_ident in ident.getBackReferences()]
+            children_fields = ['%ss' %(child_ident.getName().replace('-', '_')) for child_ident in ident.getChildren()]
+            write(gen_file, "    prop_fields = set(%s)" %(prop_fields))
+            write(gen_file, "    ref_fields = set(%s)" %(ref_fields))
+            write(gen_file, "    backref_fields = set(%s)" %(back_ref_fields))
+            write(gen_file, "    children_fields = set(%s)" %(children_fields))
             write(gen_file, "")
 
             # init args are name, parent_obj(if there is one), props
@@ -2943,8 +2952,12 @@ class IFMapApiGenerator(object):
         write(gen_file, "import pycassa")
         write(gen_file, "import datetime")
         write(gen_file, "from operator import itemgetter")
+        write(gen_file, "")
         write(gen_file, "import cfgm_common.exceptions")
         write(gen_file, "from cfgm_common import utils")
+        write(gen_file, "from %s_xsd import *" %(gen_type_pfx))
+        write(gen_file, "from %s_common import *" %(gen_type_pfx))
+        write(gen_file, "from %s_server import *" %(gen_type_pfx))
         write(gen_file, "")
         class_name = CamelCase(os.path.basename(gen_fname.split('.py')[0]))
         write(gen_file, "class %s(object):" %(class_name))
@@ -2958,6 +2971,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "")
         for ident in self._non_exclude_idents():
             ident_name = ident.getName()
+            ident_class_name = CamelCase(ident.getName())
             method_name = ident_name.replace('-', '_')
             parents = ident.getParents()
 
@@ -3038,9 +3052,22 @@ class IFMapApiGenerator(object):
             write(gen_file, "        # if field_names = None, all fields will be read/returned")
             write(gen_file, "")
             write(gen_file, "        obj_uuid_cf = self._obj_uuid_cf")
-            write(gen_file, "        obj_rows = obj_uuid_cf.multiget(obj_uuids,")
-            write(gen_file, "                                   column_count = 10000000,")
-            write(gen_file, "                                   include_timestamp = True)")
+            write(gen_file, "")
+            write(gen_file, "        # optimize for common case of reading non-backref, non-children fields")
+            write(gen_file, "        # ignoring columns starting from 'b' and 'c' - significant performance")
+            write(gen_file, "        # impact in scaled setting. e.g. read of project")
+            write(gen_file, "        if (field_names is None or")
+            write(gen_file, "            (set(field_names) & (%s.backref_fields | %s.children_fields))):" \
+                                                            %(ident_class_name, ident_class_name))
+            write(gen_file, "            # atleast one backref/children field is needed")
+            write(gen_file, "            obj_rows = obj_uuid_cf.multiget(obj_uuids,")
+            write(gen_file, "                                       column_count = 10000000,")
+            write(gen_file, "                                       include_timestamp = True)")
+            write(gen_file, "        else: # ignore reading backref + children columns")
+            write(gen_file, "            obj_rows = obj_uuid_cf.multiget(obj_uuids,")
+            write(gen_file, "                                       column_start = 'd',")
+            write(gen_file, "                                       column_count = 10000000,")
+            write(gen_file, "                                       include_timestamp = True)")
             write(gen_file, "")
             write(gen_file, "        if (len(obj_uuids) == 1) and not obj_rows:")
             write(gen_file, "            raise cfgm_common.exceptions.NoIdError(obj_uuids[0])")
