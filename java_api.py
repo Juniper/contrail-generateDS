@@ -394,6 +394,10 @@ public void set%(caml)s(%(type)s %(field)s) {
         %(field)s_refs.add(new ObjectReference<ApiPropertyBase>(obj.getQualifiedName(), null));
     }
     public void clear%(caml)s() {
+        if (%(field)s_refs != null) {
+            %(field)s_refs.clear();
+            return;
+        }
         %(field)s_refs = null;
     }
 """ % {'caml': link_to.getCppName(), 'linktype': link_to.getCppName(),
