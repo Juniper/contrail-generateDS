@@ -3055,7 +3055,8 @@ class IFMapApiGenerator(object):
             write(gen_file, "        # optimize for common case of reading non-backref, non-children fields")
             write(gen_file, "        # ignoring columns starting from 'b' and 'c' - significant performance")
             write(gen_file, "        # impact in scaled setting. e.g. read of project")
-            write(gen_file, "        if set(field_names or []) & (%s.backref_fields | %s.children_fields):" \
+            write(gen_file, "        if (field_names is None or")
+            write(gen_file, "            (set(field_names) & (%s.backref_fields | %s.children_fields))):" \
                                                             %(ident_class_name, ident_class_name))
             write(gen_file, "            # atleast one backref/children field is needed")
             write(gen_file, "            obj_rows = obj_uuid_cf.multiget(obj_uuids,")
