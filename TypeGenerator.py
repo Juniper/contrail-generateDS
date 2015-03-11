@@ -156,6 +156,7 @@ class TypeGenerator(object):
         s4 = self._LangGenr.generateCtor(wrt, element)
         self._LangGenr.generateFactory(wrt, prefix, name)
         self._generateGettersAndSetters(wrt, element)
+        self._LangGenr.generateComparators(wrt, element)
         self._LangGenr._generateTestHelpers (wrt, element)
         if self._PGenr.Targetnamespace in self._PGenr.NamespacesDict:
             namespace = self._PGenr.NamespacesDict[self._PGenr.Targetnamespace]
@@ -2213,6 +2214,33 @@ class PyGenerator(object):
         s1 = self._PGenr.TEMPLATE_MAIN % params
         outfile.write(s1)
 
+    def generateComparators(self, wrt, element):
+        generatedSimpleTypes = []
+        childCount = self._PGenr.countChildren(element, 0)
+        comps = []
+        for child in element.getChildren():
+            if child.getType() == self._PGenr.AnyTypeIdentifier:
+                continue
+            else:
+                name = self._PGenr.cleanupName(child.getCleanName())
+                comps.append('self.%s == other.%s' %(name, name))
+
+        if len(comps) == 0:
+            wrt('    def __eq__(self, other): return True\n')
+            wrt('    def __ne__(self, other): return False\n')
+            return
+
+        comp_str = ' and\n                '.join(comps)
+        wrt('    def __eq__(self, other):\n')
+        wrt('        if isinstance(other, self.__class__):\n')
+        wrt('            return (%s)\n' % comp_str)
+        wrt('        return NotImplemented\n')
+        wrt('    def __ne__(self, other):\n')
+        wrt('        if isinstance(other, self.__class__):\n')
+        wrt('            return not self.__eq__(other)\n')
+        wrt('        return NotImplemented\n')
+        wrt('\n')
+
 
 class CppGenerator(object):
     def __init__(self, parser_generator):
@@ -2570,3 +2598,5 @@ class CppGenerator(object):
     def generateMain(self, outfile, prefix, root):
         pass
  
+    def generateComparators(self, wrt, element):
+        pass
