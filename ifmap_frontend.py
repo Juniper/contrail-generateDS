@@ -3154,6 +3154,25 @@ class IFMapApiGenerator(object):
             write(gen_file, "    #end _cassandra_%s_read" %(method_name))
             write(gen_file, "")
 
+            # CASSANDRA_CHILD_COUNT
+            write(gen_file, "    def _cassandra_%s_count_child(self, obj_uuid, child_name = None):" %(method_name))
+            write(gen_file, "        # if child_name = None, return")
+            write(gen_file, "        if child_name is None:")
+            write(gen_file, "            return")
+            write(gen_file, "")
+            write(gen_file, "        obj_uuid_cf = self._obj_uuid_cf")
+            write(gen_file, "        if not set([child_name]) & %s.children_fields:" %(ident_class_name))
+            write(gen_file, "            return")
+            write(gen_file, "        col_start = 'children:'+child_name[:-1]+':'")
+            write(gen_file, "        col_finish = 'children:'+child_name[:-1]+';'")
+            write(gen_file, "        obj_rows = obj_uuid_cf.get(obj_uuid,")
+            write(gen_file, "                                   column_start = col_start,")
+            write(gen_file, "                                   column_finish = col_finish,")
+            write(gen_file, "                                   column_count = 10000000)")
+            write(gen_file, "        return (True, len(obj_rows))")
+            write(gen_file, "    #end _cassandra_%s_count_child" %(method_name))
+            write(gen_file, "")
+
             # CASSANDRA_UPDATE
             write(gen_file, "    def _cassandra_%s_update(self, obj_uuid, new_obj_dict):" %(method_name))
             write(gen_file, "        # Grab ref-uuids and properties in new version")
