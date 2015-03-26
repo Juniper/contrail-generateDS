@@ -1599,6 +1599,11 @@ class IFMapApiGenerator(object):
         write(gen_file, "import cStringIO")
         write(gen_file, "from lxml import etree")
         write(gen_file, "")
+        write(gen_file, "all_resource_types = set([")
+        for ident in self._non_exclude_idents():
+            ident_name = ident.getName()
+            write(gen_file, "    '%s'," %(ident_name))
+        write(gen_file, "    ])")
 
         # Grab idents for which collection link has to be advertised
         collection_idents = [ident for ident in self._non_exclude_idents()
@@ -1713,8 +1718,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            abort(code, msg)")
             write(gen_file, "")
             write(gen_file, "        # type-specific hook")
-            write(gen_file, "        r_class = self._resource_classes.get('%s', None)" \
-                                                                           %(ident_name))
+            write(gen_file, "        r_class = self.get_resource_class('%s')" %(ident_name))
             write(gen_file, "        if r_class:")
             write(gen_file, "            r_class.http_get(id)")
             write(gen_file, "")
@@ -1832,8 +1836,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        # State modification starts from here. Ensure that cleanup is done for all state changes")
             write(gen_file, "        cleanup_on_failure = []")
             write(gen_file, "        # type-specific hook")
-            write(gen_file, "        r_class = self._resource_classes.get('%s', None)" \
-                                                                           %(ident_name))
+            write(gen_file, "        r_class = self.get_resource_class('%s')" %(ident_name))
             write(gen_file, "        if r_class:")
             write(gen_file, "            (ok, put_result) = r_class.http_put(id, fq_name, obj_dict, self._db_conn)")
             write(gen_file, "            if not ok:")
@@ -1919,8 +1922,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        cleanup_on_failure = []")
             write(gen_file, "")
             write(gen_file, "        # type-specific hook")
-            write(gen_file, "        r_class = self._resource_classes.get('%s', None)" \
-                                                                           %(ident_name))
+            write(gen_file, "        r_class = self.get_resource_class('%s')" %(ident_name))
             write(gen_file, "        if r_class:")
             #write(gen_file, "            obj_ids = {'uuid': id, 'imid': ifmap_id}")
             write(gen_file, "            if read_ok:")
@@ -2096,8 +2098,7 @@ class IFMapApiGenerator(object):
             #                                              %(self._FQ_NAME_TENANT_IDX))
             write(gen_file, "")
             write(gen_file, "        # type-specific hook")
-            write(gen_file, "        r_class = self._resource_classes.get('%s', None)" \
-                                                                           %(ident_name))
+            write(gen_file, "        r_class = self.get_resource_class('%s')" %(ident_name))
             write(gen_file, "        if r_class:")
             write(gen_file, "            (ok, result) = r_class.http_post_collection(tenant_name, obj_dict, db_conn)")
             write(gen_file, "            if not ok:")
@@ -2258,9 +2259,8 @@ class IFMapApiGenerator(object):
                 child_method = child_name.replace('-', '_')
                 child_camel = CamelCase(child_name)
                 write(gen_file, "        # Create a default child only if provisioned for")
-                write(gen_file, "        r_class = self._resource_classes.get('%s', None)" \
-                                                                           %(child_name))
-                write(gen_file, "        if r_class.generate_default_instance:")
+                write(gen_file, "        r_class = self.get_resource_class('%s')" %(child_name))
+                write(gen_file, "        if r_class and r_class.generate_default_instance:")
                 write(gen_file, "            child_obj = %s(parent_obj = parent_obj)" %(child_camel))
                 write(gen_file, "            child_dict = child_obj.__dict__")
                 write(gen_file, "            fq_name = child_dict['fq_name']")
@@ -2283,9 +2283,8 @@ class IFMapApiGenerator(object):
                 child_method = child_ident.getName().replace('-', '_')
                 child_default_name = child_ident.getDefaultFQName(parent_type = ident_name)[-1]
                 write(gen_file, "        # Delete a default child only if provisioned for")
-                write(gen_file, "        r_class = self._resource_classes.get('%s', None)" \
-                                                                           %(child_name))
-                write(gen_file, "        if r_class.generate_default_instance:")
+                write(gen_file, "        r_class = self.get_resource_class('%s')" %(child_name))
+                write(gen_file, "        if r_class and r_class.generate_default_instance:")
                 write(gen_file, "            # first locate default child then delete it")
                 write(gen_file, "            has_infos = parent_dict.get('%ss')" %(child_method))
                 write(gen_file, "            if has_infos:")
