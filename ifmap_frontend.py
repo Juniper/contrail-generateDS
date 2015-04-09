@@ -743,7 +743,7 @@ class IFMapApiGenerator(object):
                     write(gen_file, '        :param ref_data: %s object' %(link.getXsdType()))
                 write(gen_file, '        ')
                 write(gen_file, '        """')
-                write(gen_file, "        if '%s_refs' not in self._pending_ref_updates:" %(to_name))
+                write(gen_file, "        if '%s_refs' not in self._pending_ref_updates|self._pending_field_updates:" %(to_name))
                 write(gen_file, "            self._pending_ref_updates.add('%s_refs')" %(to_name))
                 write(gen_file, "            self._original_%s_refs = (self.get_%s_refs() or [])[:]" %(to_name, to_name))
                 write(gen_file, "        super(%s, self).add_%s(*args, **kwargs)" %(class_name, to_name))
