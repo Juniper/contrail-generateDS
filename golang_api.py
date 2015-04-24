@@ -107,14 +107,17 @@ type %(camel)s struct {
         file.write(decl)
         for member in ctype.getDataMembers():
             camel = CamelCase(member.membername)
+            ptrType = False
             if member.isComplex:
                 mtype = member.xsd_object.getType()
+                if not member.isSequence:
+                    ptrType = True
             else:
                 mtype = getGoLangType(member.xsd_object.getType())
             if member.isSequence:
                 mtype = '[]' + mtype
-            decl = '\t%s %s `json:"%s,omitempty"`\n' % \
-                   (camel, mtype, member.membername)
+            decl = '\t%s %s%s `json:"%s,omitempty"`\n' % \
+                   (camel, '*' if ptrType else '', mtype, member.membername)
             file.write(decl)
         file.write('}\n')
 
