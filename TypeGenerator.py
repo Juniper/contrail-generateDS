@@ -2220,16 +2220,23 @@ class PyGenerator(object):
         generatedSimpleTypes = []
         childCount = self._PGenr.countChildren(element, 0)
         comps = []
+        hashes = []
         for child in element.getChildren():
             if child.getType() == self._PGenr.AnyTypeIdentifier:
                 continue
             else:
                 name = self._PGenr.cleanupName(child.getCleanName())
-                comps.append('self.%s == other.%s' %(name, name))
+                if child.getMaxOccurs() > 1:
+                    comps.append('set(self.%s) == set(other.%s)' %(name, name))
+                    hashes.append('tuple(self.%s)' % name)
+                else:
+                    comps.append('self.%s == other.%s' %(name, name))
+                    hashes.append('self.%s' % name)
 
         if len(comps) == 0:
             wrt('    def __eq__(self, other): return True\n')
             wrt('    def __ne__(self, other): return False\n')
+            wrt('    def __hash__(self): return 0\n')
             return
 
         comp_str = ' and\n                '.join(comps)
@@ -2241,6 +2248,8 @@ class PyGenerator(object):
         wrt('        if isinstance(other, self.__class__):\n')
         wrt('            return not self.__eq__(other)\n')
         wrt('        return NotImplemented\n')
+        wrt('    def __hash__(self):\n')
+        wrt('        return hash((%s))\n' % ', '.join(hashes))
         wrt('\n')
 
 
