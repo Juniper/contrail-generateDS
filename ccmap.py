@@ -69,15 +69,16 @@ class IFMapGenerator(object):
            print "WARNING: no annotation for element " + str(element)
            return
 
-        if self._idl_parser.IsProperty(annotation) and annotation == 'all':
-            self._DeferredElements.append((element, annotation))
+        if self._idl_parser.IsProperty(annotation) and annotation == ['all']:
+            self._DeferredElements.append((element, 'all'))
             return
         meta = self._MetadataLocate(element, annotation)
         meta.SetSchemaElement(element)
         if self._idl_parser.IsProperty(annotation):
-            identifier = self._IdentifierLocate(annotation)
-            meta.setParent(identifier)
-            identifier.SetProperty(meta)
+            for ident_name in annotation:
+                identifier = self._IdentifierLocate(ident_name)
+                meta.setParent(identifier)
+                identifier.SetProperty(meta)
         else:
             (from_name, to_name, attrs) = \
                         self._idl_parser.GetLinkInfo(element.getName())

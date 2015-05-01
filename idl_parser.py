@@ -34,20 +34,13 @@ class IDLParser(object):
                 #self._ParseExpression(stmt)
 
     def Find(self, element):
-        if element in self._ElementDict:
-            return self._ElementDict[element]
-        else:
-            return None
+        return self._ElementDict.get(element)
 
     def IsProperty(self, annotation):
-        if type(annotation) is tuple:
-            return False
-        return True
+        return type(annotation) is not tuple
 
     def IsLink(self, annotation):
-        if type(annotation) is tuple:
-            return true
-        return false
+        return type(annotation) is tuple
 
     def GetLinkInfo(self, link_name):
         if link_name in self._ElementDict:
@@ -64,7 +57,9 @@ class IDLParser(object):
     def _Property(self, prop_name, ident_name):
         logger = logging.getLogger('idl_parser')
         logger.debug('Property(%s, %s)', prop_name, ident_name)
-        self._ElementDict[prop_name] = ident_name 
+        element = self._ElementDict.get(prop_name, [])
+        element.append(ident_name)
+        self._ElementDict[prop_name] = element
 
     def _Exclude(self, elem_name, excluded):
         logger = logging.getLogger('idl_parser')
