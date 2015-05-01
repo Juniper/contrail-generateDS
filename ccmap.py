@@ -75,9 +75,10 @@ class IFMapGenerator(object):
         meta = self._MetadataLocate(element, annotation)
         meta.SetSchemaElement(element)
         if self._idl_parser.IsProperty(annotation):
-            identifier = self._IdentifierLocate(annotation)
-            meta.setParent(identifier)
-            identifier.SetProperty(meta)
+            for ident_name in annotation:
+                identifier = self._IdentifierLocate(ident_name)
+                meta.setParent(identifier)
+                identifier.SetProperty(meta)
         else:
             (from_name, to_name, attrs) = \
                         self._idl_parser.GetLinkInfo(element.getName())

@@ -64,7 +64,9 @@ class IDLParser(object):
     def _Property(self, prop_name, ident_name):
         logger = logging.getLogger('idl_parser')
         logger.debug('Property(%s, %s)', prop_name, ident_name)
-        self._ElementDict[prop_name] = ident_name 
+        element = self._ElementDict.get(prop_name, [])
+        element.append(ident_name)
+        self._ElementDict[prop_name] = element
 
     def _Exclude(self, elem_name, excluded):
         logger = logging.getLogger('idl_parser')
