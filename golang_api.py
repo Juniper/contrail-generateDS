@@ -78,6 +78,7 @@ import (
         self._GenerateUnmarshalJSON(ident, file)
         self._GenerateUpdate(ident, file)
         self._GenerateUpdateReferences(ident, file)
+        self._GenerateClientAuxMethods(ident, file)
 
     # end _GenerateObject
 
@@ -767,6 +768,30 @@ func (obj *%(camel)s) UpdateReferences() error {
         file.write(decl)
 
     # end _GenerateUpdateReferences
+
+    def _GenerateClientAuxMethods(self, ident, file):
+        """
+        ApiClient methods that return a struct type rather than an interface.
+        """
+        decl = """
+func %(camel)sByName(c contrail.ApiClient, fqn string) (*%(camel)s, error) {
+    obj, err := c.FindByName("%(typeid)s", fqn)
+    if err != nil {
+        return nil, err
+    }
+    return obj.(*%(camel)s), nil
+}
+
+func %(camel)sByUuid(c contrail.ApiClient, uuid string) (*%(camel)s, error) {
+    obj, err := c.FindByUuid("%(typeid)s", uuid)
+    if err != nil {
+        return nil, err
+    }
+    return obj.(*%(camel)s), nil
+}
+""" % {'camel': ident.getCppName(), 'typeid': ident.getCIdentifierName}
+        file.write(decl)
+    # end _GenerateClientAuxMethods
 
     def Generate(self, dirname):
         if not os.path.exists(dirname):
