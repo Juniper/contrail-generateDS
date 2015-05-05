@@ -789,7 +789,7 @@ func %(camel)sByUuid(c contrail.ApiClient, uuid string) (*%(camel)s, error) {
     }
     return obj.(*%(camel)s), nil
 }
-""" % {'camel': ident.getCppName(), 'typeid': ident.getCIdentifierName}
+""" % {'camel': ident.getCppName(), 'typeid': ident.getCIdentifierName()}
         file.write(decl)
     # end _GenerateClientAuxMethods
 
