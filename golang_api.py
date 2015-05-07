@@ -154,7 +154,7 @@ func (obj *%(typecamel)s) Add%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
             mtype = deptype.getName()
             if mtype in inner_type_map:
                 xset = inner_type_map[mtype]
-                if not top_level in xset:
+                if top_level not in xset:
                     xset.append(top_level)
             else:
                 inner_type_map[mtype] = [top_level]
@@ -197,6 +197,8 @@ func (obj *%(typecamel)s) Add%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
                 suffix = '_refs'
             elif ident.isLinkHas(link_info):
                 suffix = 's'
+            else:
+                suffix = '_refs'
             link_to = ident.getLinkTo(link_info)
             fields.append(link_to.getCIdentifierName() + suffix)
         for back_link in ident.getBackLinksInfo():
@@ -242,16 +244,19 @@ type %(camel)s struct {
                 self._top_level_map[ctypename] = self._type_map[ctypename]
 
         for link_info in ident.getLinksInfo():
-            if ident.isLinkRef(link_info):
-                link_to = ident.getLinkTo(link_info)
-                decl = '\t%s_refs contrail.ReferenceList\n' % \
-                       link_to.getCIdentifierName()
-                file.write(decl)
-            elif ident.isLinkHas(link_info):
+            if ident.isLinkHas(link_info):
                 child = ident.getLinkTo(link_info)
                 decl = '\t%ss contrail.ReferenceList\n' % \
                        child.getCIdentifierName()
                 file.write(decl)
+            else:
+                link_to = ident.getLinkTo(link_info)
+                decl = '\t%s_refs contrail.ReferenceList\n' % \
+                       link_to.getCIdentifierName()
+                file.write(decl)
+                datatype = self._getAttrType(ident, link_info)
+                if datatype:
+                    self._top_level_map[datatype] = self._type_map[datatype]
 
         for back_link in ident.getBackLinksInfo():
             link_from = ident.getBackLinkFrom(back_link)
@@ -265,7 +270,7 @@ type %(camel)s struct {
 }
 """
         file.write(decl)
-    #end _GenerateObjectStruct
+    # end _GenerateObjectStruct
 
     def _GenerateGenericMethods(self, ident, file):
         """ Methods that do not iterate through the Identifier's fields.
@@ -422,20 +427,20 @@ func (obj *%(typecamel)s) Get%(fieldcamel)s%(methodsuffix)s() (
            'suffix': suffix,
            }
         file.write(decl)
-    #end _GenerateReferenceAccessor
+    # end _GenerateReferenceAccessor
 
     def _getAttrType(self, ident, link_info):
         xlink = ident.getLink(link_info)
         if xlink.getXsdType():
-            return xlink.getCType().getName()
+            ctype = xlink.getCType()
+            if ctype is not None:
+                return ctype.getName()
         return None
 
     def _GenerateReferenceModifiers(self, ident, link_info, file):
         """ Generate add/delete/clear and set methods.
         """
         datatype = self._getAttrType(ident, link_info)
-        if datatype:
-            self._top_level_map[datatype] = self._type_map[datatype]
         link_to = ident.getLinkTo(link_info)
 
         decl = """
@@ -514,7 +519,7 @@ func (obj *%(typecamel)s) Set%(fieldcamel)sList(
            'data': 'data' if datatype else 'nil',
            }
         file.write(decl)
-    #end _GenerateReferenceModifiers
+    # end _GenerateReferenceModifiers
 
     def _GenerateMarshalJSON(self, ident, file):
         decl = """
@@ -590,6 +595,8 @@ func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
                 suffix = '_refs'
             elif ident.isLinkHas(link_info):
                 suffix = 's'
+            else:
+                suffix = '_refs'
             link_to = ident.getLinkTo(link_info)
             name = link_to.getCIdentifierName() + suffix
             attrtype = self._getAttrType(ident, link_info)
