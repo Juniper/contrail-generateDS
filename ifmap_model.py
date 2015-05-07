@@ -169,10 +169,11 @@ class IFMapIdentifier(IFMapObject):
         return 'derived' in attrs
 
     def addBackLinkInfo(self, meta, from_ident, attrs):
-        self._back_references.append(from_ident)
-
+        link_info = (meta, self, attrs)
         back_link_info = (meta, from_ident, attrs)
-        self._back_links.append(back_link_info)
+        if self.isLinkRef(link_info):
+            self._back_references.append(from_ident)
+            self._back_links.append(back_link_info)
 
     def getBackLinksInfo(self):
         return self._back_links
