@@ -219,6 +219,8 @@ bool %s(const pugi::xml_node &parent, std::auto_ptr<AutogenProperty > *resultp) 
             elif info.ctypename == 'int':
                 file.write(indent +
                            'data->data = atoi(parent.child_value());\n')
+            elif info.ctypename == 'bool':
+                file.write(indent + 'data->data = parent.text().as_bool();\n');
             file.write(indent + 'return true;\n')
 
 	file.write('}\n')
