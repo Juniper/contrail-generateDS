@@ -3043,7 +3043,7 @@ class IFMapApiGenerator(object):
 
             # CASSANDRA_LIST
             write(gen_file, "    def _cassandra_%s_list(self, parent_uuids=None, back_ref_uuids=None," %(method_name))
-            write(gen_file, "                           obj_uuids=None, count=False):")
+            write(gen_file, "                           obj_uuids=None, count=False, filters=None):")
             write(gen_file, "        children_fq_names_uuids = []")
             write(gen_file, "        if parent_uuids:")
             write(gen_file, "            # go from parent to child")
