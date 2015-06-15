@@ -2723,6 +2723,7 @@ class IFMapApiGenerator(object):
         for ident in self._non_exclude_idents():
             ident_name = ident.getName()
             method_name = ident_name.replace('-', '_')
+            parents = ident.getParents() or []
             write(gen_file, "    def %s_alloc_ifmap_id(self, parent_type, fq_name):" %(method_name))
             write(gen_file, "        my_fqn = ':'.join(fq_name)")
             write(gen_file, "        parent_fqn = ':'.join(fq_name[:-1])")
@@ -2730,7 +2731,11 @@ class IFMapApiGenerator(object):
             write(gen_file, "        my_imid = 'contrail:%s:' + my_fqn" %(ident_name))
             write(gen_file, "        if parent_fqn:")
             write(gen_file, "            if parent_type is None:")
-            write(gen_file, "                return (None, None)")
+            if len(parents) != 1:
+                write(gen_file, "                return (None, 'parent_type was not specified')")
+            else:
+                (parent_ident, meta) = parents[0]
+                write(gen_file, "                parent_type = '%s'" % parent_ident.getName())
             write(gen_file, "            parent_imid = 'contrail:' + parent_type + ':' + parent_fqn")
             write(gen_file, "        else: # parent is config-root")
             write(gen_file, "            parent_imid = '%s'" %(_BASE_PARENT_IMID))
