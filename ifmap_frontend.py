@@ -1110,7 +1110,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            self._obj = self._conn_drv.%s_read(id = self._obj.uuid)" %(method_name))
             write(gen_file, "    #end setUp")
             write(gen_file, "")
-            write(gen_file, "    def cleanUp(self):")
+            write(gen_file, "    def tearDown(self):")
 
             non_derived_back_refs = []
             for back_link_info in ident.getBackLinksInfo():
