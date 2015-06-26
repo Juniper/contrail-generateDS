@@ -22,6 +22,7 @@ class MemberInfo(object):
         self.isComplex = False
         self.xsd_object = None
         self.sequenceType = None
+        self.default = None
 
 class ComplexType(object):
     def __init__(self, name):
@@ -76,6 +77,7 @@ class ComplexType(object):
 
             member.ctypename = cpptype
             member.jtypename = jtype
+            member.default = child.getDefault()
             self._data_members.append(member)
 
 

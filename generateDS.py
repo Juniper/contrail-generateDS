@@ -1180,10 +1180,13 @@ class SimpleTypeElement(XschemaElementBase):
         self.simpleType = 0
         self.listType = 0
         self.documentation = ''
+        self.default = None
     def setName(self, name): self.name = name
     def getName(self): return self.name
     def setBase(self, base): self.base = base
     def getBase(self): return self.base
+    def getDefault(self): return self.default
+    def setDefault(self, default): self.default = default
     def setSimpleType(self, simpleType): self.simpleType = simpleType
     def getSimpleType(self): return self.simpleType
     def getAttributeGroups(self): return self.attributeGroups
@@ -2085,6 +2088,7 @@ class XschemaHandler(handler.ContentHandler):
                 if len(self.stack) > 0:
                     self.stack[-1].setSimpleType(1)
                 element = SimpleTypeElement(stName)
+                element.setDefault(attrs.get('default'))
                 self._PGenr.SimpleTypeDict[stName] = element
                 self.stack.append(element)
             self.inSimpleType = 1
