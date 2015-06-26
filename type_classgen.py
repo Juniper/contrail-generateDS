@@ -92,11 +92,13 @@ void %s::Clear() {
             if (cpptype == 'int' or
                 cpptype == 'uint64_t' or
                 cpptype == 'time_t'):
-                file.write('    %s = 0;\n' % member.membername)
+                file.write('    %s = %s;\n' % (member.membername, member.default or '0'))
             elif cpptype == 'bool':
-                file.write('    %s = false;\n' % member.membername)
+                file.write('    %s = %s;\n' % (member.membername, member.default or 'false'))
             elif member.isComplex and not member.isSequence:
                 file.write('    %s.Clear();\n' % member.membername)
+            elif member.default:
+                file.write('    %s = "%s";\n' % (member.membername, member.default))
             else:
                 file.write('    %s.clear();\n' % member.membername)
         file.write('};\n')
