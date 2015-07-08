@@ -181,6 +181,17 @@ class IFMapApiGenerator(object):
                 write(gen_file, "    ref_field_types['%s'] = ('%s', '%s', %s)"
                       %(ref_field, ref_type, ref_link_type, is_weakref))
             write(gen_file, "")
+            backref_field_type_vals = [('%s_back_refs' %(ident.getLinkTo(li).getName().replace('-', '_')),
+                                    (ident.getBackLinkFrom(li).getName(),
+                                     ident.getBackLink(li).getXsdType(),
+                                     ident.isLinkDerived(li))
+                                   ) for li in ident.getBackLinksInfo()
+                                     if ident.isLinkRef(li)]
+            write(gen_file, "    backref_field_types = {}")
+            for backref_field, (backref_type, backref_link_type, is_weakref) in backref_field_type_vals:
+                write(gen_file, "    backref_field_types['%s'] = ('%s', '%s', %s)"
+                      %(backref_field, backref_type, backref_link_type, is_weakref))
+            write(gen_file, "")
             children_field_type_vals = [('%ss' %(child_ident.getName().replace('-', '_')),
                                          (child_ident.getName(),
                                           child_ident.isDerived()))
@@ -204,7 +215,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "    prop_field_metas['%s'] = '%s'" %(k,v))
             write(gen_file, "")
             ref_field_meta_vals = [('%s_refs' %(ident.getLinkTo(li).getName().replace('-', '_')),
-                                    '%s' %(ident.getLinkTo(li).getName()))
+                                    '%s' %(ident.getLink(li).getName()))
                                    for li in ident.getLinksInfo()
                                    if ident.isLinkRef(li)]
             write(gen_file, "    ref_field_metas = {}")
@@ -212,9 +223,10 @@ class IFMapApiGenerator(object):
                 write(gen_file, "    ref_field_metas['%s'] = '%s'"
                       %(ref_field, ref_meta))
             write(gen_file, "")
-            children_field_meta_vals = [('%ss' %(child_ident.getName().replace('-', '_')),
-                                         child_ident.getName())
-                                        for child_ident in ident.getChildren()]
+            children_field_meta_vals = [('%ss' %(ident.getLinkTo(li).getName().replace('-', '_')),
+                                         '%s' %(ident.getLink(li).getName()))
+                                        for li in ident.getLinksInfo()
+                                        if ident.isLinkHas(li)]
             write(gen_file, "    children_field_metas = {}")
             for k,v in children_field_meta_vals:
                 write(gen_file, "    children_field_metas['%s'] = '%s'" %(k,v))
