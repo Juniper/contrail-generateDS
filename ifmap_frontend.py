@@ -837,13 +837,13 @@ class IFMapApiGenerator(object):
                 child_name = child_ident.getName()
                 child_method_name = child_name.replace('-', '_')
                 write(gen_file, "    def get_%ss(self):" %(child_method_name))
-                write(gen_file, "        # if object not created/read from lib can't service")
-                write(gen_file, "        svr_conn = self._server_conn")
-                write(gen_file, "        if not svr_conn:")
-                write(gen_file, "            return None")
-                write(gen_file, "")
                 write(gen_file, "        children = super(%s, self).get_%ss()" %(class_name, child_method_name))
                 write(gen_file, "        if not children: # read it for first time")
+                write(gen_file, "            # if object not created/read from lib can't service")
+                write(gen_file, "            svr_conn = self._server_conn")
+                write(gen_file, "            if not svr_conn:")
+                write(gen_file, "                return None")
+                write(gen_file, "")
                 write(gen_file, "            obj = svr_conn.%s_read(id = self.uuid, fields = ['%ss'])" %(method_name, child_method_name))
                 write(gen_file, "            children = getattr(obj, '%ss', None)" %(child_method_name))
                 write(gen_file, "            self.%ss = children" %(child_method_name))
@@ -861,6 +861,9 @@ class IFMapApiGenerator(object):
                 from_name = from_ident.getName().replace('-', '_')
                 write(gen_file, "    def get_%s_back_refs(self):" %(from_name))
                 write(gen_file, '        """Return list of all %ss using this %s"""' % (from_ident.getName(), ident.getName()))
+                write(gen_file, "        back_refs = super(%s, self).get_%s_back_refs()" %(class_name, from_name))
+                write(gen_file, "        if back_refs:")
+                write(gen_file, "            return back_refs")
                 write(gen_file, "        # if object not created/read from lib can't service")
                 write(gen_file, "        svr_conn = self._server_conn")
                 write(gen_file, "        if not svr_conn:")
@@ -1169,50 +1172,17 @@ class IFMapApiGenerator(object):
             write(gen_file, "    #end setUp")
             write(gen_file, "")
             write(gen_file, "    def cleanUp(self):")
-
-            non_derived_back_refs = []
-            for back_link_info in ident.getBackLinksInfo():
-                if not ident.isLinkRef(back_link_info):
-                    continue
-                back_ident = ident.getBackLinkFrom(back_link_info)
-                if back_ident.isLinkDerived(back_link_info):
-                    # if this entity was not produced by user, don't hold it a/c able for delete ref
-                    continue
-                back_method = back_ident.getName().replace('-', '_')
-                back_method = '%s_back_refs' % back_method
-                non_derived_back_refs.append(back_method)
-
-            non_derived_child_idents = []
-            for link_info in ident.getLinksInfo():
-                if not ident.isLinkHas(link_info):
-                    continue
-                child_ident = ident.getLinkTo(link_info)
-                # if this entity was not produced by user, don't hold it a/c able for delete ref
-                if child_ident.isDerived():
-                    continue
-                child_method = child_ident.getName().replace('-', '_')
-                child_method = '%ss' % child_method
-                non_derived_child_idents.append(child_method)
-
-            back_ref_exists = None
-            if non_derived_back_refs:
-                back_refs = ' or '.join (['self._obj.get_%s()' % (back_method) for back_method in non_derived_back_refs])
-                write(gen_file, "        if %s:" % (back_refs))
-                write(gen_file, "            return")
-
-            child_exists = None
-            if non_derived_child_idents:
-                child_exists = ' or '.join (['self._obj.get_%s()' % (child_method) for child_method in non_derived_child_idents])
-                write(gen_file, "        if %s:" % (child_exists))
-                write(gen_file, "            return")
-
+            write(gen_file, "        try:")
+            write(gen_file, "            self._conn_drv.%s_delete(id = self._obj.uuid)" %(method_name))
+            write(gen_file, "        except RefsExistError:")
+            write(gen_file, "            return")
             if parents:
                 write(gen_file, "        parent_fixt = getattr(self, '_parent_fixt', None)")
                 write(gen_file, "        if parent_fixt:")
                 write(gen_file, "            # non config-root child")
                 write(gen_file, "            parent_obj = self._parent_fixt.getObj()")
                 write(gen_file, "            # remove child from parent obj")
-                write(gen_file, "            for child_obj in parent_obj.get_%ss():" %(method_name))
+                write(gen_file, "            for child_obj in parent_obj.get_%ss() or []:" %(method_name))
                 write(gen_file, "                if type(child_obj) == dict:")
                 write(gen_file, "                    child_uuid = child_obj['uuid']")
                 write(gen_file, "                else:")
@@ -1221,10 +1191,6 @@ class IFMapApiGenerator(object):
                 write(gen_file, "                    parent_obj.%ss.remove(child_obj)" %(method_name))
                 write(gen_file, "                    break")
                 write(gen_file, "")
-                write(gen_file, "        self._conn_drv.%s_delete(id = self._obj.uuid)" %(method_name))
-            else:
-                write(gen_file, "        self._conn_drv.%s_delete(id = self._obj.uuid)" %(method_name))
-
             write(gen_file, "    #end cleanUp")
             write(gen_file, "")
             write(gen_file, "    def getObj(self):")
