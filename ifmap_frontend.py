@@ -9,6 +9,7 @@ from TypeGenerator import TypeGenerator
 import pprint
 import re
 import os
+import uuid
 
 _BASE_URL = ""
 _BASE_PARENT = 'config-root'
@@ -346,11 +347,11 @@ class IFMapApiGenerator(object):
             write(gen_file, "")
             write(gen_file, "    @uuid.setter")
             write(gen_file, "    def uuid(self, uuid_val):")
-            write(gen_file, "        self._uuid = uuid_val")
+            write(gen_file, "        self._uuid = str(uuid.UUID(uuid_val))")
             write(gen_file, "    #end uuid")
             write(gen_file, "")
             write(gen_file, "    def set_uuid(self, uuid_val):")
-            write(gen_file, "        self.uuid = uuid_val")
+            write(gen_file, "        self.uuid = str(uuid.UUID(uuid_val))")
             write(gen_file, "    #end set_uuid")
             write(gen_file, "")
             write(gen_file, "    def get_uuid(self):")
