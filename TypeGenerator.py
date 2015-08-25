@@ -2,6 +2,7 @@ import os
 import time
 import logging
 import textwrap
+from pprint import pformat
 
 class TypeGenerator(object):
     def __init__(self, parser_generator):
@@ -155,6 +156,7 @@ class TypeGenerator(object):
         if parentName and parentName in self._PGenr.AlreadyGenerated:
             superclass_name = self._PGenr.mapName(self._PGenr.cleanupName(parentName))
         self._LangGenr.generateSubSuperInit(wrt, superclass_name)
+        self._LangGenr._generateAttrMetadata(wrt, element)
         s4 = self._LangGenr.generateCtor(wrt, element)
         self._LangGenr.generateFactory(wrt, prefix, name)
         self._generateGettersAndSetters(wrt, element)
@@ -677,6 +679,28 @@ class PyGenerator(object):
                             'xsd:', ''), name)
             else:
                 return '%s.populate ()' % child_type
+
+    def _generateAttrMetadata(self, wrt, element):
+        generated_simple_types = []
+        child_count = self._PGenr.countChildren(element, 0)
+        attr_fields = []
+        attr_field_type_vals = {}
+        for child in element.getChildren():
+            name = self._PGenr.cleanupName(child.getCleanName())
+            unmapped_name = self._PGenr.cleanupName(child.getName())
+            cap_name = self._PGenr.make_gs_name(unmapped_name)
+            get_max_occurs = child.getMaxOccurs()
+            attr_fields.append(name)
+            is_array = child.getMaxOccurs() > 1
+            is_complex = child.isComplex()
+            attr_type = child.getType().replace('xsd:', '')
+            attr_field_type_vals[name] = {'is_complex': is_complex,
+                                          'is_array': is_array,
+                                          'attr_type': attr_type}
+
+        wrt('    attr_fields = %s\n' %(attr_fields))
+        wrt('    attr_field_type_vals = %s\n' %(attr_field_type_vals))
+
 
     def _generateTestHelpers (self, wrt, element):
         generated_simple_types = []
