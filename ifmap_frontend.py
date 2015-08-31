@@ -670,7 +670,10 @@ class IFMapApiGenerator(object):
                 xsd_type = prop.getXsdType()
                 write(gen_file, "        if '%s' in kwargs:" %(prop_name))
                 if complex_type and xsd_type:
-                    write(gen_file, "            props_dict['%s'] = vnc_api.gen.%s_xsd.%s(**kwargs['%s'])" \
+                    write(gen_file, "            if kwargs['%s'] is None:" % prop_name)
+                    write(gen_file, "                props_dict['%s'] = None" % prop_name)
+                    write(gen_file, "            else:")
+                    write(gen_file, "                props_dict['%s'] = vnc_api.gen.%s_xsd.%s(**kwargs['%s'])" \
                                                              %(prop_name, gen_filename_pfx, xsd_type, prop_name))
                 else:
                     write(gen_file, "            props_dict['%s'] = kwargs['%s']" %(prop_name, prop_name))
