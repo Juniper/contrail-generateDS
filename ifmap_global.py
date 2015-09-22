@@ -68,4 +68,5 @@ def GetModuleName(file, suffix):
     filename = path_arr[len(path_arr) - 1]
     mod_name = filename[:filename.find(suffix)]
     mod_name = mod_name.replace('-', '_')
+    mod_name = mod_name.replace('.', '_')
     return mod_name
