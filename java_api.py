@@ -125,7 +125,15 @@ import net.juniper.contrail.api.ApiPropertyBase;
     def _InnerPropertyArgument(self, inner, member):
         decl = ''
         if member.isComplex and not self._top_level_map.get(member.jtypename):
-            decl = inner.getName() + '.'
+            if member.jtypename.startswith('List'):
+                decl = 'List<'
+                decl += inner.getName() + '.'
+                decl += member.sequenceType + '>'
+                decl += ' ' + member.membername
+                return decl
+            else:
+                decl = inner.getName() + '.'
+
         decl += member.jtypename
         decl += ' ' + member.membername
         return decl
