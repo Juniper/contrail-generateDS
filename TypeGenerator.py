@@ -689,12 +689,17 @@ class PyGenerator(object):
             name = self._PGenr.cleanupName(child.getCleanName())
             unmapped_name = self._PGenr.cleanupName(child.getName())
             cap_name = self._PGenr.make_gs_name(unmapped_name)
+            restrictions = None
+            if child.getSchemaType() in self._PGenr.SimpleTypeDict:
+                restrictions = self._PGenr.SimpleTypeDict[
+                    child.getSchemaType()].values
             get_max_occurs = child.getMaxOccurs()
             attr_fields.append(name)
             is_array = child.getMaxOccurs() > 1
             is_complex = child.isComplex()
             attr_type = child.getType().replace('xsd:', '')
             attr_field_type_vals[name] = {'is_complex': is_complex,
+                                          'restrictions': restrictions,
                                           'is_array': is_array,
                                           'attr_type': attr_type}
 
