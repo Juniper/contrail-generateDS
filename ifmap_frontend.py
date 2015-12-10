@@ -6,9 +6,11 @@ from ifmap_global import CamelCase
 from ifmap_model import IFMapIdentifier, IFMapProperty, IFMapLink, IFMapLinkAttr
 from TypeGenerator import TypeGenerator
 
+import importlib
 import pprint
 import re
 import os
+import sys
 
 _BASE_URL = ""
 _BASE_PARENT = 'config-root'
@@ -43,6 +45,7 @@ class IFMapApiGenerator(object):
         self._generate_client_classes(gen_filepath_pfx, gen_filename_pfx)
         self._generate_server_classes(gen_filepath_pfx, gen_filename_pfx)
         self._generate_test_classes(gen_filepath_pfx, gen_filename_pfx)
+        self._generate_heat_resources(gen_filepath_pfx, gen_filename_pfx)
         #self._generate_docs_classes(gen_filepath_pfx, gen_filename_pfx)
 
         # These produce class/file common to all types
@@ -943,6 +946,425 @@ class IFMapApiGenerator(object):
             write(gen_file, "#end class %sServerGen" %(camel_name))
             write(gen_file, "")
     #end _generate_server_classes
+
+    def _create_heat_template_params(self, prop_list):
+        # print parameters
+        for key,val in enumerate(prop_list):
+            if not val['prop_list']:
+                write(self.gen_file_templ, "  %s:" %(val['prop_name']))
+                prop_type = self._get_heat_prop_type(val['prop_type'], 0)
+                write(self.gen_file_templ, "    type: %s" %(prop_type).lower())
+                write(self.gen_file_templ, "    description: %s for the %s"
+                    %(val['prop_name'], self.resource_dict['class']))
+                continue
+            self._create_heat_template_params(val['prop_list'])
+    #end _create_heat_template_params
+
+    def _create_heat_template_resources(self, prop_list, tabs):
+        # print resources
+        for key,val in enumerate(prop_list):
+            if not val['prop_list']:
+                write(self.gen_file_templ, "%s%s: { get_param: %s }"
+                    %(" "*tabs, val['prop_name'], val['prop_name']))
+                continue
+            write(self.gen_file_templ, "%s%s:" %(" "*tabs, val['prop_name']))
+            self._create_heat_template_resources(val['prop_list'], tabs+2)
+    #end _create_heat_template_resources
+
+    def _get_heat_prop_type(self, typename, is_array):
+        if is_array:
+            type = "LIST"
+        elif typename.lower().endswith(
+            "integer") or typename.lower().endswith("time"):
+            type = "INTEGER"
+        elif typename.lower().endswith("string"):
+            type = "STRING"
+        elif typename.lower().endswith("boolean"):
+            type = "BOOLEAN"
+        elif typename.lower().endswith("list<string>"):
+            type = "LIST"
+        else:
+            type = "MAP"
+        return type
+    #end _get_heat_prop_type
+
+    def _make_heat_prop_list(self, prop_list, prop_name, prop_type,
+                             restrictions, is_array, prop_get_list):
+        new_list = []
+        prop_list.append({
+            'prop_name': prop_name,
+            'prop_type': prop_type,
+            'prop_restr': restrictions,
+            'prop_is_array': is_array,
+            'prop_list' : new_list,
+            'prop_get_list' : prop_get_list,
+            'prop_skip': False,
+        })
+        return new_list
+    #end _make_heat_prop_list
+
+    def _process_heat_complex_property(self, cls, prop_list, prop_name,
+                                       prop_type, is_simple, is_array,
+                                       prop_get_list):
+        new_list = self._make_heat_prop_list(prop_list, prop_name, prop_type,
+                                             None, is_array, prop_get_list)
+        prop_get_list.append(prop_name)
+        for attr_name in cls.attr_fields:
+            attr_is_complex = cls.attr_field_type_vals[attr_name]['is_complex']
+            attr_type = cls.attr_field_type_vals[attr_name]['attr_type']
+            attr_is_array = cls.attr_field_type_vals[attr_name]['is_array']
+            attr_restrictions = cls.attr_field_type_vals[
+                attr_name]['restrictions']
+
+            if not attr_is_complex:
+                self._make_heat_prop_list(new_list, attr_name, attr_type,
+                                          attr_restrictions, attr_is_array,
+                                          prop_get_list)
+                continue
+
+            # property type is complex
+            new_cls = getattr(self.res_xsd, attr_type)
+            self._process_heat_complex_property(new_cls, new_list, attr_name,
+                attr_type, (not attr_is_complex), attr_is_array, prop_get_list)
+    #end _process_heat_complex_property
+
+    def _make_heat_property_schema(self, val, tabs):
+        write(self.gen_file, "%s%s: properties.Schema(" %(tabs*" ",
+            val['prop_name'].upper()))
+        tabs = tabs+4
+        prop_type = self._get_heat_prop_type(val['prop_type'],
+                                             val['prop_is_array'])
+        write(self.gen_file, "%sproperties.Schema.%s," %(tabs*" ", prop_type))
+        write(self.gen_file, "%s_('%s.')," %(tabs*" ",
+            val['prop_name'].upper()))
+        write(self.gen_file, "%supdate_allowed=True," %(tabs*" "))
+        if val['prop_restr']:
+            write(self.gen_file, "%sconstraints=[" %(tabs*" "))
+            if prop_type == "INTEGER":
+                write(self.gen_file, "%s    constraints.Range(%s, %s),"
+                    %(tabs*" ", val['prop_restr'][0], val['prop_restr'][1]))
+            else:
+                write(self.gen_file, "%s    constraints.AllowedValues(%s),"
+                    %(tabs*" ", val['prop_restr']))
+            write(self.gen_file, "%s]," %(tabs*" "))
+        if val['prop_list']:
+            if prop_type == 'LIST':
+                write(self.gen_file, "%sschema=properties.Schema(" %(tabs*" "))
+                tabs=tabs+4
+                write(self.gen_file, "%sproperties.Schema.MAP," %(tabs*" "))
+            write(self.gen_file, "%sschema={" %(tabs*" "))
+            for key,value in enumerate(val['prop_list']):
+                self._make_heat_property_schema(value, tabs+4)
+            write(self.gen_file, "%s}" %(tabs*" "))
+            if prop_type == 'LIST':
+                tabs=tabs-4
+                write(self.gen_file, "%s)" %(tabs*" "))
+        tabs = tabs-4
+        write(self.gen_file, "%s)," %(tabs*" "))
+    #end _make_heat_property_schema
+
+    def _make_heat_properties(self, prop_list, prop_names_list,
+                              prop_names_uc_list):
+        for key,val in enumerate(prop_list):
+            prop_names_list.append("'"+val['prop_name']+"'")
+            prop_names_uc_list.append(val['prop_name'].upper())
+            if val['prop_list']:
+                self._make_heat_properties(val['prop_list'], prop_names_list,
+                                           prop_names_uc_list)
+    #end _make_heat_properties
+
+    def _get_prop_hierarchy(self, prop):
+        prop_get_str = "self.properties"
+        for key,value in enumerate(prop['prop_get_list']):
+            prop_get_str += ".get(self.%s, {})" % (value.upper())
+        prop_get_str += ".get(self.%s)" % (prop['prop_name'].upper())
+        return prop_get_str
+    #end _get_prop_hierarchy
+
+    def _set_heat_properties_value(self, prop, tabs, first):
+        if not prop['prop_list']:
+            write(self.gen_file, "%s%s=%s,"
+                %(" "*tabs, prop['prop_name'], self._get_prop_hierarchy(prop)))
+            return
+
+        prop_name = prop['prop_name']
+        prop_type = prop['prop_type']
+        if first:
+            write(self.gen_file, "%svnc_api.%s("
+                %(tabs*" ", prop_type))
+        else:
+            write(self.gen_file, "%s%s=vnc_api.%s("
+                %(tabs*" ", prop_name, prop_type))
+        for key,val in enumerate(prop['prop_list']):
+            self._set_heat_properties_value(val, tabs+4, 0)
+        write(self.gen_file, "%s)" %(tabs*" "))
+    #end _set_heat_properties_value
+
+    def _get_heat_properties_value(self, prop, p_prop_name):
+        if not prop['prop_list']:
+            write(self.gen_file, "            '%s': obj.%s,"
+                %(prop['prop_name'], p_prop_name))
+            return
+
+        for key,val in enumerate(prop['prop_list']):
+            self._get_heat_properties_value(
+                val, p_prop_name+".get_"+val['prop_name']+"()")
+    #end _get_heat_properties_value
+
+    def _gen_heat_common_resource_hdr(self):
+        write(self.gen_file, "")
+        write(self.gen_file, "# AUTO-GENERATED file from %s. Do Not Edit!" \
+              %(self.__class__.__name__))
+        write(self.gen_file, "")
+        write(self.gen_file, "from contrail_heat.resources import contrail")
+        write(self.gen_file, "try:")
+        write(self.gen_file, "    from heat.common.i18n import _")
+        write(self.gen_file, "except ImportError:")
+        write(self.gen_file, "    pass")
+        write(self.gen_file, "from heat.engine import constraints")
+        write(self.gen_file, "from heat.engine import properties")
+        write(self.gen_file, "try:")
+        write(self.gen_file, "    from heat.openstack.common import log as logging")
+        write(self.gen_file, "except ImportError:")
+        write(self.gen_file, "    from oslo_log import log as logging")
+        write(self.gen_file, "import uuid")
+        write(self.gen_file, "")
+        write(self.gen_file, "from vnc_api import vnc_api")
+        write(self.gen_file, "")
+        write(self.gen_file, "LOG = logging.getLogger(__name__)")
+        write(self.gen_file, "")
+        write(self.gen_file, "")
+        write(self.gen_file, "class Contrail%s(contrail.ContrailResource):" \
+              %(self.resource_dict['class']))
+    #end _gen_heat_common_resource_hdr
+
+    def _build_heat_properties(self):
+        for prop_name in self.cls.prop_fields:
+            if prop_name in self.skip_list:
+                continue
+            prop_is_simple = self.cls.prop_field_types[prop_name][0]
+            prop_type = self.cls.prop_field_types[prop_name][1]
+            if prop_is_simple:
+                self._make_heat_prop_list(self.prop_list, prop_name,
+                                          prop_type, None, False, [])
+                continue
+
+            # complex object
+            try:
+                cls = getattr(self.res_xsd, prop_type)
+            except:
+                continue
+            self._process_heat_complex_property(cls, self.prop_list,
+                prop_name, prop_type, prop_is_simple, False, [])
+     #end _build_heat_properties
+
+    def _gen_heat_properties(self, prop_names_list, prop_names_uc_list):
+        write(self.gen_file, "    PROPERTIES = (")
+        write(self.gen_file, "        %s" %(", ".join(prop_names_uc_list)))
+        write(self.gen_file, "    ) = (")
+        write(self.gen_file, "        %s" %(", ".join(prop_names_list)))
+        write(self.gen_file, "    )")
+        write(self.gen_file, "")
+    #end _gen_heat_properties
+
+    def _gen_heat_templ_params(self):
+        write(self.gen_file_templ, "heat_template_version: 2013-05-23")
+        write(self.gen_file_templ, "")
+        write(self.gen_file_templ, "description: >")
+        write(self.gen_file_templ, "  HOT template to create a %s:"
+            %(self.resource_dict['class']))
+        write(self.gen_file_templ, "")
+        write(self.gen_file_templ, "parameters:")
+        self._create_heat_template_params(self.prop_list)
+        write(self.gen_file_templ, "")
+    #end _gen_heat_templ_params
+
+    def _gen_heat_properties_schema(self):
+        tabs = 4
+        write(self.gen_file, "    properties_schema = {")
+        for key,val in enumerate(self.prop_list):
+            self._make_heat_property_schema(val, tabs+4)
+        write(self.gen_file, "    }")
+        write(self.gen_file, "")
+
+        write(self.gen_file, "    attributes_schema = {")
+        for key,val in enumerate(self.prop_list):
+            if not val['prop_skip']:
+                write(self.gen_file, "        \"%s\":_(\"%s\")," %(val['prop_name'], val['prop_name']))
+        write(self.gen_file, "        \"show\": _(\"All attributes.\"),")
+        write(self.gen_file, "    }")
+        write(self.gen_file, "")
+    #end _gen_heat_properties_schema
+
+    def _gen_heat_handle_create(self):
+        write(self.gen_file, "    def handle_create(self):")
+        write(self.gen_file, "        tenant_id = self.stack.context.tenant_id")
+        write(self.gen_file, "        project_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))")
+        write(self.gen_file, "        obj = vnc_api.%s(name=self.properties[self.NAME],"
+            %(self.resource_dict['class']))
+        write(self.gen_file, "                         parent_obj=project_obj)")
+        for key,val in enumerate(self.prop_list):
+            if val['prop_skip']:
+                continue
+            tabs = 8
+            if not val['prop_list']:
+                write(self.gen_file, "%sobj.set_%s(self.properties.get(self.%s))"
+                    %(" "*tabs, val['prop_name'], val['prop_name'].upper()))
+                continue
+            write(self.gen_file, "%sobj.set_%s("
+                %(" "*tabs, val['prop_name']))
+            self._set_heat_properties_value(val, tabs+4, 1)
+            write(self.gen_file, "%s)" %(" "*tabs))
+        write(self.gen_file, "")
+        write(self.gen_file, "        obj_uuid = self.vnc_lib().%s_create(obj)"
+            %(self.resource_dict['method']))
+        write(self.gen_file, "        self.resource_id_set(obj_uuid)")
+
+        write(self.gen_file, "")
+    #end _gen_heat_handle_create
+
+    def _gen_heat_handle_update(self):
+            write(self.gen_file, "    def handle_update(self, json_snippet, tmpl_diff, prop_diff):")
+            write(self.gen_file, "        pass")
+            write(self.gen_file, "")
+    #end _gen_heat_handle_update
+
+    def _gen_heat_handle_delete(self):
+        write(self.gen_file, "    def handle_delete(self):")
+        write(self.gen_file, "        if self.resource_id is not None:")
+        write(self.gen_file, "            try:")
+        write(self.gen_file, "                self.vnc_lib().%s_delete(id=self.resource_id)"
+            %(self.resource_dict['method']))
+        write(self.gen_file, "            except Exception as ex:")
+        write(self.gen_file, "                self._ignore_not_found(ex)")
+        write(self.gen_file, "                LOG.warn(_('%s %%s already deleted.') %% self.name)"
+            %(self.resource_dict['method']))
+        write(self.gen_file, "")
+    #end _gen_heat_handle_delete
+
+    def _gen_heat_show_resource(self):
+        write(self.gen_file, "    def _show_resource(self):")
+        write(self.gen_file, "        obj = self.vnc_lib().%s_read(id=self.resource_id)"
+            %(self.resource_dict['method']))
+        write(self.gen_file, "        attrs = {")
+        write(self.gen_file, "            'fq_name': obj.get_fq_name_str(),")
+        for key,val in enumerate(self.prop_list):
+            if val['prop_skip']:
+                continue
+            self._get_heat_properties_value(val,
+                                            "get_"+val['prop_name']+"()")
+        write(self.gen_file, "        }")
+        write(self.gen_file, "        return attrs")
+        write(self.gen_file, "")
+        write(self.gen_file, "")
+    #end _gen_heat_show_resource
+
+    def _gen_heat_resource_mapping(self):
+        class_name = self.resource_dict['class']
+        write(self.gen_file, "def resource_mapping():")
+        write(self.gen_file, "    return {")
+        write(self.gen_file, "        'OS::Contrail::%s': Contrail%s," %(class_name, class_name))
+        write(self.gen_file, "    }")
+    #end _gen_heat_resource_mapping
+
+    def _gen_heat_templ_resource_section(self):
+        # generate template resource section
+        write(self.gen_file_templ, "parameters:")
+        write(self.gen_file_templ, "  template_%s:"
+            %(self.resource_dict['class']))
+        write(self.gen_file_templ, "    type: OS::Contrail::%s"
+            %(self.resource_dict['class']))
+        write(self.gen_file_templ, "    properties:")
+        self._create_heat_template_resources(self.prop_list, 6)
+        write(self.gen_file_templ, "")
+    #end _gen_heat_templ_resource_section
+
+    def _generate_heat_resources(self, gen_filepath_pfx, gen_filename_pfx):
+        # heat uses the generated code to build its resources
+        # set the build path correctly and import resources
+        heat_path = os.environ.get('HEAT_BUILDTOP') + '/api-lib/vnc_api/gen'
+        sys.path.append(heat_path)
+        self.res_cmn = importlib.import_module('resource_common')
+        self.res_xsd = importlib.import_module('resource_xsd')
+
+        # list of attributes we can skip
+        self.skip_list = ["id_perms", "perms2"]
+
+        for ident in self._non_exclude_idents():
+
+            class_name = CamelCase(ident.getName())
+            self.cls = getattr(self.res_cmn, class_name)
+            method_name = ident.getName().replace('-', '_')
+            file_prefix = ident.getName().replace('-', '_')
+
+            # resource file descriptor
+            heat_resource_dir = heat_path + "/heat/resources/"
+            if not os.path.exists(heat_resource_dir):
+                os.makedirs(heat_resource_dir)
+            self.gen_file = self._xsd_parser.makeFile(
+                heat_resource_dir + file_prefix + "_heat.py")
+            # template file descriptor
+            heat_template_dir = heat_path + "/heat/template/"
+            if not os.path.exists(heat_template_dir):
+                os.makedirs(heat_template_dir)
+            self.gen_file_templ = self._xsd_parser.makeFile(
+                heat_template_dir + file_prefix + "_heat.yaml")
+
+            self.resource_dict = {}
+            self.prop_list = []
+            self.resource_dict['class'] = class_name
+            self.resource_dict['method'] = method_name
+            self.resource_dict['props'] = self.prop_list
+
+            # generate resource common header section
+            self._gen_heat_common_resource_hdr()
+
+            # name is by default
+            self.prop_list.append({
+                'prop_name': 'name',
+                'prop_type': 'STRING',
+                'prop_restr': None,
+                'prop_is_array': False,
+                'prop_list' : [],
+                'prop_get_list' : [],
+                'prop_skip': True
+            })
+
+            # build heat properties
+            self._build_heat_properties()
+
+            prop_names_list = []
+            prop_names_uc_list = []
+            self._make_heat_properties(self.prop_list, prop_names_list,
+                                       prop_names_uc_list)
+
+            # generate resource properties section
+            self._gen_heat_properties(prop_names_list, prop_names_uc_list)
+
+            # generate template parameters section
+            self._gen_heat_templ_params()
+
+            # generate resource properties_schema section
+            self._gen_heat_properties_schema()
+
+            # generate resource handle_create method
+            self._gen_heat_handle_create()
+
+            # generate resource handle_update method
+            self._gen_heat_handle_update()
+
+            # generate resource handle_delete method
+            self._gen_heat_handle_delete()
+
+            # generate resource _show_resource method
+            self._gen_heat_show_resource()
+
+            # generate resource mapping
+            self._gen_heat_resource_mapping()
+
+            # generate resource mapping
+            self._gen_heat_templ_resource_section()
+    #end _generate_heat_resources
 
     def _generate_test_classes(self, gen_filepath_pfx, gen_filename_pfx):
         gen_file = self._xsd_parser.makeFile(gen_filepath_pfx + "_test.py")
