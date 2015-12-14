@@ -13,6 +13,21 @@ import string
 import sys
 
 class IDLParser(object):
+    class Property(object):
+        #def __init__(self, prop_name):
+        def __init__(self, prop_name, is_list=False):
+            self.name = prop_name
+            self.is_list = is_list
+
+        def IsList(self):
+            return self.is_list == True
+    # end class Property
+
+    class Link(object):
+        def __init__(self, link_name):
+            self.name = link_name
+    # end class Link
+
     def __init__(self):
         self._ElementDict = {}
 
@@ -30,23 +45,25 @@ class IDLParser(object):
                 except TypeError:
                     logger = logging.getLogger('idl_parser')
                     logger.debug('ERROR statement: %s', stmt)
-                    import pdb; pdb.set_trace()
                 #self._ParseExpression(stmt)
 
     def Find(self, element):
         return self._ElementDict.get(element)
 
     def IsProperty(self, annotation):
-        return type(annotation) is not tuple
+        return isinstance(annotation[0], IDLParser.Property)
+
+    def IsAllProperty(self, annotation):
+        return (isinstance(annotation[0], IDLParser.Property) and
+                'all' in annotation[1])
 
     def IsLink(self, annotation):
-        return type(annotation) is tuple
+        return isinstance(annotation[0], IDLParser.Link)
 
     def GetLinkInfo(self, link_name):
         if link_name in self._ElementDict:
-            return (self._ElementDict[link_name][0],
-                    self._ElementDict[link_name][1],
-                    self._ElementDict[link_name][2])
+            idl_link, from_name, to_name, attrs = self._ElementDict[link_name]
+            return (from_name, to_name, attrs)
         else:
             return (None, None, None)
 
@@ -57,9 +74,23 @@ class IDLParser(object):
     def _Property(self, prop_name, ident_name):
         logger = logging.getLogger('idl_parser')
         logger.debug('Property(%s, %s)', prop_name, ident_name)
-        element = self._ElementDict.get(prop_name, [])
-        element.append(ident_name)
-        self._ElementDict[prop_name] = element
+        try:
+            idl_prop, idents = self._ElementDict[prop_name]
+            idents.append(ident_name)
+        except KeyError:
+            #idl_prop = IDLParser.Property(prop_name)
+            idl_prop = IDLParser.Property(prop_name, is_list=False)
+            self._ElementDict[prop_name] = (idl_prop, [ident_name])
+
+    def _ListProperty(self, prop_name, ident_name):
+        logger = logging.getLogger('idl_parser')
+        logger.debug('ListProperty(%s, %s)', prop_name, ident_name)
+        try:
+            idl_prop, idents = self._ElementDict[prop_name]
+            idents.append(ident_name)
+        except KeyError:
+            idl_prop = IDLParser.Property(prop_name, is_list=True)
+            self._ElementDict[prop_name] = (idl_prop, [ident_name])
 
     def _Exclude(self, elem_name, excluded):
         logger = logging.getLogger('idl_parser')
@@ -81,7 +112,8 @@ class IDLParser(object):
         # TODO store and handle namespace in identifiers
 
         logger.debug('Link(%s, %s, %s)', from_name, to_name, attrs)
-        self._ElementDict[link_name] = (from_name, to_name, attrs)
+        idl_link = IDLParser.Link(link_name)
+        self._ElementDict[link_name] = (idl_link, from_name, to_name, attrs)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
