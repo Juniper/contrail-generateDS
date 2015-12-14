@@ -36,7 +36,7 @@ class IFMapGenerator(object):
         # Handle 'all' and any other deferred metadata
         for defer_info in self._DeferredElements:
             (element, annotation) = defer_info
-            if self._idl_parser.IsProperty(annotation) and annotation == 'all':
+            if self._idl_parser.IsAllProperty(annotation):
                 meta = self._MetadataLocate(element, annotation)
                 meta.SetSchemaElement(element)
                 meta.setParent('all')
@@ -69,13 +69,13 @@ class IFMapGenerator(object):
            print "WARNING: no annotation for element " + str(element)
            return
 
-        if self._idl_parser.IsProperty(annotation) and annotation == ['all']:
-            self._DeferredElements.append((element, 'all'))
+        if self._idl_parser.IsAllProperty(annotation):
+            self._DeferredElements.append((element, annotation))
             return
         meta = self._MetadataLocate(element, annotation)
         meta.SetSchemaElement(element)
         if self._idl_parser.IsProperty(annotation):
-            for ident_name in annotation:
+            for ident_name in annotation[1]:
                 identifier = self._IdentifierLocate(ident_name)
                 meta.setParent(identifier)
                 identifier.SetProperty(meta)
@@ -106,7 +106,9 @@ class IFMapGenerator(object):
             if xtype and xtype.isComplex() and len(xtype.getChildren()) == 0:
                 typename = None
 
-        meta = IFMapMetadata.Create(name, annotation, typename)
+        meta = IFMapMetadata.Create(name,
+                self._idl_parser.IsProperty(annotation),
+                annotation, typename)
         self._Metadata[name] = meta
         return meta
 

@@ -5675,6 +5675,8 @@ def main():
 
 
 if __name__ == '__main__':
+    import cgitb
+    cgitb.enable(format='text')
     logging.basicConfig(level=logging.WARN,)
     main()
 
