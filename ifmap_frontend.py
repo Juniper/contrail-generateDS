@@ -232,6 +232,17 @@ class IFMapApiGenerator(object):
             for k,v in children_field_meta_vals:
                 write(gen_file, "    children_field_metas['%s'] = '%s'" %(k,v))
             write(gen_file, "")
+            prop_list_fields = [prop.getName().replace('-', '_')
+                for prop in ident.getProperties() if prop.isList()]
+            write(gen_file, "    prop_list_fields = set(%s)" %(prop_list_fields))
+            write(gen_file, "")
+            prop_list_field_has_wrapper_vals = [
+                ('%s' %(prop.getName().replace('-', '_')),
+                 prop.isListUsingWrapper()) for prop in ident.getProperties() if prop.isList()]
+            write(gen_file, "    prop_list_field_has_wrappers = {}")
+            for k,v in prop_list_field_has_wrapper_vals:
+                write(gen_file, "    prop_list_field_has_wrappers['%s'] = %s" %(k,v))
+            write(gen_file, "")
 
             # init args are name, parent_obj(if there is one), props
             init_args = "self, name = None"
@@ -640,6 +651,8 @@ class IFMapApiGenerator(object):
 
             write(gen_file, "")
             write(gen_file, "        self._pending_field_updates = set(pending_fields)")
+            write(gen_file, "        # dict of prop-list-fields with list of opers")
+            write(gen_file, "        self._pending_field_list_updates = {}")
             write(gen_file, "        self._pending_ref_updates = set([])")
             write(gen_file, "")
             write(gen_file, "        super(%s, self).__init__(%s, *args, **kwargs)" %(class_name, super_args))
@@ -655,6 +668,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "")
             write(gen_file, "    def clear_pending_updates(self):")
             write(gen_file, "        self._pending_field_updates = set([])")
+            write(gen_file, "        self._pending_field_list_updates = {}")
             write(gen_file, "        self._pending_ref_updates = set([])")
             write(gen_file, "    #end clear_pending_updates")
             write(gen_file, "")
@@ -674,8 +688,15 @@ class IFMapApiGenerator(object):
                     write(gen_file, "            if kwargs['%s'] is None:" % prop_name)
                     write(gen_file, "                props_dict['%s'] = None" % prop_name)
                     write(gen_file, "            else:")
-                    write(gen_file, "                props_dict['%s'] = vnc_api.gen.%s_xsd.%s(**kwargs['%s'])" \
-                                                             %(prop_name, gen_filename_pfx, xsd_type, prop_name))
+                    if prop.isList() and not prop.isListUsingWrapper():
+                        write(gen_file, "                props_dict['%s'] = []" %(prop_name))
+                        write(gen_file, "                for elem in kwargs['%s']:" %(prop_name))
+                        write(gen_file, "                    props_dict['%s'].append(" %(prop_name))
+                        write(gen_file, "                        vnc_api.gen.%s_xsd.%s(**elem))" \
+                                                                 %(gen_filename_pfx, xsd_type))
+                    else:
+                        write(gen_file, "                props_dict['%s'] = vnc_api.gen.%s_xsd.%s(**kwargs['%s'])" \
+                                                                 %(prop_name, gen_filename_pfx, xsd_type, prop_name))
                 else:
                     write(gen_file, "            props_dict['%s'] = kwargs['%s']" %(prop_name, prop_name))
 
@@ -771,6 +792,11 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        if '%s' not in self._pending_field_updates:" %(prop_name))
                 write(gen_file, "            self._pending_field_updates.add('%s')" %(prop_name))
                 write(gen_file, "")
+                if prop.isList():
+                    write(gen_file, "        if '%s' in self._pending_field_list_updates:" %(prop_name))
+                    write(gen_file, "            # set clobbers earlier add/del on prop list elements")
+                    write(gen_file, "            del self._pending_field_list_updates['%s']" %(prop_name))
+                    write(gen_file, "")
                 write(gen_file, "        self._%s = %s" %(prop_name, prop_name))
                 write(gen_file, "    #end %s" %(prop_name))
                 write(gen_file, "")
@@ -778,6 +804,40 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        self.%s = value" %(prop_name))
                 write(gen_file, "    #end set_%s" %(prop_name))
                 write(gen_file, "")
+
+            # Atomic Setters for properties that are lists
+            for prop in ident.getProperties():
+                if not prop.isList():
+                    continue
+                prop_name = prop.getName().replace('-', '_')
+                write(gen_file, "    def add_%s(self, elem_value, elem_position=None):" %(prop_name))
+                write(gen_file, '        """Add element to %s for %s.' %(prop.getName(), ident.getName()))
+                write(gen_file, '        ')
+                write(gen_file, '        :param elem_value: %s object' % (prop_type))
+                write(gen_file, '        :param elem_position: optional string order-key')
+                write(gen_file, '        ')
+                write(gen_file, '        """')
+                write(gen_file, "        if '%s' not in self._pending_field_list_updates:" %(prop_name))
+                write(gen_file, "            self._pending_field_list_updates['%s'] = [" %(prop_name))
+                write(gen_file, "                ('add', elem_value, elem_position)]")
+                write(gen_file, "        else:")
+                write(gen_file, "            self._pending_field_list_updates['%s'].append(" %(prop_name))
+                write(gen_file, "                ('add', elem_value, elem_position))")
+                write(gen_file, "    #end add_%s" %(prop_name))
+                write(gen_file, "")
+                write(gen_file, "    def del_%s(self, elem_position):" %(prop_name))
+                write(gen_file, '        """Delete element from %s for %s.' %(prop.getName(), ident.getName()))
+                write(gen_file, '        ')
+                write(gen_file, '        :param elem_position: string indicating order-key')
+                write(gen_file, '        ')
+                write(gen_file, '        """')
+                write(gen_file, "        if '%s' not in self._pending_field_list_updates:" %(prop_name))
+                write(gen_file, "            self._pending_field_list_updates['%s'] = [" %(prop_name))
+                write(gen_file, "                ('delete', None, elem_position)]")
+                write(gen_file, "        else:")
+                write(gen_file, "            self._pending_field_list_updates['%s'].append(" %(prop_name))
+                write(gen_file, "                ('delete', None, elem_position))")
+                write(gen_file, "    #end del_%s" %(prop_name))
 
             # Setters for references
             for link_info in ident.getLinksInfo():
@@ -1769,56 +1829,58 @@ class IFMapApiGenerator(object):
         for ident in self._non_exclude_idents():
             ident_name = ident.getName()
             method_name = ident_name.replace('-', '_')
-            write(gen_file, "    def pre_%s_create(self, resource_dict):" %(method_name))
+            write(gen_file, "    def pre_%s_create(self, resource_dict, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called before %s is created" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
             write(gen_file, "    #end pre_%s_create" %(method_name))
             write(gen_file, "")
-            write(gen_file, "    def post_%s_create(self, resource_dict):" %(method_name))
+            write(gen_file, "    def post_%s_create(self, resource_dict, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called after %s is created" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
             write(gen_file, "    #end post_%s_create" %(method_name))
             write(gen_file, "")
-            write(gen_file, "    def pre_%s_read(self, resource_id):" %(method_name))
+            write(gen_file, "    def pre_%s_read(self, resource_id, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called before %s is read" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
             write(gen_file, "    #end pre_%s_read" %(method_name))
             write(gen_file, "")
-            write(gen_file, "    def post_%s_read(self, resource_id, resource_dict):" %(method_name))
+            write(gen_file, "    def post_%s_read(self, resource_id, resource_dict, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called after %s is read" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
             write(gen_file, "    #end post_%s_read" %(method_name))
             write(gen_file, "")
-            write(gen_file, "    def pre_%s_update(self, resource_id, resource_dict):" %(method_name))
+            write(gen_file, "    def pre_%s_update(self, resource_id, resource_dict," %(method_name))
+            write(gen_file, "            prop_list_updates=None, ref_update=None, **kwargs):")
             write(gen_file, '        """')
             write(gen_file, "        Method called before %s is updated" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
             write(gen_file, "    #end pre_%s_update" %(method_name))
             write(gen_file, "")
-            write(gen_file, "    def post_%s_update(self, resource_id, resource_dict, old_dict):" %(method_name))
+            write(gen_file, "    def post_%s_update(self, resource_id, resource_dict, old_dict," %(method_name))
+            write(gen_file, "            prop_list_updates=None, ref_update=None, **kwargs):")
             write(gen_file, '        """')
             write(gen_file, "        Method called after %s is updated" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
             write(gen_file, "    #end post_%s_update" %(method_name))
             write(gen_file, "")
-            write(gen_file, "    def pre_%s_delete(self, resource_id):" %(method_name))
+            write(gen_file, "    def pre_%s_delete(self, resource_id, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called before %s is deleted" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
             write(gen_file, "    #end pre_%s_delete" %(method_name))
             write(gen_file, "")
-            write(gen_file, "    def post_%s_delete(self, resource_id, resource_dict):" %(method_name))
+            write(gen_file, "    def post_%s_delete(self, resource_id, resource_dict, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called after %s is deleted" %(ident_name))
             write(gen_file, '        """')

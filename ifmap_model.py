@@ -267,35 +267,30 @@ class IFMapMetadata(IFMapObject):
         super(IFMapMetadata, self).__init__(name)
         self._annotation = None
 
-    def SetAnnotation(self, annotation):
-        self._annotation = annotation
-
-    def getAnnotation(self):
-        return self._annotation
-
     def Resolve(self, xsdTypeDict, cTypeDict):
         pass
 
     @staticmethod
-    def Create(name, annotation, typename):
-        if type(annotation) is tuple:
+    def Create(name, is_property, annotation, typename):
+        if not is_property:
             if typename:
                 meta = IFMapLinkAttr(name)
             else:
                 meta = IFMapLink(name)
         else:
-            meta = IFMapProperty(name)
+            meta = IFMapProperty(name, annotation)
         return meta
 
 class IFMapProperty(IFMapMetadata):
     """ Property associated with a single identifier
     """
-    def __init__(self, name):
+    def __init__(self, name, idl_info):
         super(IFMapProperty, self).__init__(name)
         self._parent = None
         self._cppname = CamelCase(name)
         self._complexType = None
         self._memberinfo = None
+        self._idl_info = idl_info
 
     def getParent(self):
         return self._parent
@@ -347,9 +342,24 @@ class IFMapProperty(IFMapMetadata):
         prop = self.getPropertyName()
         return prop.upper()
 
+    def isList(self):
+        idl_prop = self._idl_info[0]
+        return idl_prop.IsList() or self._xelement.maxOccurs > 1
+
+    def isListUsingWrapper(self):
+        idl_prop = self._idl_info[0]
+        return idl_prop.IsList()
+
     def Resolve(self, xsdTypeDict, cTypeDict):
         xtypename = self.getXsdType()
         self._complexType = ComplexTypeLocate(xsdTypeDict, cTypeDict, xtypename)
+        # Ensure a prop-list using wrapper for list
+        # has only one element in wrapper
+        if (self.isListUsingWrapper() and
+            (len(xsdTypeDict[xtypename].children) != 1)):
+            err_msg = 'ListProperty %s using incorrect wrapper-type %s' %(
+                self._name, xtypename)
+            raise Exception(err_msg)
 
 
 class IFMapLink(IFMapMetadata):
