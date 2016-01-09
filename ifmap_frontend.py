@@ -1128,7 +1128,7 @@ class IFMapApiGenerator(object):
     def _make_heat_properties(self, prop_list, prop_names_list,
                               prop_names_uc_list):
         for key,val in enumerate(prop_list):
-            prop_names_list.append("'"+val['prop_name']+"'")
+            prop_names_list.append("'"+val['prop_name'].lower()+"'")
             prop_names_uc_list.append(val['prop_name'].upper())
             if val['prop_list']:
                 self._make_heat_properties(val['prop_list'], prop_names_list,
@@ -1239,6 +1239,12 @@ class IFMapApiGenerator(object):
                 ref_name, ref_type, False, False, [])
      #end _build_heat_refs
 
+    def _build_heat_parents(self):
+        for parent_name in self.cls.parent_types:
+            self._make_heat_prop_list(self.parent_list, parent_name, 'string',
+                                      None, False, [])
+     #end _build_heat_parents
+
     def _gen_heat_properties(self, prop_names_list, prop_names_uc_list):
         write(self.gen_file, "    PROPERTIES = (")
         write(self.gen_file, "        %s" %(", ".join(prop_names_uc_list)))
@@ -1268,6 +1274,8 @@ class IFMapApiGenerator(object):
             self._make_heat_property_schema(val, tabs+4)
         for key,val in enumerate(self.ref_list):
             self._make_heat_property_schema(val, tabs+4)
+        for key,val in enumerate(self.parent_list):
+            self._make_heat_property_schema(val, tabs+4)
         write(self.gen_file, "    }")
         write(self.gen_file, "")
 
@@ -1278,6 +1286,9 @@ class IFMapApiGenerator(object):
         for key,val in enumerate(self.ref_list):
             if not val['prop_skip']:
                 write(self.gen_file, "        \"%s\":_(\"%s\")," %(val['prop_name'], val['prop_name']))
+        for key,val in enumerate(self.parent_list):
+            if not val['prop_skip']:
+                write(self.gen_file, "        \"%s\":_(\"%s\")," %(val['prop_name'], val['prop_name']))
         write(self.gen_file, "        \"show\": _(\"All attributes.\"),")
         write(self.gen_file, "    }")
         write(self.gen_file, "")
@@ -1285,11 +1296,22 @@ class IFMapApiGenerator(object):
 
     def _gen_heat_handle_create(self):
         write(self.gen_file, "    def handle_create(self):")
-        write(self.gen_file, "        tenant_id = self.stack.context.tenant_id")
-        write(self.gen_file, "        project_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))")
+        if self.parent_list:
+            for key,val in enumerate(self.parent_list):
+                write(self.gen_file, "        try:")
+                write(self.gen_file, "            parent_obj = self.vnc_lib().%s_read(fq_name_str=self.properties.get(self.%s))"
+                    %(self._uncamelize(val['prop_name']), val['prop_name'].upper()))
+                write(self.gen_file, "        except:")
+                write(self.gen_file, "            parent_obj = None")
+            write(self.gen_file, "")
+            write(self.gen_file, "        if parent_obj is None")
+            write(self.gen_file, "            tenant_id = self.stack.context.tenant_id")
+            write(self.gen_file, "            parent_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))")
+            write(self.gen_file, "")
+
         write(self.gen_file, "        obj = vnc_api.%s(name=self.properties[self.NAME],"
             %(self.resource_dict['class']))
-        write(self.gen_file, "                         parent_obj=project_obj)")
+        write(self.gen_file, "                         parent_obj=parent_obj)")
 
         for key,val in enumerate(self.prop_list):
             if val['prop_skip']:
@@ -1424,6 +1446,10 @@ class IFMapApiGenerator(object):
         write(self.gen_file_templ, "")
     #end _gen_heat_templ_resource_section
 
+    def _uncamelize(self, name):
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
     def _generate_heat_resources(self, gen_filepath_pfx, gen_filename_pfx):
         # heat uses the generated code to build its resources
         # set the build path correctly and import resources
@@ -1451,14 +1477,18 @@ class IFMapApiGenerator(object):
             heat_resource_dir = heat_path + "/heat/resources/"
             if not os.path.exists(heat_resource_dir):
                 os.makedirs(heat_resource_dir)
+            self._generate_package(heat_resource_dir)
             self.gen_file = self._xsd_parser.makeFile(
                 heat_resource_dir + file_prefix + "_heat.py")
             # template file descriptor
             heat_template_dir = heat_path + "/heat/template/"
             if not os.path.exists(heat_template_dir):
                 os.makedirs(heat_template_dir)
+            self._generate_package(heat_template_dir)
             self.gen_file_templ = self._xsd_parser.makeFile(
                 heat_template_dir + file_prefix + "_heat.yaml")
+            heat_dir = heat_path + "/heat/"
+            self._generate_package(heat_dir)
 
             self.resource_dict = {}
             self.prop_list = []
@@ -1487,11 +1517,17 @@ class IFMapApiGenerator(object):
             self.ref_list = []
             self._build_heat_refs()
 
+            # build heat parents
+            self.parent_list = []
+            self._build_heat_parents()
+
             prop_names_list = []
             prop_names_uc_list = []
             self._make_heat_properties(self.prop_list, prop_names_list,
                                        prop_names_uc_list)
             self._make_heat_properties(self.ref_list, prop_names_list,
+                                       prop_names_uc_list)
+            self._make_heat_properties(self.parent_list, prop_names_list,
                                        prop_names_uc_list)
 
             # generate resource properties section
