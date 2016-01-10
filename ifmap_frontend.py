@@ -1161,7 +1161,7 @@ class IFMapApiGenerator(object):
                 %(tabs*" ", prop_name, prop_type))
         for key,val in enumerate(prop['prop_list']):
             self._set_heat_properties_value(val, tabs+4, 0)
-        write(self.gen_file, "%s)" %(tabs*" "))
+        write(self.gen_file, "%s)," %(tabs*" "))
     #end _set_heat_properties_value
 
     def _get_heat_properties_value(self, prop, p_prop_name):
