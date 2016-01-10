@@ -1304,7 +1304,7 @@ class IFMapApiGenerator(object):
                 write(self.gen_file, "        except:")
                 write(self.gen_file, "            parent_obj = None")
             write(self.gen_file, "")
-            write(self.gen_file, "        if parent_obj is None")
+            write(self.gen_file, "        if parent_obj is None:")
             write(self.gen_file, "            tenant_id = self.stack.context.tenant_id")
             write(self.gen_file, "            parent_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))")
             write(self.gen_file, "")
