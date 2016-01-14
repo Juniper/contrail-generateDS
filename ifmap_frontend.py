@@ -1011,8 +1011,11 @@ class IFMapApiGenerator(object):
         # print parameters
         for key,val in enumerate(prop_list):
             if not val['prop_list']:
-                write(self.gen_file_templ, "  %s:" %(val['prop_name']))
-                prop_type = self._get_heat_prop_type(val['prop_type'], 0)
+                prop_long_name = self._get_prop_long_name(val)
+                write(self.gen_file_templ, "  %s:" %(prop_long_name))
+                prop_type = self._get_heat_prop_type(val['prop_type'], 
+                                                     val['prop_is_array'])
+                prop_type = self._convert_heat_template_type(prop_type)
                 write(self.gen_file_templ, "    type: %s" %(prop_type).lower())
                 write(self.gen_file_templ, "    description: %s for the %s"
                     %(val['prop_name'], self.resource_dict['class']))
@@ -1020,21 +1023,65 @@ class IFMapApiGenerator(object):
             self._create_heat_template_params(val['prop_list'])
     #end _create_heat_template_params
 
-    def _create_heat_template_resources(self, prop_list, tabs):
+    def _create_heat_template_resources(self, prop_list, tabs, comma):
         # print resources
+        tcomma = comma
         for key,val in enumerate(prop_list):
+            prop_type = self._get_heat_prop_type(val['prop_type'],
+                                                 val['prop_is_array'])
             if not val['prop_list']:
-                write(self.gen_file_templ, "%s%s: { get_param: %s }"
-                    %(" "*tabs, val['prop_name'], val['prop_name']))
+                prop_long_name = self._get_prop_long_name(val)
+                if prop_type.startswith('LIST'):
+                    write(self.gen_file_templ, "%s%s: [{ get_param: %s }]%s"
+                        %(" "*tabs, prop_long_name, prop_long_name, tcomma))
+                else:
+                    write(self.gen_file_templ, "%s%s: { get_param: %s }%s"
+                        %(" "*tabs, prop_long_name, prop_long_name, tcomma))
                 continue
-            write(self.gen_file_templ, "%s%s:" %(" "*tabs, val['prop_name']))
-            self._create_heat_template_resources(val['prop_list'], tabs+2)
+            prop_long_name = self._get_prop_long_name(val)
+            write(self.gen_file_templ, "%s%s:" %(" "*tabs, prop_long_name))
+            if prop_type.startswith("LIST"):
+                tabs = tabs+2
+                write(self.gen_file_templ, "%s[{" %(" "*tabs))
+                comma = ","
+            if prop_type == "MAP":
+                tabs = tabs+2
+                write(self.gen_file_templ, "%s{" %(" "*tabs))
+                comma = ","
+            self._create_heat_template_resources(val['prop_list'], tabs+2, comma)
+            if prop_type == "MAP":
+                write(self.gen_file_templ, "%s}%s" %(" "*tabs, tcomma))
+                tabs = tabs-2
+            if prop_type.startswith("LIST"):
+                write(self.gen_file_templ, "%s}]%s" %(" "*tabs, tcomma))
+                tabs = tabs-2
+                comma = ""
     #end _create_heat_template_resources
 
+    def _create_heat_env_params(self, prop_list):
+        # print env parameters
+        for key,val in enumerate(prop_list):
+            prop_type = self._get_heat_prop_type(val['prop_type'], 0)
+            if not val['prop_list']:
+                if not val['prop_restr']:
+                    prop_long_name = self._get_prop_long_name(val)
+                    if prop_type == 'INTEGER':
+                        write(self.gen_file_env, "  %s: %s" %(prop_long_name, 1))
+                    elif prop_type == 'BOOLEAN':
+                        write(self.gen_file_env, "  %s: %s" %(prop_long_name, 'True'))
+                    elif prop_type == 'STRING':
+                        write(self.gen_file_env, "  %s: '%s'" %(prop_long_name, "Something"))
+                    continue
+                prop_long_name = self._get_prop_long_name(val)
+                if prop_type == 'INTEGER' or prop_type == 'BOOLEAN':
+                    write(self.gen_file_env, "  %s: %s" %(prop_long_name, val['prop_restr'][0]))
+                elif prop_type == 'STRING':
+                    write(self.gen_file_env, "  %s: '%s'" %(prop_long_name, val['prop_restr'][0]))
+            self._create_heat_env_params(val['prop_list'])
+    #end _create_heat_template_params
+
     def _get_heat_prop_type(self, typename, is_array):
-        if is_array:
-            type = "LIST"
-        elif typename.lower().endswith(
+        if typename.lower().endswith(
             "integer") or typename.lower().endswith("time"):
             type = "INTEGER"
         elif typename.lower().endswith("string"):
@@ -1045,11 +1092,24 @@ class IFMapApiGenerator(object):
             type = "LIST"
         else:
             type = "MAP"
+
+        if is_array:
+            type = "LIST:" + type
+
         return type
     #end _get_heat_prop_type
 
+    def _convert_heat_template_type(self, prop_type):
+        if prop_type == "INTEGER" or prop_type == "LIST:INTEGER":
+            return "number"
+        if prop_type == "STRING" or prop_type == "LIST:STRING":
+            return "string"
+        if prop_type == "BOOLEAN" or prop_type == "LIST:BOOLEAN":
+            return "boolean"
+        return prop_type
+
     def _make_heat_prop_list(self, prop_list, prop_name, prop_type,
-                             restrictions, is_array, prop_get_list):
+                             restrictions, is_array, prop_get_list, skip):
         new_list = []
         prop_list.append({
             'prop_name': prop_name,
@@ -1058,18 +1118,19 @@ class IFMapApiGenerator(object):
             'prop_is_array': is_array,
             'prop_list' : new_list,
             'prop_get_list' : prop_get_list,
-            'prop_skip': False,
+            'prop_skip': skip,
         })
-        return new_list
+        return prop_list[-1]
     #end _make_heat_prop_list
 
     def _process_heat_complex_property(self, cls, prop_list, prop_name,
                                        prop_type, is_simple, is_array,
                                        prop_get_list):
-        new_list = self._make_heat_prop_list(prop_list, prop_name, prop_type,
-                                             None, is_array, prop_get_list)
+        prop = self._make_heat_prop_list(prop_list, prop_name, prop_type,
+                                         None, is_array, prop_get_list, False)
+        new_list = prop['prop_list']
         new_prop_get_list = list(prop_get_list)
-        new_prop_get_list.append(prop_name)
+        new_prop_get_list.append(prop)
         for attr_name in cls.attr_fields:
             attr_is_complex = cls.attr_field_type_vals[attr_name]['is_complex']
             attr_type = cls.attr_field_type_vals[attr_name]['attr_type']
@@ -1078,9 +1139,10 @@ class IFMapApiGenerator(object):
                 attr_name]['restrictions']
 
             if not attr_is_complex:
-                self._make_heat_prop_list(new_list, prop_name+"_"+attr_name,
+                self._make_heat_prop_list(new_list, attr_name,
                                           attr_type, attr_restrictions,
-                                          attr_is_array, new_prop_get_list)
+                                          attr_is_array, new_prop_get_list,
+                                          False)
                 continue
 
             # property type is complex
@@ -1091,15 +1153,19 @@ class IFMapApiGenerator(object):
     #end _process_heat_complex_property
 
     def _make_heat_property_schema(self, val, tabs):
+        prop_long_name = self._get_prop_long_name(val)
         write(self.gen_file, "%s%s: properties.Schema(" %(tabs*" ",
-            val['prop_name'].upper()))
+            prop_long_name.upper()))
         tabs = tabs+4
         prop_type = self._get_heat_prop_type(val['prop_type'],
                                              val['prop_is_array'])
+        if prop_type.startswith('LIST'):
+            prop_type = "LIST"
         write(self.gen_file, "%sproperties.Schema.%s," %(tabs*" ", prop_type))
         write(self.gen_file, "%s_('%s.')," %(tabs*" ",
-            val['prop_name'].upper()))
+            prop_long_name.upper()))
         write(self.gen_file, "%supdate_allowed=True," %(tabs*" "))
+        write(self.gen_file, "%srequired=False," %(tabs*" "))
         if val['prop_restr']:
             write(self.gen_file, "%sconstraints=[" %(tabs*" "))
             if prop_type == "INTEGER":
@@ -1128,8 +1194,9 @@ class IFMapApiGenerator(object):
     def _make_heat_properties(self, prop_list, prop_names_list,
                               prop_names_uc_list):
         for key,val in enumerate(prop_list):
-            prop_names_list.append("'"+val['prop_name'].lower()+"'")
-            prop_names_uc_list.append(val['prop_name'].upper())
+            prop_long_name = self._get_prop_long_name(val)
+            prop_names_list.append("'"+prop_long_name.lower()+"'")
+            prop_names_uc_list.append(prop_long_name.upper())
             if val['prop_list']:
                 self._make_heat_properties(val['prop_list'], prop_names_list,
                                            prop_names_uc_list)
@@ -1138,30 +1205,45 @@ class IFMapApiGenerator(object):
     def _get_prop_hierarchy(self, prop):
         prop_get_str = "self.properties"
         for key,value in enumerate(prop['prop_get_list']):
-            if value.lower().endswith("ref_data"):
+            if value['prop_name'].lower().endswith("ref_data"):
                 continue
-            prop_get_str += ".get(self.%s, {})" % (value.upper())
-        prop_get_str += ".get(self.%s)" % (prop['prop_name'].upper())
+            prop_long_name = self._get_prop_long_name(value)
+            prop_get_str += ".get(self.%s, {})" %(prop_long_name.upper())
+        prop_long_name = self._get_prop_long_name(prop)
+        prop_get_str += ".get(self.%s)" %(prop_long_name.upper())
         return prop_get_str
     #end _get_prop_hierarchy
 
-    def _set_heat_properties_value(self, prop, tabs, first):
+    def _get_prop_long_name(self, prop):
+        prop_get_str = ""
+        for key,value in enumerate(prop['prop_get_list']):
+            if value['prop_name'].lower().endswith("ref_data"):
+                continue
+            prop_get_str += "%s_" %(value['prop_name'])
+        prop_get_str += "%s" %(prop['prop_name'])
+        return prop_get_str
+    #end _get_prop_long_name
+
+    def _set_heat_properties_value(self, prop, tabs, obj_index, skip):
+        if prop['prop_name'].endswith("_refs"):
+            return
+        write(self.gen_file, "%sif %s:" %(tabs*" ",
+            self._get_prop_hierarchy(prop)))
+        tabs=tabs+4
         if not prop['prop_list']:
-            write(self.gen_file, "%s%s=%s,"
-                %(" "*tabs, prop['prop_name'], self._get_prop_hierarchy(prop)))
+            write(self.gen_file, "%sobj_%s.set_%s(%s)"
+                %(" "*tabs, obj_index, prop['prop_name'], self._get_prop_hierarchy(prop)))
             return
 
         prop_name = prop['prop_name']
         prop_type = prop['prop_type']
-        if first:
-            write(self.gen_file, "%svnc_api.%s("
-                %(tabs*" ", prop_type))
-        else:
-            write(self.gen_file, "%s%s=vnc_api.%s("
-                %(tabs*" ", prop_name, prop_type))
+        write(self.gen_file, "%sobj_%s = vnc_api.%s()" %(tabs*" ", obj_index+1, prop_type))
+
         for key,val in enumerate(prop['prop_list']):
-            self._set_heat_properties_value(val, tabs+4, 0)
-        write(self.gen_file, "%s)," %(tabs*" "))
+            self._set_heat_properties_value(val, tabs, obj_index+1, 0)
+
+        if not skip:
+            write(self.gen_file, "%sobj_%s.set_%s(obj_%s)" %(tabs*" ", obj_index, prop['prop_name'], obj_index+1))
     #end _set_heat_properties_value
 
     def _get_heat_properties_value(self, prop, p_prop_name):
@@ -1210,7 +1292,7 @@ class IFMapApiGenerator(object):
             prop_type = self.cls.prop_field_types[prop_name][1]
             if prop_is_simple:
                 self._make_heat_prop_list(self.prop_list, prop_name,
-                                          prop_type, None, False, [])
+                                          prop_type, None, False, [], False)
                 continue
 
             # complex object
@@ -1224,12 +1306,13 @@ class IFMapApiGenerator(object):
 
     def _build_heat_refs(self):
         for ref_name in self.cls.ref_fields:
-            self._make_heat_prop_list(self.ref_list, ref_name, 'string',
-                                      None, False, [])
 
             ref_type = self.cls.ref_field_types[ref_name][1]
+            skip = False if ref_type is 'None' else True
+            self._make_heat_prop_list(self.ref_list, ref_name, 'string',
+                                      None, False, [], skip)
             ref_name = self.cls.ref_field_types[ref_name][0].replace("-", "_")
-            ref_name = ref_name + "_ref_data"
+            ref_name = ref_name + "_refs_data"
             try:
                 cls = getattr(self.res_xsd, ref_type)
             except:
@@ -1241,8 +1324,8 @@ class IFMapApiGenerator(object):
 
     def _build_heat_parents(self):
         for parent_name in self.cls.parent_types:
-            self._make_heat_prop_list(self.parent_list, parent_name, 'string',
-                                      None, False, [])
+            self._make_heat_prop_list(self.parent_list, parent_name.lower(), 'string',
+                                      None, False, [], False)
      #end _build_heat_parents
 
     def _gen_heat_properties(self, prop_names_list, prop_names_uc_list):
@@ -1264,7 +1347,16 @@ class IFMapApiGenerator(object):
         write(self.gen_file_templ, "parameters:")
         self._create_heat_template_params(self.prop_list)
         self._create_heat_template_params(self.ref_list)
+        self._create_heat_template_params(self.parent_list)
         write(self.gen_file_templ, "")
+    #end _gen_heat_templ_params
+
+    def _gen_heat_env_params(self):
+        write(self.gen_file_env, "parameters:")
+        self._create_heat_env_params(self.prop_list)
+        self._create_heat_env_params(self.ref_list)
+        self._create_heat_env_params(self.parent_list)
+        write(self.gen_file_env, "")
     #end _gen_heat_templ_params
 
     def _gen_heat_properties_schema(self):
@@ -1281,14 +1373,14 @@ class IFMapApiGenerator(object):
 
         write(self.gen_file, "    attributes_schema = {")
         for key,val in enumerate(self.prop_list):
-            if not val['prop_skip']:
-                write(self.gen_file, "        \"%s\":_(\"%s\")," %(val['prop_name'], val['prop_name']))
+            prop_long_name = self._get_prop_long_name(val)
+            write(self.gen_file, "        \"%s\":_(\"%s\")," %(prop_long_name, prop_long_name))
         for key,val in enumerate(self.ref_list):
-            if not val['prop_skip']:
-                write(self.gen_file, "        \"%s\":_(\"%s\")," %(val['prop_name'], val['prop_name']))
+            prop_long_name = self._get_prop_long_name(val)
+            write(self.gen_file, "        \"%s\":_(\"%s\")," %(prop_long_name, prop_long_name))
         for key,val in enumerate(self.parent_list):
-            if not val['prop_skip']:
-                write(self.gen_file, "        \"%s\":_(\"%s\")," %(val['prop_name'], val['prop_name']))
+            prop_long_name = self._get_prop_long_name(val)
+            write(self.gen_file, "        \"%s\":_(\"%s\")," %(prop_long_name, prop_long_name))
         write(self.gen_file, "        \"show\": _(\"All attributes.\"),")
         write(self.gen_file, "    }")
         write(self.gen_file, "")
@@ -1309,41 +1401,43 @@ class IFMapApiGenerator(object):
             write(self.gen_file, "            parent_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))")
             write(self.gen_file, "")
 
-        write(self.gen_file, "        obj = vnc_api.%s(name=self.properties[self.NAME],"
+        write(self.gen_file, "        obj_0 = vnc_api.%s(name=self.properties[self.NAME],"
             %(self.resource_dict['class']))
-        write(self.gen_file, "                         parent_obj=parent_obj)")
+        write(self.gen_file, "            parent_obj=parent_obj)")
+        write(self.gen_file, "")
 
         for key,val in enumerate(self.prop_list):
             if val['prop_skip']:
                 continue
             tabs = 8
-            if not val['prop_list']:
-                write(self.gen_file, "%sobj.set_%s(self.properties.get(self.%s))"
-                    %(" "*tabs, val['prop_name'], val['prop_name'].upper()))
-                continue
-            write(self.gen_file, "%sobj.set_%s("
-                %(" "*tabs, val['prop_name']))
-            self._set_heat_properties_value(val, tabs+4, 1)
-            write(self.gen_file, "%s)" %(" "*tabs))
+            self._set_heat_properties_value(val, tabs, 0, 0)
 
         write(self.gen_file, "")
-        write(self.gen_file, "        obj_uuid = self.vnc_lib().%s_create(obj)"
+        write(self.gen_file, "        obj_uuid = self.vnc_lib().%s_create(obj_0)"
             %(self.resource_dict['method']))
         write(self.gen_file, "        store_uuid = '%s#' %(obj_uuid)")
         write(self.gen_file, "")
 
         for key,val in enumerate(self.ref_list):
-            tabs = 8
-            ref_name = val['prop_name'].replace("_ref_data","")
-            ref_name_type = ref_name.replace("_","-")
-            if not val['prop_list']:
+            if val['prop_skip']:
                 continue
+            ref_name = val['prop_name'].replace("_refs_data","")
+            ref_name_type = ref_name.replace("_","-")
 
+            tabs = 8
+            write(self.gen_file, "%s# reference to %s" %(" "*tabs, ref_name))
+            write(self.gen_file, "%sobj_1 = None" %(" "*tabs))
+            self._set_heat_properties_value(val, tabs, 0, 1)
+
+            if not ref_name.endswith('_refs'):
+                ref_name = ref_name+"_refs"
+            write(self.gen_file, "%sif self.properties.get(self.%s):" %(" "*tabs, ref_name.upper()))
+            tabs = tabs+4
             write(self.gen_file, "%stry:" %(" "*tabs))
             tabs = tabs+4
             write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name))
             tabs = tabs+4
-            write(self.gen_file, "%sid=self.properties.get(self.%s_REF)" %(" "*tabs, ref_name.upper()))
+            write(self.gen_file, "%sid=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
             tabs = tabs-4
@@ -1351,7 +1445,7 @@ class IFMapApiGenerator(object):
             tabs = tabs+4
             write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name))
             tabs = tabs+4
-            write(self.gen_file, "%sfq_name_str=self.properties.get(self.%s_REF)" %(" "*tabs, ref_name.upper()))
+            write(self.gen_file, "%sfq_name_str=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
             tabs = tabs-4
@@ -1361,13 +1455,14 @@ class IFMapApiGenerator(object):
             tabs = tabs+4
             write(self.gen_file, "%s\'%s\', obj_uuid," %(" "*tabs, self.resource_name))
             write(self.gen_file, "%s\'%s\', ref_obj.uuid," %(" "*tabs, ref_name_type))
-            write(self.gen_file, "%sNone, \'ADD\'," %(" "*(tabs)))
-            self._set_heat_properties_value(val, tabs, 1)
+            write(self.gen_file, "%sNone, \'ADD\', obj_1" %(" "*(tabs)))
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
 
-            write(self.gen_file, "        store_uuid += '%s'" %(ref_name_type))
-            write(self.gen_file, "        store_uuid += ':%s|' %(ref_obj.uuid)")
+            write(self.gen_file, "%sstore_uuid += '%s'" %(" "*tabs, ref_name_type))
+            write(self.gen_file, "            store_uuid += ':%s|' %(ref_obj.uuid)")
+            tabs = tabs-4
+            write(self.gen_file, "%s# End: reference to %s" %(" "*tabs, ref_name))
             write(self.gen_file, "")
 
         write(self.gen_file, "        if store_uuid[-1] == '|':")
@@ -1387,16 +1482,16 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "        if self.resource_id is None:")
         write(self.gen_file, "            return")
         write(self.gen_file, "")
-        write(self.gen_file, "        obj_uuid, resources = self.resource_id.split('#')")
-        write(self.gen_file, "        resources = self.resource_id.split('|')")
-        write(self.gen_file, "        for resource in resources:")
-        write(self.gen_file, "            r_name, r_uuid = resource.split(':')")
-
-        write(self.gen_file, "            self.vnc_lib().ref_update(")
-        write(self.gen_file, "                \'%s\', obj_uuid," %(self.resource_name))
-        write(self.gen_file, "                r_name, r_uuid,")
-        write(self.gen_file, "                None, \'DELETE\'")
-        write(self.gen_file, "            )")
+        write(self.gen_file, "        obj_uuid, obj_resources = self.resource_id.split('#')")
+        write(self.gen_file, "        if obj_resources:")
+        write(self.gen_file, "            resources = obj_resources.split('|')")
+        write(self.gen_file, "            for resource in resources:")
+        write(self.gen_file, "                r_name, r_uuid = resource.split(':')")
+        write(self.gen_file, "                self.vnc_lib().ref_update(")
+        write(self.gen_file, "                    \'%s\', obj_uuid," %(self.resource_name))
+        write(self.gen_file, "                    r_name, r_uuid,")
+        write(self.gen_file, "                    None, \'DELETE\'")
+        write(self.gen_file, "                )")
 
         write(self.gen_file, "        try:")
         write(self.gen_file, "            self.vnc_lib().%s_delete(id=obj_uuid)"
@@ -1435,14 +1530,15 @@ class IFMapApiGenerator(object):
 
     def _gen_heat_templ_resource_section(self):
         # generate template resource section
-        write(self.gen_file_templ, "parameters:")
+        write(self.gen_file_templ, "resources:")
         write(self.gen_file_templ, "  template_%s:"
             %(self.resource_dict['class']))
         write(self.gen_file_templ, "    type: OS::Contrail::%s"
             %(self.resource_dict['class']))
         write(self.gen_file_templ, "    properties:")
-        self._create_heat_template_resources(self.prop_list, 6)
-        self._create_heat_template_resources(self.ref_list, 6)
+        self._create_heat_template_resources(self.prop_list, 6, "")
+        self._create_heat_template_resources(self.ref_list, 6, "")
+        self._create_heat_template_resources(self.parent_list, 6, "")
         write(self.gen_file_templ, "")
     #end _gen_heat_templ_resource_section
 
@@ -1487,6 +1583,14 @@ class IFMapApiGenerator(object):
             self._generate_package(heat_template_dir)
             self.gen_file_templ = self._xsd_parser.makeFile(
                 heat_template_dir + file_prefix + "_heat.yaml")
+            # env file descriptor
+            heat_env_dir = heat_path + "/heat/env/"
+            if not os.path.exists(heat_env_dir):
+                os.makedirs(heat_env_dir)
+            self._generate_package(heat_env_dir)
+            self.gen_file_env = self._xsd_parser.makeFile(
+                heat_env_dir + file_prefix + "_heat.env")
+
             heat_dir = heat_path + "/heat/"
             self._generate_package(heat_dir)
 
@@ -1556,6 +1660,9 @@ class IFMapApiGenerator(object):
 
             # generate resource mapping
             self._gen_heat_templ_resource_section()
+
+            # generate template parameters section
+            self._gen_heat_env_params()
     #end _generate_heat_resources
 
     def _generate_test_classes(self, gen_filepath_pfx, gen_filename_pfx):
