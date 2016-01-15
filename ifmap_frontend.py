@@ -1109,7 +1109,11 @@ class IFMapApiGenerator(object):
         return prop_type
 
     def _make_heat_prop_list(self, prop_list, prop_name, prop_type,
-                             restrictions, is_array, prop_get_list, skip):
+                             restrictions, is_array, prop_get_list,
+                             skip):
+        is_list = False
+        if self._get_heat_prop_type(prop_type, is_array).startswith('LIST'):
+            is_list = True
         new_list = []
         prop_list.append({
             'prop_name': prop_name,
@@ -1119,6 +1123,7 @@ class IFMapApiGenerator(object):
             'prop_list' : new_list,
             'prop_get_list' : prop_get_list,
             'prop_skip': skip,
+            'prop_is_list': is_list,
         })
         return prop_list[-1]
     #end _make_heat_prop_list
@@ -1207,10 +1212,16 @@ class IFMapApiGenerator(object):
         for key,value in enumerate(prop['prop_get_list']):
             if value['prop_name'].lower().endswith("ref_data"):
                 continue
+            idx_str = ""
+            if value['prop_is_list']:
+                idx_str = "[index_%s]" %(len(value['prop_get_list']))
             prop_long_name = self._get_prop_long_name(value)
-            prop_get_str += ".get(self.%s, {})" %(prop_long_name.upper())
+            prop_get_str += ".get(self.%s, {})%s" %(prop_long_name.upper(), idx_str)
+        idx_str = ""
+        if prop['prop_is_list'] and not prop['prop_list']:
+            idx_str = "[index_%s]" %(len(prop['prop_get_list']))
         prop_long_name = self._get_prop_long_name(prop)
-        prop_get_str += ".get(self.%s)" %(prop_long_name.upper())
+        prop_get_str += ".get(self.%s)%s" %(prop_long_name.upper(), idx_str)
         return prop_get_str
     #end _get_prop_hierarchy
 
@@ -1230,6 +1241,12 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "%sif %s:" %(tabs*" ",
             self._get_prop_hierarchy(prop)))
         tabs=tabs+4
+        prop_type = self._get_heat_prop_type(prop['prop_type'],
+                                             prop['prop_is_array'])
+        if prop_type.startswith('LIST'):
+            write(self.gen_file, "%sfor index_%s in range(len(%s)):" %(tabs*" ",
+                len(prop['prop_get_list']), self._get_prop_hierarchy(prop)))
+            tabs=tabs+4
         if not prop['prop_list']:
             write(self.gen_file, "%sobj_%s.set_%s(%s)"
                 %(" "*tabs, obj_index, prop['prop_name'], self._get_prop_hierarchy(prop)))
@@ -1243,7 +1260,8 @@ class IFMapApiGenerator(object):
             self._set_heat_properties_value(val, tabs, obj_index+1, 0)
 
         if not skip:
-            write(self.gen_file, "%sobj_%s.set_%s(obj_%s)" %(tabs*" ", obj_index, prop['prop_name'], obj_index+1))
+            oper_str = "add" if prop['prop_is_list'] else "set"
+            write(self.gen_file, "%sobj_%s.%s_%s(obj_%s)" %(tabs*" ", obj_index, oper_str, prop['prop_name'], obj_index+1))
     #end _set_heat_properties_value
 
     def _get_heat_properties_value(self, prop, p_prop_name):
@@ -1324,8 +1342,9 @@ class IFMapApiGenerator(object):
 
     def _build_heat_parents(self):
         for parent_name in self.cls.parent_types:
-            self._make_heat_prop_list(self.parent_list, parent_name.lower(), 'string',
-                                      None, False, [], False)
+            self._make_heat_prop_list(self.parent_list,
+                self._uncamelize(parent_name), 'string',
+                None, False, [], False)
      #end _build_heat_parents
 
     def _gen_heat_properties(self, prop_names_list, prop_names_uc_list):
@@ -1389,16 +1408,35 @@ class IFMapApiGenerator(object):
     def _gen_heat_handle_create(self):
         write(self.gen_file, "    def handle_create(self):")
         if self.parent_list:
+            parent_is_project = False
+            tabs = 8
+            write(self.gen_file, "%sparent_obj = None" %(" "*tabs))
             for key,val in enumerate(self.parent_list):
-                write(self.gen_file, "        try:")
-                write(self.gen_file, "            parent_obj = self.vnc_lib().%s_read(fq_name_str=self.properties.get(self.%s))"
-                    %(self._uncamelize(val['prop_name']), val['prop_name'].upper()))
-                write(self.gen_file, "        except:")
-                write(self.gen_file, "            parent_obj = None")
+                if val['prop_name'].upper() == "PROJECT":
+                    parent_is_project = True
+                write(self.gen_file, "%sif parent_obj is None and self.properties.get(self.%s):" %(" "*tabs, val['prop_name'].upper()))
+                tabs = tabs+4
+                write(self.gen_file, "%stry:" %(" "*tabs))
+                tabs = tabs+4
+                write(self.gen_file, "%sparent_obj = self.vnc_lib().%s_read(fq_name_str=self.properties.get(self.%s))"
+                    %(" "*tabs, self._uncamelize(val['prop_name']), val['prop_name'].upper()))
+                tabs = tabs-4
+                write(self.gen_file, "%sexcept:" %(" "*tabs))
+                tabs = tabs+4
+                write(self.gen_file, "%sparent_obj = None" %(" "*tabs))
+                tabs = tabs-4
+                tabs = tabs-4
             write(self.gen_file, "")
-            write(self.gen_file, "        if parent_obj is None:")
-            write(self.gen_file, "            tenant_id = self.stack.context.tenant_id")
-            write(self.gen_file, "            parent_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))")
+            tabs = 8
+            if parent_is_project:
+                write(self.gen_file, "%sif parent_obj is None:" %(" "*tabs))
+                tabs = tabs+4
+                write(self.gen_file, "%stenant_id = self.stack.context.tenant_id" %(" "*tabs))
+                write(self.gen_file, "%sparent_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))" %(" "*tabs))
+                tabs = tabs-4
+                write(self.gen_file, "")
+            write(self.gen_file, "%sif parent_obj is None:" %(" "*tabs))
+            write(self.gen_file, "%s    raise Exception('Error: parent is not specified in template!')" %(" "*tabs))
             write(self.gen_file, "")
 
         write(self.gen_file, "        obj_0 = vnc_api.%s(name=self.properties[self.NAME],"
@@ -1435,7 +1473,7 @@ class IFMapApiGenerator(object):
             tabs = tabs+4
             write(self.gen_file, "%stry:" %(" "*tabs))
             tabs = tabs+4
-            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name))
+            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
             tabs = tabs+4
             write(self.gen_file, "%sid=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
             tabs = tabs-4
@@ -1443,7 +1481,7 @@ class IFMapApiGenerator(object):
             tabs = tabs-4
             write(self.gen_file, "%sexcept:" %(" "*tabs))
             tabs = tabs+4
-            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name))
+            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
             tabs = tabs+4
             write(self.gen_file, "%sfq_name_str=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
             tabs = tabs-4
@@ -1454,12 +1492,12 @@ class IFMapApiGenerator(object):
                 %(" "*tabs))
             tabs = tabs+4
             write(self.gen_file, "%s\'%s\', obj_uuid," %(" "*tabs, self.resource_name))
-            write(self.gen_file, "%s\'%s\', ref_obj.uuid," %(" "*tabs, ref_name_type))
+            write(self.gen_file, "%s\'%s\', ref_obj.uuid," %(" "*tabs, ref_name_type.replace("-refs", "")))
             write(self.gen_file, "%sNone, \'ADD\', obj_1" %(" "*(tabs)))
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
 
-            write(self.gen_file, "%sstore_uuid += '%s'" %(" "*tabs, ref_name_type))
+            write(self.gen_file, "%sstore_uuid += '%s'" %(" "*tabs, ref_name_type.replace("-refs", "")))
             write(self.gen_file, "            store_uuid += ':%s|' %(ref_obj.uuid)")
             tabs = tabs-4
             write(self.gen_file, "%s# End: reference to %s" %(" "*tabs, ref_name))
@@ -1561,6 +1599,7 @@ class IFMapApiGenerator(object):
             #if ident.getName() != "virtual-machine-interface":
             #if ident.getName() != "network-policy":
             #if ident.getName() != "virtual-network":
+            #if ident.getName() != "service-template":
             #    continue
 
             self.resource_name = ident.getName()
