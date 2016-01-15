@@ -1389,16 +1389,35 @@ class IFMapApiGenerator(object):
     def _gen_heat_handle_create(self):
         write(self.gen_file, "    def handle_create(self):")
         if self.parent_list:
+            parent_is_project = False
+            tabs = 8
+            write(self.gen_file, "%sparent_obj = None" %(" "*tabs))
             for key,val in enumerate(self.parent_list):
-                write(self.gen_file, "        try:")
-                write(self.gen_file, "            parent_obj = self.vnc_lib().%s_read(fq_name_str=self.properties.get(self.%s))"
-                    %(self._uncamelize(val['prop_name']), val['prop_name'].upper()))
-                write(self.gen_file, "        except:")
-                write(self.gen_file, "            parent_obj = None")
+                if val['prop_name'].upper() == "PROJECT":
+                    parent_is_project = True
+                write(self.gen_file, "%sif parent_obj is None and self.properties.get(self.%s):" %(" "*tabs, val['prop_name'].upper()))
+                tabs = tabs+4
+                write(self.gen_file, "%stry:" %(" "*tabs))
+                tabs = tabs+4
+                write(self.gen_file, "%sparent_obj = self.vnc_lib().%s_read(fq_name_str=self.properties.get(self.%s))"
+                    %(" "*tabs, self._uncamelize(val['prop_name']), val['prop_name'].upper()))
+                tabs = tabs-4
+                write(self.gen_file, "%sexcept:" %(" "*tabs))
+                tabs = tabs+4
+                write(self.gen_file, "%sparent_obj = None" %(" "*tabs))
+                tabs = tabs-4
+                tabs = tabs-4
             write(self.gen_file, "")
-            write(self.gen_file, "        if parent_obj is None:")
-            write(self.gen_file, "            tenant_id = self.stack.context.tenant_id")
-            write(self.gen_file, "            parent_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))")
+            tabs = 8
+            if parent_is_project:
+                write(self.gen_file, "%sif parent_obj is None:" %(" "*tabs))
+                tabs = tabs+4
+                write(self.gen_file, "%stenant_id = self.stack.context.tenant_id" %(" "*tabs))
+                write(self.gen_file, "%sparent_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))" %(" "*tabs))
+                tabs = tabs-4
+                write(self.gen_file, "")
+            write(self.gen_file, "%sif parent_obj is None:" %(" "*tabs))
+            write(self.gen_file, "%s    raise Exception('Error: parent is not specified in template!')" %(" "*tabs))
             write(self.gen_file, "")
 
         write(self.gen_file, "        obj_0 = vnc_api.%s(name=self.properties[self.NAME],"
