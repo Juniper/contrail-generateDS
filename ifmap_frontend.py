@@ -1207,8 +1207,11 @@ class IFMapApiGenerator(object):
                                            prop_names_uc_list)
     #end _make_heat_properties
 
-    def _get_prop_hierarchy(self, prop):
-        prop_get_str = "self.properties"
+    def _get_prop_hierarchy(self, prop, print_index):
+        if self.heat_handling == 0:
+            prop_get_str = "self.properties"
+        else:
+            prop_get_str = "prop_diff"
         for key,value in enumerate(prop['prop_get_list']):
             if value['prop_name'].lower().endswith("ref_data"):
                 continue
@@ -1218,7 +1221,7 @@ class IFMapApiGenerator(object):
             prop_long_name = self._get_prop_long_name(value)
             prop_get_str += ".get(self.%s, {})%s" %(prop_long_name.upper(), idx_str)
         idx_str = ""
-        if prop['prop_is_list'] and not prop['prop_list']:
+        if prop['prop_is_list'] and not prop['prop_list'] and print_index:
             idx_str = "[index_%s]" %(len(prop['prop_get_list']))
         prop_long_name = self._get_prop_long_name(prop)
         prop_get_str += ".get(self.%s)%s" %(prop_long_name.upper(), idx_str)
@@ -1239,17 +1242,17 @@ class IFMapApiGenerator(object):
         if prop['prop_name'].endswith("_refs"):
             return
         write(self.gen_file, "%sif %s:" %(tabs*" ",
-            self._get_prop_hierarchy(prop)))
+            self._get_prop_hierarchy(prop, False)))
         tabs=tabs+4
         prop_type = self._get_heat_prop_type(prop['prop_type'],
                                              prop['prop_is_array'])
         if prop_type.startswith('LIST'):
             write(self.gen_file, "%sfor index_%s in range(len(%s)):" %(tabs*" ",
-                len(prop['prop_get_list']), self._get_prop_hierarchy(prop)))
+                len(prop['prop_get_list']), self._get_prop_hierarchy(prop, False)))
             tabs=tabs+4
         if not prop['prop_list']:
             write(self.gen_file, "%sobj_%s.set_%s(%s)"
-                %(" "*tabs, obj_index, prop['prop_name'], self._get_prop_hierarchy(prop)))
+                %(" "*tabs, obj_index, prop['prop_name'], self._get_prop_hierarchy(prop, True)))
             return
 
         prop_name = prop['prop_name']
@@ -1357,7 +1360,7 @@ class IFMapApiGenerator(object):
     #end _gen_heat_properties
 
     def _gen_heat_templ_params(self):
-        write(self.gen_file_templ, "heat_template_version: 2013-05-23")
+        write(self.gen_file_templ, "heat_template_version: 2015-04-30")
         write(self.gen_file_templ, "")
         write(self.gen_file_templ, "description: >")
         write(self.gen_file_templ, "  HOT template to create a %s:"
@@ -1403,7 +1406,101 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "        \"show\": _(\"All attributes.\"),")
         write(self.gen_file, "    }")
         write(self.gen_file, "")
+        write(self.gen_file, "    update_allowed_keys = ('Properties',)")
+        write(self.gen_file, "")
+
     #end _gen_heat_properties_schema
+
+    def _ref_create_handling(self):
+        tabs = 8
+        write(self.gen_file, "")
+        for key,val in enumerate(self.ref_list):
+            if val['prop_skip']:
+                continue
+            attr_str = ""
+            ref_name = val['prop_name']
+            if '_refs_data' in ref_name:
+                ref_name = val['prop_name'].replace("_refs_data","")
+                attr_str = ', obj_1'
+            if not ref_name.endswith('_refs'):
+                ref_name = ref_name+"_refs"
+            ref_name_type = ref_name.replace("_","-")
+            ref_name_type = ref_name.replace("_","-").replace("-refs", "")
+
+            write(self.gen_file, "%s# reference to %s" %(" "*tabs, ref_name))
+            if attr_str:
+                write(self.gen_file, "%sobj_1 = None" %(" "*tabs))
+                self._set_heat_properties_value(val, tabs, 0, 1)
+                write(self.gen_file, "")
+
+            write(self.gen_file, "%sif self.properties.get(self.%s):" %(" "*tabs, ref_name.upper()))
+            tabs = tabs+4
+            write(self.gen_file, "%stry:" %(" "*tabs))
+            tabs = tabs+4
+            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
+            tabs = tabs+4
+            write(self.gen_file, "%sid=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
+            tabs = tabs-4
+            write(self.gen_file, "%s)" %(" "*tabs))
+            tabs = tabs-4
+            write(self.gen_file, "%sexcept vnc_api.NoIdError:" %(" "*tabs))
+            tabs = tabs+4
+            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
+            tabs = tabs+4
+            write(self.gen_file, "%sfq_name_str=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
+            tabs = tabs-4
+            write(self.gen_file, "%s)" %(" "*tabs))
+            tabs = tabs-4
+            write(self.gen_file, "%sobj_0.add_%s(ref_obj%s)" %(" "*tabs, ref_name.replace("_refs", ""), attr_str))
+	    write(self.gen_file, "")
+            tabs = tabs-4
+    # _ref_create_handling
+
+    def _ref_modify_handling(self):
+        for key,val in enumerate(self.ref_list):
+            if val['prop_skip']:
+                continue
+            ref_name = val['prop_name'].replace("_refs_data","")
+            ref_name_type = ref_name.replace("_","-")
+
+            tabs = 8
+            write(self.gen_file, "%s# reference to %s" %(" "*tabs, ref_name))
+            write(self.gen_file, "%sobj_1 = None" %(" "*tabs))
+            self._set_heat_properties_value(val, tabs, 0, 1)
+
+            if not ref_name.endswith('_refs'):
+                ref_name = ref_name+"_refs"
+            write(self.gen_file, "%sif prop_diff.get(self.%s):" %(" "*tabs, ref_name.upper()))
+            tabs = tabs+4
+            write(self.gen_file, "%stry:" %(" "*tabs))
+            tabs = tabs+4
+            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
+            tabs = tabs+4
+            write(self.gen_file, "%sid=prop_diff.get(self.%s)" %(" "*tabs, ref_name.upper()))
+            tabs = tabs-4
+            write(self.gen_file, "%s)" %(" "*tabs))
+            tabs = tabs-4
+            write(self.gen_file, "%sexcept:" %(" "*tabs))
+            tabs = tabs+4
+            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
+            tabs = tabs+4
+            write(self.gen_file, "%sfq_name_str=prop_diff.get(self.%s)" %(" "*tabs, ref_name.upper()))
+            tabs = tabs-4
+            write(self.gen_file, "%s)" %(" "*tabs))
+            tabs = tabs-4
+
+            write(self.gen_file, "%sself.vnc_lib().ref_update("
+                %(" "*tabs))
+            tabs = tabs+4
+            write(self.gen_file, "%s\'%s\', obj_uuid," %(" "*tabs, self.resource_dict['method']))
+            write(self.gen_file, "%s\'%s\', ref_obj.uuid," %(" "*tabs, ref_name_type.replace("-refs", "")))
+            write(self.gen_file, "%sref_obj.fq_name, \'ADD\', obj_1" %(" "*(tabs)))
+            tabs = tabs-4
+            write(self.gen_file, "%s)" %(" "*tabs))
+
+            tabs = tabs-4
+            write(self.gen_file, "%s# End: reference to %s" %(" "*tabs, ref_name))
+            write(self.gen_file, "")
 
     def _gen_heat_handle_create(self):
         write(self.gen_file, "    def handle_create(self):")
@@ -1417,6 +1514,11 @@ class IFMapApiGenerator(object):
                 write(self.gen_file, "%sif parent_obj is None and self.properties.get(self.%s):" %(" "*tabs, val['prop_name'].upper()))
                 tabs = tabs+4
                 write(self.gen_file, "%stry:" %(" "*tabs))
+                tabs = tabs+4
+                write(self.gen_file, "%sparent_obj = self.vnc_lib().%s_read(id=self.properties.get(self.%s))"
+                    %(" "*tabs, self._uncamelize(val['prop_name']), val['prop_name'].upper()))
+                tabs = tabs-4
+                write(self.gen_file, "%sexcept vnc_api.NoIdError:" %(" "*tabs))
                 tabs = tabs+4
                 write(self.gen_file, "%sparent_obj = self.vnc_lib().%s_read(fq_name_str=self.properties.get(self.%s))"
                     %(" "*tabs, self._uncamelize(val['prop_name']), val['prop_name'].upper()))
@@ -1438,10 +1540,52 @@ class IFMapApiGenerator(object):
             write(self.gen_file, "%sif parent_obj is None:" %(" "*tabs))
             write(self.gen_file, "%s    raise Exception('Error: parent is not specified in template!')" %(" "*tabs))
             write(self.gen_file, "")
+            write(self.gen_file, "        obj_0 = vnc_api.%s(name=self.properties[self.NAME],"
+                %(self.resource_dict['class']))
+            write(self.gen_file, "            parent_obj=parent_obj)")
+        else:
+            write(self.gen_file, "        obj_0 = vnc_api.%s(name=self.properties[self.NAME])"
+                %(self.resource_dict['class']))
+        write(self.gen_file, "")
 
-        write(self.gen_file, "        obj_0 = vnc_api.%s(name=self.properties[self.NAME],"
-            %(self.resource_dict['class']))
-        write(self.gen_file, "            parent_obj=parent_obj)")
+        for key,val in enumerate(self.prop_list):
+            if val['prop_skip']:
+                continue
+            tabs = 8
+            self._set_heat_properties_value(val, tabs, 0, 0)
+
+        # reference object handling
+        self._ref_create_handling()
+
+        tabs = 8
+        write(self.gen_file, "%stry:" %(" "*tabs))
+        tabs = tabs+4
+        write(self.gen_file, "%sobj_uuid = self.vnc_lib().%s_create(obj_0)"
+            %(" "*tabs, self.resource_dict['method']))
+        tabs = tabs-4
+        write(self.gen_file, "%sexcept:" %(" "*tabs))
+        tabs = tabs+4
+        write(self.gen_file, "%sraise Exception(_('%s %%s could not be updated.') %% self.name)" %(" "*tabs, self.resource_name))
+        write(self.gen_file, "")
+        write(self.gen_file, "        self.resource_id_set(obj_uuid)")
+        write(self.gen_file, "")
+    #end _gen_heat_handle_create
+
+    def _gen_heat_handle_update(self):
+        tabs = 4
+        write(self.gen_file, "%sdef handle_update(self, json_snippet, tmpl_diff, prop_diff):" %(" "*tabs))
+        tabs = tabs+4
+        write(self.gen_file, "%stry:" %(" "*tabs))
+        tabs = tabs+4
+        write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, self.resource_dict['method']))
+        tabs = tabs+4
+        write(self.gen_file, "%sid=self.resource_id" %(" "*tabs))
+        tabs = tabs-4
+        write(self.gen_file, "%s)" %(" "*tabs))
+        tabs = tabs-4
+        write(self.gen_file, "%sexcept:" %(" "*tabs))
+        tabs = tabs+4
+        write(self.gen_file, "%sraise Exception(_('%s %%s not found.') %% self.name)" %(" "*tabs, self.resource_name))
         write(self.gen_file, "")
 
         for key,val in enumerate(self.prop_list):
@@ -1451,68 +1595,20 @@ class IFMapApiGenerator(object):
             self._set_heat_properties_value(val, tabs, 0, 0)
 
         write(self.gen_file, "")
-        write(self.gen_file, "        obj_uuid = self.vnc_lib().%s_create(obj_0)"
-            %(self.resource_dict['method']))
-        write(self.gen_file, "        store_uuid = '%s#' %(obj_uuid)")
+
+        tabs = 8
+        write(self.gen_file, "%stry:" %(" "*tabs))
+        tabs = tabs+4
+        write(self.gen_file, "%sself.vnc_lib().%s_update(obj_0)"
+            %(" "*tabs, self.resource_dict['method']))
+        tabs = tabs-4
+        write(self.gen_file, "%sexcept:" %(" "*tabs))
+        tabs = tabs+4
+        write(self.gen_file, "%sraise Exception(_('%s %%s could not be updated.') %% self.name)" %(" "*tabs, self.resource_name))
         write(self.gen_file, "")
 
-        for key,val in enumerate(self.ref_list):
-            if val['prop_skip']:
-                continue
-            ref_name = val['prop_name'].replace("_refs_data","")
-            ref_name_type = ref_name.replace("_","-")
-
-            tabs = 8
-            write(self.gen_file, "%s# reference to %s" %(" "*tabs, ref_name))
-            write(self.gen_file, "%sobj_1 = None" %(" "*tabs))
-            self._set_heat_properties_value(val, tabs, 0, 1)
-
-            if not ref_name.endswith('_refs'):
-                ref_name = ref_name+"_refs"
-            write(self.gen_file, "%sif self.properties.get(self.%s):" %(" "*tabs, ref_name.upper()))
-            tabs = tabs+4
-            write(self.gen_file, "%stry:" %(" "*tabs))
-            tabs = tabs+4
-            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
-            tabs = tabs+4
-            write(self.gen_file, "%sid=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
-            tabs = tabs-4
-            write(self.gen_file, "%s)" %(" "*tabs))
-            tabs = tabs-4
-            write(self.gen_file, "%sexcept:" %(" "*tabs))
-            tabs = tabs+4
-            write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
-            tabs = tabs+4
-            write(self.gen_file, "%sfq_name_str=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
-            tabs = tabs-4
-            write(self.gen_file, "%s)" %(" "*tabs))
-            tabs = tabs-4
-
-            write(self.gen_file, "%sself.vnc_lib().ref_update("
-                %(" "*tabs))
-            tabs = tabs+4
-            write(self.gen_file, "%s\'%s\', obj_uuid," %(" "*tabs, self.resource_name))
-            write(self.gen_file, "%s\'%s\', ref_obj.uuid," %(" "*tabs, ref_name_type.replace("-refs", "")))
-            write(self.gen_file, "%sNone, \'ADD\', obj_1" %(" "*(tabs)))
-            tabs = tabs-4
-            write(self.gen_file, "%s)" %(" "*tabs))
-
-            write(self.gen_file, "%sstore_uuid += '%s'" %(" "*tabs, ref_name_type.replace("-refs", "")))
-            write(self.gen_file, "            store_uuid += ':%s|' %(ref_obj.uuid)")
-            tabs = tabs-4
-            write(self.gen_file, "%s# End: reference to %s" %(" "*tabs, ref_name))
-            write(self.gen_file, "")
-
-        write(self.gen_file, "        if store_uuid[-1] == '|':")
-        write(self.gen_file, "            store_uuid = store_uuid[:-1]")
-        write(self.gen_file, "        self.resource_id_set(store_uuid)")
-        write(self.gen_file, "")
-    #end _gen_heat_handle_create
-
-    def _gen_heat_handle_update(self):
-            write(self.gen_file, "    def handle_update(self, json_snippet, tmpl_diff, prop_diff):")
-            write(self.gen_file, "        pass")
-            write(self.gen_file, "")
+        # reference object handling
+        self._ref_modify_handling()
     #end _gen_heat_handle_update
 
     def _gen_heat_handle_delete(self):
@@ -1520,19 +1616,8 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "        if self.resource_id is None:")
         write(self.gen_file, "            return")
         write(self.gen_file, "")
-        write(self.gen_file, "        obj_uuid, obj_resources = self.resource_id.split('#')")
-        write(self.gen_file, "        if obj_resources:")
-        write(self.gen_file, "            resources = obj_resources.split('|')")
-        write(self.gen_file, "            for resource in resources:")
-        write(self.gen_file, "                r_name, r_uuid = resource.split(':')")
-        write(self.gen_file, "                self.vnc_lib().ref_update(")
-        write(self.gen_file, "                    \'%s\', obj_uuid," %(self.resource_name))
-        write(self.gen_file, "                    r_name, r_uuid,")
-        write(self.gen_file, "                    None, \'DELETE\'")
-        write(self.gen_file, "                )")
-
         write(self.gen_file, "        try:")
-        write(self.gen_file, "            self.vnc_lib().%s_delete(id=obj_uuid)"
+        write(self.gen_file, "            self.vnc_lib().%s_delete(id=self.resource_id)"
             %(self.resource_dict['method']))
         write(self.gen_file, "        except Exception as ex:")
         write(self.gen_file, "            self._ignore_not_found(ex)")
@@ -1545,15 +1630,8 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "    def _show_resource(self):")
         write(self.gen_file, "        obj = self.vnc_lib().%s_read(id=self.resource_id)"
             %(self.resource_dict['method']))
-        write(self.gen_file, "        attrs = {")
-        write(self.gen_file, "            'fq_name': obj.get_fq_name_str(),")
-        for key,val in enumerate(self.prop_list):
-            if val['prop_skip']:
-                continue
-            self._get_heat_properties_value(val,
-                                            "get_"+val['prop_name']+"()")
-        write(self.gen_file, "        }")
-        write(self.gen_file, "        return attrs")
+        write(self.gen_file, "        obj_dict = obj.serialize_to_json()")
+        write(self.gen_file, "        return obj_dict")
         write(self.gen_file, "")
         write(self.gen_file, "")
     #end _gen_heat_show_resource
@@ -1594,6 +1672,9 @@ class IFMapApiGenerator(object):
 
         # list of attributes we can skip
         self.skip_list = ["id_perms", "perms2"]
+        #self.ref_special_handling_list = {}
+        #self.ref_special_handling_list['virtual-machine-interface'] = 'virtual_network_refs'
+        #self.ref_special_handling_list['instance-ip'] = 'virtual_network_refs'
 
         for ident in self._non_exclude_idents():
             #if ident.getName() != "virtual-machine-interface":
@@ -1653,6 +1734,17 @@ class IFMapApiGenerator(object):
                 'prop_skip': True
             })
 
+            # fq_name is by default
+            self.prop_list.append({
+                'prop_name': 'fq_name',
+                'prop_type': 'STRING',
+                'prop_restr': None,
+                'prop_is_array': False,
+                'prop_list' : [],
+                'prop_get_list' : [],
+                'prop_skip': True
+            })
+
             # build heat properties
             self._build_heat_properties()
 
@@ -1680,9 +1772,11 @@ class IFMapApiGenerator(object):
             self._gen_heat_properties_schema()
 
             # generate resource handle_create method
+            self.heat_handling = 0
             self._gen_heat_handle_create()
 
             # generate resource handle_update method
+            self.heat_handling = 1
             self._gen_heat_handle_update()
 
             # generate resource handle_delete method
