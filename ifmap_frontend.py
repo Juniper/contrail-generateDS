@@ -244,6 +244,25 @@ class IFMapApiGenerator(object):
                 write(gen_file, "    prop_list_field_has_wrappers['%s'] = %s" %(k,v))
             write(gen_file, "")
 
+            prop_map_fields = [prop.getName().replace('-', '_')
+                for prop in ident.getProperties() if prop.isMap()]
+            write(gen_file, "    prop_map_fields = set(%s)" %(prop_map_fields))
+            write(gen_file, "")
+            prop_map_field_has_wrapper_vals = [
+                ('%s' %(prop.getName().replace('-', '_')),
+                 prop.isMapUsingWrapper()) for prop in ident.getProperties() if prop.isMap()]
+            write(gen_file, "    prop_map_field_has_wrappers = {}")
+            for k,v in prop_map_field_has_wrapper_vals:
+                write(gen_file, "    prop_map_field_has_wrappers['%s'] = %s" %(k,v))
+            write(gen_file, "")
+            prop_map_field_key_name_vals = [
+                ('%s' %(prop.getName().replace('-', '_')),
+                 prop.getMapKeyName()) for prop in ident.getProperties() if prop.isMap()]
+            write(gen_file, "    prop_map_field_key_names = {}")
+            for k,v in prop_map_field_key_name_vals:
+                write(gen_file, "    prop_map_field_key_names['%s'] = '%s'" %(k,v))
+            write(gen_file, "")
+
             # init args are name, parent_obj(if there is one), props
             init_args = "self, name = None"
             if parents:
@@ -653,6 +672,8 @@ class IFMapApiGenerator(object):
             write(gen_file, "        self._pending_field_updates = set(pending_fields)")
             write(gen_file, "        # dict of prop-list-fields with list of opers")
             write(gen_file, "        self._pending_field_list_updates = {}")
+            write(gen_file, "        # dict of prop-map-fields with list of opers")
+            write(gen_file, "        self._pending_field_map_updates = {}")
             write(gen_file, "        self._pending_ref_updates = set([])")
             write(gen_file, "")
             write(gen_file, "        super(%s, self).__init__(%s, *args, **kwargs)" %(class_name, super_args))
@@ -669,6 +690,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "    def clear_pending_updates(self):")
             write(gen_file, "        self._pending_field_updates = set([])")
             write(gen_file, "        self._pending_field_list_updates = {}")
+            write(gen_file, "        self._pending_field_map_updates = {}")
             write(gen_file, "        self._pending_ref_updates = set([])")
             write(gen_file, "    #end clear_pending_updates")
             write(gen_file, "")
@@ -688,7 +710,8 @@ class IFMapApiGenerator(object):
                     write(gen_file, "            if kwargs['%s'] is None:" % prop_name)
                     write(gen_file, "                props_dict['%s'] = None" % prop_name)
                     write(gen_file, "            else:")
-                    if prop.isList() and not prop.isListUsingWrapper():
+                    if ((prop.isList() and not prop.isListUsingWrapper()) or
+                        (prop.isMap() and not prop.isMapUsingWrapper())):
                         write(gen_file, "                props_dict['%s'] = []" %(prop_name))
                         write(gen_file, "                for elem in kwargs['%s']:" %(prop_name))
                         write(gen_file, "                    props_dict['%s'].append(" %(prop_name))
@@ -797,6 +820,11 @@ class IFMapApiGenerator(object):
                     write(gen_file, "            # set clobbers earlier add/del on prop list elements")
                     write(gen_file, "            del self._pending_field_list_updates['%s']" %(prop_name))
                     write(gen_file, "")
+                if prop.isMap():
+                    write(gen_file, "        if '%s' in self._pending_field_map_updates:" %(prop_name))
+                    write(gen_file, "            # set clobbers earlier add/del on prop map elements")
+                    write(gen_file, "            del self._pending_field_map_updates['%s']" %(prop_name))
+                    write(gen_file, "")
                 write(gen_file, "        self._%s = %s" %(prop_name, prop_name))
                 write(gen_file, "    #end %s" %(prop_name))
                 write(gen_file, "")
@@ -836,6 +864,40 @@ class IFMapApiGenerator(object):
                 write(gen_file, "                ('delete', None, elem_position)]")
                 write(gen_file, "        else:")
                 write(gen_file, "            self._pending_field_list_updates['%s'].append(" %(prop_name))
+                write(gen_file, "                ('delete', None, elem_position))")
+                write(gen_file, "    #end del_%s" %(prop_name))
+
+            # Atomic Setters for properties that are maps
+            for prop in ident.getProperties():
+                if not prop.isMap():
+                    continue
+                prop_name = prop.getName().replace('-', '_')
+                write(gen_file, "    def add_%s(self, elem):" %(prop_name))
+                write(gen_file, '        """Add element to %s for %s.' %(prop.getName(), ident.getName()))
+                write(gen_file, '        ')
+                write(gen_file, '        :param elem: %s object' % (prop_type))
+                write(gen_file, '        ')
+                write(gen_file, '        """')
+                write(gen_file, "        elem_position = getattr(elem, '%s')" %(prop.getMapKeyName()))
+                write(gen_file, "        if '%s' not in self._pending_field_map_updates:" %(prop_name))
+                write(gen_file, "            self._pending_field_map_updates['%s'] = [" %(prop_name))
+                write(gen_file, "                ('set', elem, elem_position)]")
+                write(gen_file, "        else:")
+                write(gen_file, "            self._pending_field_map_updates['%s'].append(" %(prop_name))
+                write(gen_file, "                ('set', elem, elem_position))")
+                write(gen_file, "    #end set_%s" %(prop_name))
+                write(gen_file, "")
+                write(gen_file, "    def del_%s(self, elem_position):" %(prop_name))
+                write(gen_file, '        """Delete element from %s for %s.' %(prop.getName(), ident.getName()))
+                write(gen_file, '        ')
+                write(gen_file, '        :param elem_position: string indicating map-key')
+                write(gen_file, '        ')
+                write(gen_file, '        """')
+                write(gen_file, "        if '%s' not in self._pending_field_map_updates:" %(prop_name))
+                write(gen_file, "            self._pending_field_map_updates['%s'] = [" %(prop_name))
+                write(gen_file, "                ('delete', None, elem_position)]")
+                write(gen_file, "        else:")
+                write(gen_file, "            self._pending_field_map_updates['%s'].append(" %(prop_name))
                 write(gen_file, "                ('delete', None, elem_position))")
                 write(gen_file, "    #end del_%s" %(prop_name))
 
@@ -2136,7 +2198,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "    #end post_%s_read" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def pre_%s_update(self, resource_id, resource_dict," %(method_name))
-            write(gen_file, "            prop_list_updates=None, ref_update=None, **kwargs):")
+            write(gen_file, "            prop_collection_updates=None, ref_update=None, **kwargs):")
             write(gen_file, '        """')
             write(gen_file, "        Method called before %s is updated" %(ident_name))
             write(gen_file, '        """')
@@ -2144,7 +2206,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "    #end pre_%s_update" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def post_%s_update(self, resource_id, resource_dict, old_dict," %(method_name))
-            write(gen_file, "            prop_list_updates=None, ref_update=None, **kwargs):")
+            write(gen_file, "            prop_collection_updates=None, ref_update=None, **kwargs):")
             write(gen_file, '        """')
             write(gen_file, "        Method called after %s is updated" %(ident_name))
             write(gen_file, '        """')

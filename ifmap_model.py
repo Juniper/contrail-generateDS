@@ -350,6 +350,18 @@ class IFMapProperty(IFMapMetadata):
         idl_prop = self._idl_info[0]
         return idl_prop.IsList()
 
+    def isMap(self):
+        idl_prop = self._idl_info[0]
+        return idl_prop.IsMap() or self._xelement.maxOccurs > 1
+
+    def isMapUsingWrapper(self):
+        idl_prop = self._idl_info[0]
+        return idl_prop.IsMap()
+
+    def getMapKeyName(self):
+        idl_prop = self._idl_info[0]
+        return idl_prop.map_key_name
+
     def Resolve(self, xsdTypeDict, cTypeDict):
         xtypename = self.getXsdType()
         self._complexType = ComplexTypeLocate(xsdTypeDict, cTypeDict, xtypename)

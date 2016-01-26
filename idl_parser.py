@@ -14,13 +14,18 @@ import sys
 
 class IDLParser(object):
     class Property(object):
-        #def __init__(self, prop_name):
-        def __init__(self, prop_name, is_list=False):
+        def __init__(self, prop_name, is_list=False,
+                     is_map=False, map_key_name=None):
             self.name = prop_name
             self.is_list = is_list
+            self.is_map = is_map
+            self.map_key_name = map_key_name
 
         def IsList(self):
             return self.is_list == True
+
+        def IsMap(self):
+            return self.is_map == True
     # end class Property
 
     class Link(object):
@@ -78,8 +83,7 @@ class IDLParser(object):
             idl_prop, idents = self._ElementDict[prop_name]
             idents.append(ident_name)
         except KeyError:
-            #idl_prop = IDLParser.Property(prop_name)
-            idl_prop = IDLParser.Property(prop_name, is_list=False)
+            idl_prop = IDLParser.Property(prop_name)
             self._ElementDict[prop_name] = (idl_prop, [ident_name])
 
     def _ListProperty(self, prop_name, ident_name):
@@ -90,6 +94,17 @@ class IDLParser(object):
             idents.append(ident_name)
         except KeyError:
             idl_prop = IDLParser.Property(prop_name, is_list=True)
+            self._ElementDict[prop_name] = (idl_prop, [ident_name])
+
+    def _MapProperty(self, prop_name, ident_name, key_name):
+        logger = logging.getLogger('idl_parser')
+        logger.debug('MapProperty(%s, %s)', prop_name, ident_name)
+        try:
+            idl_prop, idents = self._ElementDict[prop_name]
+            idents.append(ident_name)
+        except KeyError:
+            idl_prop = IDLParser.Property(
+                prop_name, is_map=True, map_key_name=key_name)
             self._ElementDict[prop_name] = (idl_prop, [ident_name])
 
     def _Exclude(self, elem_name, excluded):
