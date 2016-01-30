@@ -1622,14 +1622,15 @@ class IFMapApiGenerator(object):
         tabs = 8
         write(self.gen_file, "%stry:" %(" "*tabs))
         tabs = tabs+4
-        write(self.gen_file, "%sobj_uuid = self.vnc_lib().%s_create(obj_0)"
-            %(" "*tabs, self.resource_dict['method']))
+        write(self.gen_file, "%sobj_uuid = super(Contrail%s, self).resource_create(obj_0)"
+            %(" "*tabs, self.resource_dict['class']))
         tabs = tabs-4
         write(self.gen_file, "%sexcept:" %(" "*tabs))
         tabs = tabs+4
         write(self.gen_file, "%sraise Exception(_('%s %%s could not be updated.') %% self.name)" %(" "*tabs, self.resource_name))
+        tabs = tabs-4
         write(self.gen_file, "")
-        write(self.gen_file, "        self.resource_id_set(obj_uuid)")
+        write(self.gen_file, "%sself.resource_id_set(obj_uuid)" %(" "*tabs))
         write(self.gen_file, "")
     #end _gen_heat_handle_create
 
