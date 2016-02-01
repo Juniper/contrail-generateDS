@@ -1554,7 +1554,7 @@ class IFMapApiGenerator(object):
             write(self.gen_file, "%sself.vnc_lib().ref_update("
                 %(" "*tabs))
             tabs = tabs+4
-            write(self.gen_file, "%s\'%s\', obj_uuid," %(" "*tabs, self.resource_dict['method']))
+            write(self.gen_file, "%s\'%s\', obj_0.uuid," %(" "*tabs, self.resource_dict['method']))
             write(self.gen_file, "%s\'%s\', ref_obj.uuid," %(" "*tabs, ref_name_type.replace("-refs", "")))
             write(self.gen_file, "%sref_obj.fq_name, \'ADD\', obj_1" %(" "*(tabs)))
             tabs = tabs-4
@@ -1640,7 +1640,7 @@ class IFMapApiGenerator(object):
         tabs = tabs+4
         write(self.gen_file, "%stry:" %(" "*tabs))
         tabs = tabs+4
-        write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, self.resource_dict['method']))
+        write(self.gen_file, "%sobj_0 = self.vnc_lib().%s_read(" %(" "*tabs, self.resource_dict['method']))
         tabs = tabs+4
         write(self.gen_file, "%sid=self.resource_id" %(" "*tabs))
         tabs = tabs-4
