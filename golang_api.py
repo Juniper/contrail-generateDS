@@ -306,7 +306,7 @@ func (obj *%(camel)s) SetParent(parent contrail.IObject) {
         obj.VSetParent(obj, parent)
 }
 
-func (obj *%(camel)s) addChange(
+func (obj *%(camel)s) storeReferenceBase(
         name string, refList contrail.ReferenceList) {
         if obj.originalMap == nil {
                 obj.originalMap = make(map[string]contrail.ReferenceList)
@@ -314,6 +314,14 @@ func (obj *%(camel)s) addChange(
         var refCopy contrail.ReferenceList
         copy(refCopy, refList)
         obj.originalMap[name] = refCopy
+}
+
+func (obj *%(camel)s) hasReferenceBase(name string) bool {
+        if obj.originalMap == nil {
+                return false
+        }
+        _, exists := obj.originalMap[name]
+        return exists
 }
 
 func (obj *%(camel)s) UpdateDone() {
@@ -452,7 +460,7 @@ func (obj *%(typecamel)s) Add%(fieldcamel)s(
         }
 
         if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
-                obj.addChange("%(fieldname)s", obj.%(fieldid)s_refs)
+                obj.storeReferenceBase("%(fieldname)s", obj.%(fieldid)s_refs)
         }
 
         ref := contrail.Reference {
@@ -469,7 +477,7 @@ func (obj *%(typecamel)s) Delete%(fieldcamel)s(uuid string) error {
         }
 
         if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
-                obj.addChange("%(fieldname)s", obj.%(fieldid)s_refs)
+                obj.storeReferenceBase("%(fieldname)s", obj.%(fieldid)s_refs)
         }
 
         for i, ref := range obj.%(fieldid)s_refs {
@@ -485,10 +493,9 @@ func (obj *%(typecamel)s) Delete%(fieldcamel)s(uuid string) error {
 }
 
 func (obj *%(typecamel)s) Clear%(fieldcamel)s() {
-        if obj.valid & %(typeid)s_%(fieldid)s_refs != 0 {
-                obj.addChange("%(fieldname)s", obj.%(fieldid)s_refs)
-        } else {
-                obj.addChange("%(fieldname)s", contrail.ReferenceList{})
+        if (obj.valid & %(typeid)s_%(fieldid)s_refs != 0) &&
+           (obj.modified & %(typeid)s_%(fieldid)s_refs == 0) {
+                obj.storeReferenceBase("%(fieldname)s", obj.%(fieldid)s_refs)
         }
         obj.%(fieldid)s_refs = make([]contrail.Reference, 0)
         obj.valid |= %(typeid)s_%(fieldid)s_refs
@@ -710,17 +717,13 @@ func (obj *%(camel)s) UpdateObject() ([]byte, error) {
                                 return nil, err
                         }
                         msg["%(fieldid)s_refs"] = &value
-                } else {
-                        prev := obj.originalMap["%(fieldname)s"]
-                        if len(prev) == 0 {
-                                var value json.RawMessage
-                                value, err := json.Marshal(
-                                        &obj.%(fieldid)s_refs)
-                                if err != nil {
-                                        return nil, err
-                                }
-                                msg["%(fieldid)s_refs"] = &value
+                } else if !obj.hasReferenceBase("%(fieldname)s") {
+                        var value json.RawMessage
+                        value, err := json.Marshal(&obj.%(fieldid)s_refs)
+                        if err != nil {
+                                return nil, err
                         }
+                        msg["%(fieldid)s_refs"] = &value
                 }
         }
 
@@ -753,7 +756,9 @@ func (obj *%(camel)s) UpdateReferences() error {
                 continue
             link_to = ident.getLinkTo(link_info)
             decl = """
-        if obj.modified & %(typeid)s_%(fieldid)s_refs != 0 {
+        if (obj.modified & %(typeid)s_%(fieldid)s_refs != 0) &&
+           len(obj.%(fieldid)s_refs) > 0 &&
+           obj.hasReferenceBase("%(fieldname)s") {
                 err := obj.UpdateReference(
                         obj, "%(fieldname)s",
                         obj.%(fieldid)s_refs,
