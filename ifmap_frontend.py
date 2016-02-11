@@ -1313,8 +1313,9 @@ class IFMapApiGenerator(object):
                 len(prop['prop_get_list']), self._get_prop_hierarchy(prop, False)))
             tabs=tabs+4
         if not prop['prop_list']:
-            write(self.gen_file, "%sobj_%s.set_%s(%s)"
-                %(" "*tabs, obj_index, prop['prop_name'], self._get_prop_hierarchy(prop, True)))
+            oper_str = "add" if prop['prop_is_list'] else "set"
+            write(self.gen_file, "%sobj_%s.%s_%s(%s)"
+                %(" "*tabs, obj_index, oper_str, prop['prop_name'], self._get_prop_hierarchy(prop, True)))
             return
 
         prop_name = prop['prop_name']
