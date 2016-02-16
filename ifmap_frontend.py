@@ -1303,7 +1303,7 @@ class IFMapApiGenerator(object):
     def _set_heat_properties_value(self, prop, tabs, obj_index, skip):
         if prop['prop_name'].endswith("_refs"):
             return
-        write(self.gen_file, "%sif %s:" %(tabs*" ",
+        write(self.gen_file, "%sif %s is not None:" %(tabs*" ",
             self._get_prop_hierarchy(prop, False)))
         tabs=tabs+4
         prop_type = self._get_heat_prop_type(prop['prop_type'],
