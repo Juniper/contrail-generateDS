@@ -17,6 +17,7 @@ class TypeClassGenerator(object):
 
         file.write('\nstruct %s : public AutogenProperty {\n' % ctype.getName())
 
+        file.write('    %s();\n' % ctype.getName())
         file.write('    virtual ~%s();\n' % ctype.getName())
 
         members = ctype.getDataMembers()
@@ -83,6 +84,14 @@ class TypeImplGenerator(object):
         pass
 
     def GenerateType(self, file, ctype):
+        construct = """
+%(class)s::%(class)s() {
+    Clear();
+}
+""" % {'class': ctype.getName()}
+
+        file.write(construct)
+
         destruct = """
 %(class)s::~%(class)s() {
 }
