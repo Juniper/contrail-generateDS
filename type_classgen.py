@@ -17,6 +17,7 @@ class TypeClassGenerator(object):
 
         file.write('\nstruct %s : public AutogenProperty {\n' % ctype.getName())
 
+        file.write('    %s() { Clear(); }\n' % ctype.getName())
         file.write('    virtual ~%s();\n' % ctype.getName())
 
         members = ctype.getDataMembers()
