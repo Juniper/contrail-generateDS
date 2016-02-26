@@ -43,7 +43,6 @@ class IFMapApiGenerator(object):
         # These produce classes/files per type
         self._generate_common_classes(gen_filepath_pfx)
         self._generate_client_classes(gen_filepath_pfx, gen_filename_pfx)
-        self._generate_server_classes(gen_filepath_pfx, gen_filename_pfx)
         self._generate_test_classes(gen_filepath_pfx, gen_filename_pfx)
         self._generate_heat_resources(gen_filepath_pfx, gen_filename_pfx)
         #self._generate_docs_classes(gen_filepath_pfx, gen_filename_pfx)
@@ -1006,68 +1005,6 @@ class IFMapApiGenerator(object):
             write(gen_file, "#end class %s" %(class_name))
             write(gen_file, "")
     #end _generate_client_classes
-
-    def _generate_server_classes(self, gen_filepath_pfx, gen_filename_pfx):
-        gen_file = self._xsd_parser.makeFile(gen_filepath_pfx + "_server.py")
-        write(gen_file, "")
-        write(gen_file, "# AUTO-GENERATED file from %s. Do Not Edit!" \
-              %(self.__class__.__name__))
-        write(gen_file, "")
-        write(gen_file, "from %s_common import *" %(gen_filename_pfx))
-        write(gen_file, "")
-
-        for ident in self._non_exclude_idents():
-            ident_name = ident.getName()
-            method_name = ident_name.replace('-', '_')
-            camel_name = CamelCase(ident_name)
-            write(gen_file, "class %sServerGen(%s):" %(camel_name, camel_name))
-            write(gen_file, "    generate_default_instance = True")
-            write(gen_file, "")
-            # HTTP methods
-            write(gen_file, "    @classmethod")
-            write(gen_file, "    def http_get(cls, id):")
-            write(gen_file, "        return True, ''")
-            write(gen_file, "    #end http_get")
-            write(gen_file, "")
-            write(gen_file, "    @classmethod")
-            write(gen_file, "    def http_put(cls, id, fq_name, obj, db_conn):")
-            write(gen_file, "        return True, ''")
-            write(gen_file, "    #end http_put")
-            write(gen_file, "")
-            write(gen_file, "    @classmethod")
-            write(gen_file, "    def http_post(cls, tenant_name, obj):")
-            write(gen_file, "        return True, ''")
-            write(gen_file, "    #end http_post")
-            write(gen_file, "")
-            write(gen_file, "    @classmethod")
-            write(gen_file, "    def http_delete(cls, id, obj, db_conn):")
-            write(gen_file, "        return True, ''")
-            write(gen_file, "    #end http_delete")
-            write(gen_file, "")
-            write(gen_file, "    @classmethod")
-            write(gen_file, "    def http_post_collection(cls, tenant_name, obj, db_conn):")
-            write(gen_file, "        return True, ''")
-            write(gen_file, "    #end http_post")
-            write(gen_file, "")
-            # Notification methods
-            write(gen_file, "    @classmethod")
-            write(gen_file, "    def dbe_create_notification(cls, obj_ids, obj_dict):")
-            write(gen_file, "        pass")
-            write(gen_file, "    #end dbe_create_notification")
-            write(gen_file, "")
-            write(gen_file, "    @classmethod")
-            write(gen_file, "    def dbe_update_notification(cls, obj_ids):")
-            write(gen_file, "        pass")
-            write(gen_file, "    #end dbe_update_notification")
-            write(gen_file, "")
-            write(gen_file, "    @classmethod")
-            write(gen_file, "    def dbe_delete_notification(cls, obj_ids, obj_dict):")
-            write(gen_file, "        pass")
-            write(gen_file, "    #end dbe_delete_notification")
-            write(gen_file, "")
-            write(gen_file, "#end class %sServerGen" %(camel_name))
-            write(gen_file, "")
-    #end _generate_server_classes
 
     def _create_heat_template_params(self, prop_list):
         # print parameters
