@@ -50,7 +50,6 @@ class IFMapApiGenerator(object):
         # These produce class/file common to all types
         self._generate_conn_drv_impl(gendir + "connection_drv_gen.py", gen_filename_pfx)
         self._generate_client_impl(gendir + "vnc_api_client_gen.py", gen_filename_pfx)
-        self._generate_server_impl(gendir + "vnc_api_server_gen.py", gen_filename_pfx)
         self._generate_extension_impl(gendir + "vnc_api_extension_gen.py", gen_filename_pfx)
         self._generate_test_impl(gendir + "vnc_api_test_gen.py", gen_filename_pfx)
         self._generate_docs_schema(gendir + "vnc_api_schema.py", gen_filename_pfx)
@@ -2178,19 +2177,6 @@ class IFMapApiGenerator(object):
             write(gen_file, "    '%s'," %(ident_name))
         write(gen_file, "    ])")
     #end _generate_client_impl
-
-    def _generate_server_impl(self, gen_fname, gen_type_pfx):
-        gen_file = self._xsd_parser.makeFile(gen_fname)
-        write(gen_file, "")
-        write(gen_file, "# AUTO-GENERATED file from %s. Do Not Edit!" \
-              %(self.__class__.__name__))
-        write(gen_file, "")
-        write(gen_file, "all_resource_types = set([")
-        for ident in self._non_exclude_idents():
-            ident_name = ident.getName()
-            write(gen_file, "    '%s'," %(ident_name))
-        write(gen_file, "    ])")
-    #end _generate_server_impl
 
     def _generate_extension_impl(self, gen_fname, gen_type_pfx):
         gen_file = self._xsd_parser.makeFile(gen_fname)
