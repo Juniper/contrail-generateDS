@@ -1287,6 +1287,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "    from heat.common.i18n import _")
         write(self.gen_file, "except ImportError:")
         write(self.gen_file, "    pass")
+        write(self.gen_file, "from heat.engine import attributes")
         write(self.gen_file, "from heat.engine import constraints")
         write(self.gen_file, "from heat.engine import properties")
         write(self.gen_file, "try:")
@@ -1392,20 +1393,41 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "    }")
         write(self.gen_file, "")
 
-        write(self.gen_file, "    attributes_schema = {")
+        tabs=4
+        write(self.gen_file, "%sattributes_schema = {" %(" "*tabs))
+        tabs=tabs+4
         for key,val in enumerate(self.prop_list):
             prop_long_name = self._get_prop_long_name(val)
-            write(self.gen_file, "        \"%s\":_(\"%s\")," %(prop_long_name, prop_long_name))
+            write(self.gen_file, "%s%s: attributes.Schema(" %(" "*tabs,
+                prop_long_name.upper()))
+            tabs=tabs+4
+            write(self.gen_file, "%s_('%s.')," %(tabs*" ",
+                prop_long_name.upper()))
+            tabs=tabs-4
+            write(self.gen_file, "%s)," %(tabs*" "))
+
         for key,val in enumerate(self.ref_list):
             prop_long_name = self._get_prop_long_name(val)
-            write(self.gen_file, "        \"%s\":_(\"%s\")," %(prop_long_name, prop_long_name))
+            write(self.gen_file, "%s%s: attributes.Schema(" %(" "*tabs,
+                prop_long_name.upper()))
+            tabs=tabs+4
+            write(self.gen_file, "%s_('%s.')," %(tabs*" ",
+                prop_long_name.upper()))
+            tabs=tabs-4
+            write(self.gen_file, "%s)," %(tabs*" "))
         for key,val in enumerate(self.parent_list):
             prop_long_name = self._get_prop_long_name(val)
-            write(self.gen_file, "        \"%s\":_(\"%s\")," %(prop_long_name, prop_long_name))
-        write(self.gen_file, "        \"show\": _(\"All attributes.\"),")
-        write(self.gen_file, "    }")
+            write(self.gen_file, "%s%s: attributes.Schema(" %(" "*tabs,
+                prop_long_name.upper()))
+            tabs=tabs+4
+            write(self.gen_file, "%s_('%s.')," %(tabs*" ",
+                prop_long_name.upper()))
+            tabs=tabs-4
+            write(self.gen_file, "%s)," %(tabs*" "))
+        tabs=tabs-4
+        write(self.gen_file, "%s}" %(" "*tabs))
         write(self.gen_file, "")
-        write(self.gen_file, "    update_allowed_keys = ('Properties',)")
+        write(self.gen_file, "%supdate_allowed_keys = ('Properties',)" %(" "*tabs))
         write(self.gen_file, "")
 
     #end _gen_heat_properties_schema
