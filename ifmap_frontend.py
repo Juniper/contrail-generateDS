@@ -33,6 +33,10 @@ class IFMapApiGenerator(object):
     def Generate(self, gen_filepath_pfx):
         # Grab directory where to generate (if not locally)
         gen_filename_pfx = os.path.basename(gen_filepath_pfx)
+        self._type_genr = TypeGenerator(self._xsd_parser)
+        self._type_genr.setLanguage('py')
+        self._type_genr.generate(self._xsd_root, None, gen_filepath_pfx + "_xsd.py",
+                           genStandAlone = False)
         gendir = os.path.dirname(gen_filepath_pfx)
         if gendir:
            gendir = gendir + '/'
@@ -74,11 +78,6 @@ class IFMapApiGenerator(object):
 
     def _generate_common_classes(self, gen_filepath_pfx):
         # XSD types to python classes
-        type_genr = TypeGenerator(self._xsd_parser)
-        type_genr.setLanguage('py')
-        type_genr.generate(self._xsd_root, None, gen_filepath_pfx + "_xsd.py",
-                           genStandAlone = False)
-
         gen_file = self._xsd_parser.makeFile(gen_filepath_pfx + "_common.py")
         write(gen_file, "")
         write(gen_file, "# AUTO-GENERATED file from %s. Do Not Edit!" \
@@ -267,7 +266,10 @@ class IFMapApiGenerator(object):
                 init_args = init_args + ", parent_obj = None"
             for prop in ident.getProperties():
                 prop_name = prop.getName().replace('-', '_')
-                init_args = init_args + ", %s = None" %(prop_name)
+                prop_type = prop.getElement().getType()
+                default = prop.getElement().getDefault()
+                mapped_default = self._type_genr._LangGenr.getMappedDefault(prop_type, default)
+                init_args = init_args + ", %s=%s" %(prop_name, mapped_default)
 
             write(gen_file, "    def __init__(%s, *args, **kwargs):" %(init_args))
             write(gen_file, "        # type-independent fields")
@@ -650,7 +652,10 @@ class IFMapApiGenerator(object):
 
             for prop in ident.getProperties():
                 prop_name = prop.getName().replace('-', '_')
-                init_args = init_args + ", %s = None" %(prop_name)
+                prop_type = prop.getElement().getType()
+                default = prop.getElement().getDefault()
+                mapped_default = self._type_genr._LangGenr.getMappedDefault(prop_type, default)
+                init_args = init_args + ", %s=%s" %(prop_name, mapped_default)
                 super_args = super_args + ", %s" %(prop_name)
 
             write(gen_file, "    def __init__(%s, *args, **kwargs):" %(init_args))

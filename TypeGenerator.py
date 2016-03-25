@@ -954,6 +954,24 @@ class PyGenerator(object):
             self.buildCtorArgs_multilevel_aux(addedArgs, add, parentObj)
         self.buildCtorArgs_aux(addedArgs, add, element)
     
+    def getMappedDefault(self, etype, default):
+        if not default:
+            return 'None'
+        types = self._PGenr
+        if etype in types.IntegerType + (types.FloatType, \
+                     types.DoubleType, types.DecimalType):
+            return default
+        elif etype in types.StringType + (types.TokenType, \
+                       types.DateTimeType, types.TimeType, types.DateType):
+            escape_default = self.escape_string(default)
+            return "\'" + escape_default + "\'"
+        elif etype == types.BooleanType:
+            if default in ('false', '0'):
+                 return "False"
+            elif default in ('true', '1'):
+                 return "True"
+        else:
+            return "\'" + default + "\'"
     
     def buildCtorArgs_aux(self, addedArgs, add, element):
         attrDefs = element.getAttributeDefs()
@@ -970,59 +988,9 @@ class PyGenerator(object):
                 atype = attrDef.getData_type()
             except KeyError:
                 atype = self._PGenr.StringType
-            if atype in self._PGenr.StringType or \
-                atype == self._PGenr.TokenType or \
-                atype == self._PGenr.DateTimeType or \
-                atype == self._PGenr.TimeType or \
-                atype == self._PGenr.DateType:
-                if default is None:
-                    add(", %s=None" % mappedName)
-                else:
-                    default1 = escape_string(default)
-                    add(", %s='%s'" % (mappedName, default1))
-            elif atype in IntegerType:
-                if default is None:
-                    add(', %s=None' % mappedName)
-                else:
-                    add(', %s=%s' % (mappedName, default))
-            elif atype == PositiveIntegerType:
-                if default is None:
-                    add(', %s=None' % mappedName)
-                else:
-                    add(', %s=%s' % (mappedName, default))
-            elif atype == NonPositiveIntegerType:
-                if default is None:
-                    add(', %s=None' % mappedName)
-                else:
-                    add(', %s=%s' % (mappedName, default))
-            elif atype == NegativeIntegerType:
-                if default is None:
-                    add(', %s=None' % mappedName)
-                else:
-                    add(', %s=%s' % (mappedName, default))
-            elif atype == NonNegativeIntegerType:
-                if default is None:
-                    add(', %s=None' % mappedName)
-                else:
-                    add(', %s=%s' % (mappedName, default))
-            elif atype == BooleanType:
-                if default is None:
-                    add(', %s=None' % mappedName)
-                else:
-                    if default in ('false', '0'):
-                        add(', %s=%s' % (mappedName, "False"))
-                    else:
-                        add(', %s=%s' % (mappedName, "True"))
-            elif atype == FloatType or atype == DoubleType or atype == DecimalType:
-                if default is None:
-                    add(', %s=None' % mappedName)
-                else:
-                    add(', %s=%s' % (mappedName, default))
-            else:
-                if default is None:
-                    add(', %s=None' % mappedName)
-                else:
-                    add(", %s='%s'" % (mappedName, default, ))
+            mappedDefault = self.getMappedDefault(atype, default)
+            add(', %s=%s' % (mappedName, mappedDefault))
+
         nestedElements = 0
         for child in element.getChildren():
             cleanName = child.getCleanName()
@@ -1037,68 +1005,8 @@ class PyGenerator(object):
                 add(', %s=None' % cleanName)
             else:
                 childType = child.getType()
-                if childType in self._PGenr.StringType or \
-                    childType == self._PGenr.TokenType or \
-                    childType == self._PGenr.DateTimeType or \
-                    childType == self._PGenr.TimeType or \
-                    childType == self._PGenr.DateType:
-                    if default is None:
-                        add(", %s=None" % cleanName)
-                    else:
-                        default1 = escape_string(default)
-                        add(", %s='%s'" % (cleanName, default1, ))
-                elif (childType in self._PGenr.IntegerType or
-                    childType == self._PGenr.PositiveIntegerType or
-                    childType == self._PGenr.NonPositiveIntegerType or
-                    childType == self._PGenr.NegativeIntegerType or
-                    childType == self._PGenr.NonNegativeIntegerType
-                    ):
-                    if default is None:
-                        add(', %s=None' % cleanName)
-                    else:
-                        add(', %s=%s' % (cleanName, default, ))
-    ##             elif childType in IntegerType:
-    ##                 if default is None:
-    ##                     add(', %s=-1' % cleanName)
-    ##                 else:
-    ##                     add(', %s=%s' % (cleanName, default, ))
-    ##             elif childType == PositiveIntegerType:
-    ##                 if default is None:
-    ##                     add(', %s=1' % cleanName)
-    ##                 else:
-    ##                     add(', %s=%s' % (cleanName, default, ))
-    ##             elif childType == NonPositiveIntegerType:
-    ##                 if default is None:
-    ##                     add(', %s=0' % cleanName)
-    ##                 else:
-    ##                     add(', %s=%s' % (cleanName, default, ))
-    ##             elif childType == NegativeIntegerType:
-    ##                 if default is None:
-    ##                     add(', %s=-1' % cleanName)
-    ##                 else:
-    ##                     add(', %s=%s' % (cleanName, default, ))
-    ##             elif childType == NonNegativeIntegerType:
-    ##                 if default is None:
-    ##                     add(', %s=0' % cleanName)
-    ##                 else:
-    ##                     add(', %s=%s' % (cleanName, default, ))
-                elif childType == self._PGenr.BooleanType:
-                    if default is None:
-                        add(', %s=None' % cleanName)
-                    else:
-                        if default in ('false', '0'):
-                            add(', %s=%s' % (cleanName, "False", ))
-                        else:
-                            add(', %s=%s' % (cleanName, "True", ))
-                elif childType == self._PGenr.FloatType or \
-                    childType == self._PGenr.DoubleType or \
-                    childType == self._PGenr.DecimalType:
-                    if default is None:
-                        add(', %s=None' % cleanName)
-                    else:
-                        add(', %s=%s' % (cleanName, default, ))
-                else:
-                    add(', %s=None' % cleanName)
+                mappedDefault = self.getMappedDefault(childType, default)
+                add(', %s=%s' % (cleanName, mappedDefault))
     # end buildCtorArgs_aux
                     
     def generateEnd(self, wrt, name, s4):
