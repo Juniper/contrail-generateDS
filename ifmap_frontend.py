@@ -216,11 +216,23 @@ class IFMapApiGenerator(object):
             write(gen_file, "    backref_fields = set(%s)" %(back_ref_fields))
             write(gen_file, "    children_fields = set(%s)" %(children_fields))
             write(gen_file, "")
-            prop_field_type_vals = [('%s' %(prop.getName().replace('-', '_')),
-                                     (prop.getCType() is None, '%s' %(prop.getXsdType()))) for prop in ident.getProperties()]
-            write(gen_file, "    prop_field_types = {}")
-            for k,v in prop_field_type_vals:
-                write(gen_file, "    prop_field_types['%s'] = %s" %(k,v))
+            prop_field_types = []
+            for prop in ident.getProperties():
+                name = prop.getName().replace('-', '_')
+                is_complex = prop.getCType() is not None
+                simple_type = prop.getElement().getSimpleType()
+                xsd_type = prop.getElement().getType().replace('xsd:', '')
+                if simple_type:
+                    restrictions = self._xsd_parser.SimpleTypeDict[simple_type].values
+                else:
+                    restrictions = None
+                prop_field_types.append("'%s': %s" %(name,
+                                        {'is_complex': is_complex,
+                                         'restrictions': restrictions,
+                                         'simple_type': simple_type,
+                                         'xsd_type': xsd_type}))
+            write(gen_file, '    prop_field_types = {\n        %s\n    }\n' %(
+                  ',\n        '.join(prop_field_types)))
             write(gen_file, "")
             ref_field_type_vals = [('%s_refs' %(ident.getLinkTo(li).getName().replace('-', '_')),
                                     (ident.getLinkTo(li).getName(),
@@ -254,8 +266,8 @@ class IFMapApiGenerator(object):
                     %(child_field, child_type, is_derived))
             write(gen_file, "")
             if parents:
-                p_class_names = [CamelCase(p_ident.getName())
-                                 for p_ident, _ in parents if p_ident.getName() != 'config-root']
+                p_class_names = [p_ident.getName() for p_ident, _ in parents
+                                 if p_ident.getName() != 'config-root']
                 write(gen_file, "    parent_types = %s" %(p_class_names))
             else:
                 write(gen_file, "    parent_types = []")
@@ -1368,8 +1380,8 @@ class IFMapApiGenerator(object):
         for prop_name in self.cls.prop_fields:
             if prop_name in self.skip_list:
                 continue
-            prop_is_simple = self.cls.prop_field_types[prop_name][0]
-            prop_type = self.cls.prop_field_types[prop_name][1]
+            prop_is_simple = not self.cls.prop_field_types[prop_name]['is_complex']
+            prop_type = self.cls.prop_field_types[prop_name]['xsd_type']
             if prop_is_simple:
                 self._make_heat_prop_list(self.prop_list, prop_name,
                                           prop_type, None, False, [], False)
@@ -1404,8 +1416,8 @@ class IFMapApiGenerator(object):
 
     def _build_heat_parents(self):
         for parent_name in self.cls.parent_types:
-            self._make_heat_prop_list(self.parent_list,
-                self._uncamelize(parent_name), 'string',
+            pname = parent_name.replace('-', '_')
+            self._make_heat_prop_list(self.parent_list, pname, 'string',
                 None, False, [], False)
      #end _build_heat_parents
 
