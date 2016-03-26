@@ -4,6 +4,7 @@
 
 import logging
 import re
+import textwrap
 
 from ifmap_global import getCppType, getJavaType, getGoLangType
 from ifmap_global import IsGeneratedType, CamelCase
@@ -263,9 +264,28 @@ class IFMapIdentifier(IFMapObject):
 class IFMapMetadata(IFMapObject):
     """ Base class for all metadata elements (properties, links)
     """
-    def __init__(self, name):
+    def __init__(self, name, idl_info):
         super(IFMapMetadata, self).__init__(name)
-        self._annotation = None
+        self._idl_info = idl_info
+
+    def getPresence(self):
+        return self._idl_info[0].presence
+
+    def getOperations(self):
+        return self._idl_info[0].operations
+
+    def getDescription(self, width=None):
+        desc = self._idl_info[0].description
+        if width is None and isinstance(desc, basestring):
+            return self._idl_info[0].description
+
+        if isinstance(desc, basestring):
+            return textwrap.wrap(desc, width, break_long_words=False)
+        elif isinstance(desc, list):
+            return ' '.join([textwrap.wrap(d, width, break_long_words=False)
+                            for d in desc])
+        else:
+            return desc
 
     def Resolve(self, xsdTypeDict, cTypeDict):
         pass
@@ -274,9 +294,9 @@ class IFMapMetadata(IFMapObject):
     def Create(name, is_property, annotation, typename):
         if not is_property:
             if typename:
-                meta = IFMapLinkAttr(name)
+                meta = IFMapLinkAttr(name, annotation)
             else:
-                meta = IFMapLink(name)
+                meta = IFMapLink(name, annotation)
         else:
             meta = IFMapProperty(name, annotation)
         return meta
@@ -285,12 +305,11 @@ class IFMapProperty(IFMapMetadata):
     """ Property associated with a single identifier
     """
     def __init__(self, name, idl_info):
-        super(IFMapProperty, self).__init__(name)
+        super(IFMapProperty, self).__init__(name, idl_info)
         self._parent = None
         self._cppname = CamelCase(name)
         self._complexType = None
         self._memberinfo = None
-        self._idl_info = idl_info
 
     def getParent(self):
         return self._parent
@@ -377,8 +396,8 @@ class IFMapProperty(IFMapMetadata):
 class IFMapLink(IFMapMetadata):
     """ Link metadata with no attributes
     """
-    def __init__(self, name):
-        super(IFMapLink, self).__init__(name)
+    def __init__(self, name, idl_info):
+        super(IFMapLink, self).__init__(name, idl_info)
 
     def getCType(self):
         return None
@@ -386,8 +405,8 @@ class IFMapLink(IFMapMetadata):
 class IFMapLinkAttr(IFMapMetadata):
     """ Link metadata with attributes
     """
-    def __init__(self, name):
-        super(IFMapLinkAttr, self).__init__(name)
+    def __init__(self, name, idl_info):
+        super(IFMapLinkAttr, self).__init__(name, idl_info)
         self._cppname = CamelCase(name)
         self._complexType = None
 

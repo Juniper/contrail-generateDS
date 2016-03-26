@@ -120,7 +120,7 @@ class TypeGenerator(object):
                     self._generateFromTree(wrt, prefix, element.getChildren(), processed)
 
     def _generateClasses(self, wrt, prefix, element, delayed):
-        if not element.isComplex():
+        if not element.isComplex() or not element.complexType:
             return
         logging.debug("Generating class for: %s" % element)
         parentName, base = self._PGenr.getParentName(element)
@@ -626,7 +626,34 @@ class PyGenerator(object):
 
         wrt(s1)
         wrt('    """\n')
-        wrt('    %s%s class definition from :doc:`vnc_cfg.xsd`\n' %(prefix, name))
+        for child in self._PGenr.ElementDict[name].children:
+            if child.attrs.get('required'):
+                if child.attrs['required'] != 'system-only':
+                    if child.attrs['required'].lower() == 'true':
+                        created_by = 'User (required)'
+                    else:
+                        created_by = 'User (optional)'
+                else:
+                    created_by = 'System'
+            wrt('    * %s\n' %(child.name.replace('-', '_')))
+            wrt('        Type: ')
+            child_schema_type = child.getSchemaType()
+            if child_schema_type in self._PGenr.SimpleTypeDict:
+                r_base = self._PGenr.SimpleTypeDict[child_schema_type]
+                python_type = self._PGenr.SchemaToPythonTypeMap[r_base.base]
+                wrt('          %s, *one-of* %s\n\n' %(python_type, r_base.values))
+            elif child_schema_type in self._PGenr.SchemaToPythonTypeMap:
+                # simple primitive type
+                python_type = self._PGenr.SchemaToPythonTypeMap[child_schema_type]
+                wrt('          %s\n\n' %(python_type))
+            else: # complex type and not restriction on simple
+                wrt('          :class:`.%s`\n\n' %(child_schema_type))
+            if child.attrs.get('required'):
+                wrt('        Created By: ')
+                wrt('          %s\n\n' %(created_by))
+            if child.attrs.get('description'):
+                wrt('        Description:\n')
+                wrt('          %s\n\n' %(child.attrs['description']))
         wrt('    """\n')
 
     def generateSubclass(self):
@@ -848,7 +875,7 @@ class PyGenerator(object):
             mappedName = self._PGenr.cleanupName(attrDef.getName())
             mappedName = mapName(mappedName)
             logging.debug("Constructor attribute: %s" % mappedName)
-            pythonType = SchemaToPythonTypeMap.get(attrDef.getType())
+            pythonType = self._PGenr.SchemaToPythonTypeMap.get(attrDef.getType())
             attrVal = "_cast(%s, %s)" % (pythonType, mappedName)
             wrt('        self.%s = %s\n' % (mappedName, attrVal))
             member = 1

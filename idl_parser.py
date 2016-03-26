@@ -14,12 +14,18 @@ import sys
 
 class IDLParser(object):
     class Property(object):
-        def __init__(self, prop_name, is_list=False,
-                     is_map=False, map_key_name=None):
+        def __init__(self, prop_name,
+                     presence='optional',
+                     operations='CRUD',
+                     description='',
+                     **kwargs):
             self.name = prop_name
-            self.is_list = is_list
-            self.is_map = is_map
-            self.map_key_name = map_key_name
+            self.is_list = kwargs.get('is_list', 'False')
+            self.is_map = kwargs.get('is_map', 'False')
+            self.map_key_name = kwargs.get('map_key_name')
+            self.presence = presence
+            self.operations = operations
+            self.description = description
 
         def IsList(self):
             return self.is_list == True
@@ -29,8 +35,15 @@ class IDLParser(object):
     # end class Property
 
     class Link(object):
-        def __init__(self, link_name):
+        def __init__(self, link_name,
+                     presence='optional',
+                     operations='CRUD',
+                     description='',
+                     **kwargs):
             self.name = link_name
+            self.presence = presence
+            self.operations = operations
+            self.description = description
     # end class Link
 
     def __init__(self):
@@ -40,13 +53,13 @@ class IDLParser(object):
         xml_comment = re.compile(r'<!--\s*#IFMAP-SEMANTICS-IDL(.*?)-->',
                                  re.DOTALL)
         file_matches = xml_comment.findall(infile.read())
-        # Remove whitespace(incl newline), split at stmt boundary
-        matches = [re.sub('\s', '', match).split(';') for match in file_matches]
+        # Remove newline, split at stmt boundary
+        matches = [re.sub('\n', '', match).split(';') for match in file_matches]
         for statements in matches:
             for stmt in statements:
                 # Oper in idl becomes method
                 try:
-                    eval("self._%s" %(stmt))
+                    eval("self._%s" %(stmt.lstrip()))
                 except TypeError:
                     logger = logging.getLogger('idl_parser')
                     logger.debug('ERROR statement: %s', stmt)
@@ -77,7 +90,6 @@ class IDLParser(object):
         logger.debug('Type(%s, %s)', type_name, attrs)
 
     def _Property(self, prop_name, ident_name,
-                  property_required='OPTIONAL', property_operations='CRUD',
                   *args, **kwargs):
         logger = logging.getLogger('idl_parser')
         logger.debug('Property(%s, %s)', prop_name, ident_name)
@@ -85,11 +97,10 @@ class IDLParser(object):
             idl_prop, idents = self._ElementDict[prop_name]
             idents.append(ident_name)
         except KeyError:
-            idl_prop = IDLParser.Property(prop_name)
+            idl_prop = IDLParser.Property(prop_name, *args, **kwargs)
             self._ElementDict[prop_name] = (idl_prop, [ident_name])
 
     def _ListProperty(self, prop_name, ident_name,
-                      property_required='OPTIONAL', property_operations='CRUD',
                       *args, **kwargs):
         logger = logging.getLogger('idl_parser')
         logger.debug('ListProperty(%s, %s)', prop_name, ident_name)
@@ -97,11 +108,11 @@ class IDLParser(object):
             idl_prop, idents = self._ElementDict[prop_name]
             idents.append(ident_name)
         except KeyError:
-            idl_prop = IDLParser.Property(prop_name, is_list=True)
+            idl_prop = IDLParser.Property(
+                prop_name, *args, is_list=True, **kwargs)
             self._ElementDict[prop_name] = (idl_prop, [ident_name])
 
     def _MapProperty(self, prop_name, ident_name, key_name,
-                     property_required='OPTIONAL', property_operations='CRUD',
                      *args, **kwargs):
         logger = logging.getLogger('idl_parser')
         logger.debug('MapProperty(%s, %s)', prop_name, ident_name)
@@ -110,7 +121,7 @@ class IDLParser(object):
             idents.append(ident_name)
         except KeyError:
             idl_prop = IDLParser.Property(
-                prop_name, is_map=True, map_key_name=key_name)
+                prop_name, *args, is_map=True, map_key_name=key_name, **kwargs)
             self._ElementDict[prop_name] = (idl_prop, [ident_name])
 
     def _Exclude(self, elem_name, excluded):
@@ -118,7 +129,6 @@ class IDLParser(object):
         logger.debug('Exclude(%s, %s)', elem_name, excluded)
 
     def _Link(self, link_name, from_name, to_name, attrs,
-              link_required='OPTIONAL', link_operations='CRUD',
               *args, **kwargs):
         logger = logging.getLogger('idl_parser')
 
@@ -135,7 +145,7 @@ class IDLParser(object):
         # TODO store and handle namespace in identifiers
 
         logger.debug('Link(%s, %s, %s)', from_name, to_name, attrs)
-        idl_link = IDLParser.Link(link_name)
+        idl_link = IDLParser.Link(link_name, *args, **kwargs)
         self._ElementDict[link_name] = (idl_link, from_name, to_name, attrs)
 
 if __name__ == '__main__':

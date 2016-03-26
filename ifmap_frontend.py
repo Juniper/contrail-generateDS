@@ -112,12 +112,44 @@ class IFMapApiGenerator(object):
 
             write(gen_file, "    Properties:")
             for prop in ident.getProperties():
+                prop_name = prop.getName().replace('-', '_')
+                prop_xml_elem = prop.getElement()
                 complex_type = prop.getCType()
                 xsd_type = prop.getXsdType()
-                if complex_type and xsd_type:
-                    write(gen_file, "        * %s (:class:`.%s` type)" %(prop.getName(), prop.getXsdType()))
+                presence = prop.getPresence()
+                if presence.lower() != 'system-only':
+                    # optional or required
+                    created_by = 'User (%s)' %(presence)
                 else:
-                    write(gen_file, "        * %s (%s type)" %(prop.getName(), prop.getXsdType()))
+                    created_by = 'System'
+                if complex_type and xsd_type:
+                    write(gen_file, "        * %s" %(prop_name))
+                    write(gen_file, "            Type: :class:`.%s`\n" %(prop.getXsdType()))
+                    write(gen_file, "            Created By: %s\n" %(created_by))
+                    write(gen_file, "            Operations Allowed: %s\n" %(prop.getOperations()))
+                    write(gen_file, "            Description:\n")
+                    for desc_line in prop.getDescription(width=80):
+                        write(gen_file, "              %s\n" %(desc_line))
+                elif prop_xml_elem.getSchemaType() in self._xsd_parser.SimpleTypeDict:
+                    # handle simple restriction
+                    r_base = self._xsd_parser.SimpleTypeDict[prop_xml_elem.getSchemaType()]
+                    python_type = self._xsd_parser.SchemaToPythonTypeMap[r_base.base]
+                    write(gen_file, "        * %s" %(prop_name))
+                    write(gen_file, "            Type: %s, *one-of* %s\n" %(python_type, r_base.values))
+                    write(gen_file, "            Created By: %s\n" %(created_by))
+                    write(gen_file, "            Operations Allowed: %s\n" %(prop.getOperations()))
+                    write(gen_file, "            Description:\n")
+                    for desc_line in prop.getDescription(width=80):
+                        write(gen_file, "              %s\n" %(desc_line))
+                else:
+                    python_type = self._xsd_parser.SchemaToPythonTypeMap[prop.getXsdType().lower()]
+                    write(gen_file, "        * %s" %(prop_name))
+                    write(gen_file, "            Type: %s\n" %(python_type))
+                    write(gen_file, "            Created By: %s\n" %(created_by))
+                    write(gen_file, "            Operations Allowed: %s\n" %(prop.getOperations()))
+                    write(gen_file, "            Description:\n")
+                    for desc_line in prop.getDescription(width=80):
+                        write(gen_file, "              %s\n" %(desc_line))
             write(gen_file, "")
             write(gen_file, "    Children:")
             for link_info in ident.getLinksInfo():
@@ -125,9 +157,20 @@ class IFMapApiGenerator(object):
                 if not is_has:
                     continue
                 link = ident.getLink(link_info)
+                presence = link.getPresence()
+                if presence.lower() != 'system-only':
+                    # optional or required
+                    created_by = 'User (%s)' %(presence)
+                else:
+                    created_by = 'System'
                 child_ident = ident.getLinkTo(link_info)
                 child_class_name = CamelCase(child_ident.getName())
                 write(gen_file, "        * list of :class:`.%s` objects" %(child_class_name))
+                write(gen_file, "            Created By: %s\n" %(created_by))
+                write(gen_file, "            Operations Allowed: %s\n" %(link.getOperations()))
+                write(gen_file, "            Description:\n")
+                for desc_line in link.getDescription(width=80):
+                    write(gen_file, "              %s\n" %(desc_line))
             write(gen_file, "")
             write(gen_file, "    References to:")
             for link_info in ident.getLinksInfo():
@@ -137,11 +180,22 @@ class IFMapApiGenerator(object):
                 is_ref = ident.isLinkRef(link_info)
                 if not is_ref:
                     continue
+                presence = link.getPresence()
+                if presence.lower() != 'system-only':
+                    # optional or required
+                    created_by = 'User (%s)' %(presence)
+                else:
+                    created_by = 'System'
                 link_attr_type = link.getXsdType()
                 if link_attr_type: # link with attr
                     write(gen_file, "        * list of (:class:`.%s` object, :class:`.%s` attribute)" %(to_class_name, link_attr_type))
                 else:
                     write(gen_file, "        * list of :class:`.%s` objects" %(to_class_name))
+                write(gen_file, "            Created By: %s\n" %(created_by))
+                write(gen_file, "            Operations Allowed: %s\n" %(link.getOperations()))
+                write(gen_file, "            Description:\n")
+                for desc_line in link.getDescription(width=80):
+                    write(gen_file, "              %s\n" %(desc_line))
             write(gen_file, "")
             write(gen_file, "    Referred by:")
             for back_link_info in ident.getBackLinksInfo():
