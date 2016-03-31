@@ -282,8 +282,11 @@ class IFMapMetadata(IFMapObject):
         if isinstance(desc, basestring):
             return textwrap.wrap(desc, width, break_long_words=False)
         elif isinstance(desc, list):
-            return ' '.join([textwrap.wrap(d, width, break_long_words=False)
-                            for d in desc])
+            desc_lines = []
+            for d_line in desc:
+                desc_lines.extend(textwrap.wrap(
+                                  d_line, width, break_long_words=False))
+            return desc_lines
         else:
             return desc
 
