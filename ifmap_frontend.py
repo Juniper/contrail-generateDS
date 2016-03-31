@@ -130,7 +130,7 @@ class IFMapApiGenerator(object):
                     write(gen_file, "            Created By: %s\n" %(created_by))
                     write(gen_file, "            Operations Allowed: %s\n" %(prop.getOperations()))
                     write(gen_file, "            Description:\n")
-                    for desc_line in prop.getDescription(width=80):
+                    for desc_line in prop.getDescription(width=100):
                         write(gen_file, "              %s\n" %(desc_line))
                 elif prop_xml_elem.getSchemaType() in self._xsd_parser.SimpleTypeDict:
                     # handle simple restriction
@@ -141,7 +141,7 @@ class IFMapApiGenerator(object):
                     write(gen_file, "            Created By: %s\n" %(created_by))
                     write(gen_file, "            Operations Allowed: %s\n" %(prop.getOperations()))
                     write(gen_file, "            Description:\n")
-                    for desc_line in prop.getDescription(width=80):
+                    for desc_line in prop.getDescription(width=100):
                         write(gen_file, "              %s\n" %(desc_line))
                 else:
                     python_type = self._xsd_parser.SchemaToPythonTypeMap[prop.getXsdType().lower()]
@@ -150,7 +150,7 @@ class IFMapApiGenerator(object):
                     write(gen_file, "            Created By: %s\n" %(created_by))
                     write(gen_file, "            Operations Allowed: %s\n" %(prop.getOperations()))
                     write(gen_file, "            Description:\n")
-                    for desc_line in prop.getDescription(width=80):
+                    for desc_line in prop.getDescription(width=100):
                         write(gen_file, "              %s\n" %(desc_line))
             write(gen_file, "")
             write(gen_file, "    Children:")
@@ -171,7 +171,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            Created By: %s\n" %(created_by))
                 write(gen_file, "            Operations Allowed: %s\n" %(link.getOperations()))
                 write(gen_file, "            Description:\n")
-                for desc_line in link.getDescription(width=80):
+                for desc_line in link.getDescription(width=100):
                     write(gen_file, "              %s\n" %(desc_line))
             write(gen_file, "")
             write(gen_file, "    References to:")
@@ -196,7 +196,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            Created By: %s\n" %(created_by))
                 write(gen_file, "            Operations Allowed: %s\n" %(link.getOperations()))
                 write(gen_file, "            Description:\n")
-                for desc_line in link.getDescription(width=80):
+                for desc_line in link.getDescription(width=100):
                     write(gen_file, "              %s\n" %(desc_line))
             write(gen_file, "")
             write(gen_file, "    Referred by:")
