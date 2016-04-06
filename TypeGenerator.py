@@ -750,7 +750,8 @@ class PyGenerator(object):
             attr_field_type_vals[name] = {'is_complex': is_complex,
                                           'restrictions': restrictions,
                                           'is_array': is_array,
-                                          'attr_type': attr_type}
+                                          'attr_type': attr_type,
+                                          'simple_type' : child.getSchemaType()}
 
         wrt('    attr_fields = %s\n' %(attr_fields))
         wrt('    attr_field_type_vals = %s\n' %(attr_field_type_vals))
