@@ -1307,7 +1307,7 @@ class IFMapApiGenerator(object):
         return prop_get_str
     #end _get_prop_long_name
 
-    def _set_heat_properties_value(self, prop, tabs, obj_index, skip):
+    def _set_heat_properties_value(self, prop, tabs, obj_index, skip, is_ref_update):
         if prop['prop_name'].endswith("_refs"):
             return
         write(self.gen_file, "%sif %s is not None:" %(tabs*" ",
@@ -1330,11 +1330,14 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "%sobj_%s = vnc_api.%s()" %(tabs*" ", obj_index+1, prop_type))
 
         for key,val in enumerate(prop['prop_list']):
-            self._set_heat_properties_value(val, tabs, obj_index+1, 0)
+            self._set_heat_properties_value(val, tabs, obj_index+1, 0, 0)
 
         if not skip:
             oper_str = "add" if prop['prop_is_list'] else "set"
             write(self.gen_file, "%sobj_%s.%s_%s(obj_%s)" %(tabs*" ", obj_index, oper_str, prop['prop_name'], obj_index+1))
+
+        if is_ref_update:
+            write(self.gen_file, "%sref_data_list.append(obj_%s)" %(" "*tabs, obj_index+1))
     #end _set_heat_properties_value
 
     def _get_heat_properties_value(self, prop, p_prop_name):
@@ -1402,7 +1405,7 @@ class IFMapApiGenerator(object):
             ref_type = self.cls.ref_field_types[ref_name][1]
             skip = False if ref_type is 'None' else True
             self._make_heat_prop_list(self.ref_list, ref_name, 'string',
-                                      None, False, [], skip)
+                                      None, True, [], skip)
             ref_name = self.cls.ref_field_types[ref_name][0].replace("-", "_")
             ref_name = ref_name + "_refs_data"
             try:
@@ -1411,7 +1414,7 @@ class IFMapApiGenerator(object):
                 continue
 
             self._process_heat_complex_property(cls, self.ref_list,
-                ref_name, ref_type, False, False, [])
+                ref_name, ref_type, False, True, [])
      #end _build_heat_refs
 
     def _build_heat_parents(self):
@@ -1522,16 +1525,22 @@ class IFMapApiGenerator(object):
             write(self.gen_file, "%s# reference to %s" %(" "*tabs, ref_name))
             if attr_str:
                 write(self.gen_file, "%sobj_1 = None" %(" "*tabs))
-                self._set_heat_properties_value(val, tabs, 0, 1)
+                self._set_heat_properties_value(val, tabs, 0, 1, 0)
                 write(self.gen_file, "")
 
+            if attr_str:
+                tabs = tabs+8
             write(self.gen_file, "%sif self.properties.get(self.%s):" %(" "*tabs, ref_name.upper()))
             tabs = tabs+4
+            if not attr_str:
+                write(self.gen_file, "%sfor index_%s in range(len(%s)):" %(tabs*" ",
+                    len(val['prop_get_list']), self._get_prop_hierarchy(val, False)))
+                tabs = tabs+4
             write(self.gen_file, "%stry:" %(" "*tabs))
             tabs = tabs+4
             write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
             tabs = tabs+4
-            write(self.gen_file, "%sid=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
+            write(self.gen_file, "%sid=self.properties.get(self.%s)[index_0]" %(" "*tabs, ref_name.upper()))
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
             tabs = tabs-4
@@ -1539,13 +1548,17 @@ class IFMapApiGenerator(object):
             tabs = tabs+4
             write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
             tabs = tabs+4
-            write(self.gen_file, "%sfq_name_str=self.properties.get(self.%s)" %(" "*tabs, ref_name.upper()))
+            write(self.gen_file, "%sfq_name_str=self.properties.get(self.%s)[index_0]" %(" "*tabs, ref_name.upper()))
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
             tabs = tabs-4
             write(self.gen_file, "%sobj_0.add_%s(ref_obj%s)" %(" "*tabs, ref_name.replace("_refs", ""), attr_str))
 	    write(self.gen_file, "")
             tabs = tabs-4
+            if not attr_str:
+                tabs = tabs-4
+            if attr_str:
+                tabs = tabs-8
     # _ref_create_handling
 
     def _ref_modify_handling(self):
@@ -1557,18 +1570,25 @@ class IFMapApiGenerator(object):
 
             tabs = 8
             write(self.gen_file, "%s# reference to %s" %(" "*tabs, ref_name))
-            write(self.gen_file, "%sobj_1 = None" %(" "*tabs))
-            self._set_heat_properties_value(val, tabs, 0, 1)
+            write(self.gen_file, "%sref_obj_list = []" %(" "*tabs))
+            write(self.gen_file, "%sref_data_list = []" %(" "*tabs))
+            self._set_heat_properties_value(val, tabs, 0, 1, 1)
 
+	    ref_attr_data = False
             if not ref_name.endswith('_refs'):
+                ref_attr_data = True
                 ref_name = ref_name+"_refs"
-            write(self.gen_file, "%sif prop_diff.get(self.%s):" %(" "*tabs, ref_name.upper()))
+            tabs=8
+            write(self.gen_file, "%sif self.%s in prop_diff:" %(" "*tabs, ref_name.upper()))
+            tabs = tabs+4
+            write(self.gen_file, "%sfor index_%s in range(len(%s or [])):" %(tabs*" ",
+                len(val['prop_get_list']), self._get_prop_hierarchy(val, False)))
             tabs = tabs+4
             write(self.gen_file, "%stry:" %(" "*tabs))
             tabs = tabs+4
             write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
             tabs = tabs+4
-            write(self.gen_file, "%sid=prop_diff.get(self.%s)" %(" "*tabs, ref_name.upper()))
+            write(self.gen_file, "%sid=prop_diff.get(self.%s)[index_0]" %(" "*tabs, ref_name.upper()))
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
             tabs = tabs-4
@@ -1576,21 +1596,19 @@ class IFMapApiGenerator(object):
             tabs = tabs+4
             write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
             tabs = tabs+4
-            write(self.gen_file, "%sfq_name_str=prop_diff.get(self.%s)" %(" "*tabs, ref_name.upper()))
+            write(self.gen_file, "%sfq_name_str=prop_diff.get(self.%s)[index_0]" %(" "*tabs, ref_name.upper()))
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
             tabs = tabs-4
-
-            write(self.gen_file, "%sself.vnc_lib().ref_update("
-                %(" "*tabs))
-            tabs = tabs+4
-            write(self.gen_file, "%s\'%s\', obj_0.uuid," %(" "*tabs, self.resource_dict['method']))
-            write(self.gen_file, "%s\'%s\', ref_obj.uuid," %(" "*tabs, ref_name_type.replace("-refs", "")))
-            write(self.gen_file, "%sref_obj.fq_name, \'ADD\', obj_1" %(" "*(tabs)))
+            write(self.gen_file, "%sref_obj_list.append(ref_obj.fq_name)" %(" "*tabs))
+            write(self.gen_file, "")
             tabs = tabs-4
-            write(self.gen_file, "%s)" %(" "*tabs))
 
-            tabs = tabs-4
+            if ref_attr_data:
+                write(self.gen_file, "%sobj_0.set_%s_list(ref_obj_list, ref_data_list)" %(" "*tabs, ref_name.replace("_refs", "")))
+            else:
+                write(self.gen_file, "%sobj_0.set_%s_list(ref_obj_list)" %(" "*tabs, ref_name.replace("_refs", "")))
+
             write(self.gen_file, "%s# End: reference to %s" %(" "*tabs, ref_name))
             write(self.gen_file, "")
 
@@ -1644,7 +1662,7 @@ class IFMapApiGenerator(object):
             if val['prop_skip']:
                 continue
             tabs = 8
-            self._set_heat_properties_value(val, tabs, 0, 0)
+            self._set_heat_properties_value(val, tabs, 0, 0, 0)
 
         # reference object handling
         self._ref_create_handling()
@@ -1685,9 +1703,12 @@ class IFMapApiGenerator(object):
             if val['prop_skip']:
                 continue
             tabs = 8
-            self._set_heat_properties_value(val, tabs, 0, 0)
+            self._set_heat_properties_value(val, tabs, 0, 0, 0)
 
         write(self.gen_file, "")
+
+        # reference object handling
+        self._ref_modify_handling()
 
         tabs = 8
         write(self.gen_file, "%stry:" %(" "*tabs))
@@ -1700,8 +1721,6 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "%sraise Exception(_('%s %%s could not be updated.') %% self.name)" %(" "*tabs, self.resource_name))
         write(self.gen_file, "")
 
-        # reference object handling
-        self._ref_modify_handling()
     #end _gen_heat_handle_update
 
     def _gen_heat_handle_delete(self):
