@@ -1752,7 +1752,7 @@ class IFMapApiGenerator(object):
         class_name = self.resource_dict['class']
         write(self.gen_file, "def resource_mapping():")
         write(self.gen_file, "    return {")
-        write(self.gen_file, "        'OS::Contrail::%s': Contrail%s," %(class_name, class_name))
+        write(self.gen_file, "        'OS::ContrailV2::%s': Contrail%s," %(class_name, class_name))
         write(self.gen_file, "    }")
     #end _gen_heat_resource_mapping
 
@@ -1761,7 +1761,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file_templ, "resources:")
         write(self.gen_file_templ, "  template_%s:"
             %(self.resource_dict['class']))
-        write(self.gen_file_templ, "    type: OS::Contrail::%s"
+        write(self.gen_file_templ, "    type: OS::ContrailV2::%s"
             %(self.resource_dict['class']))
         write(self.gen_file_templ, "    properties:")
         self._create_heat_template_resources(self.prop_list, 6, "")
