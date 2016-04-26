@@ -1082,7 +1082,7 @@ class IFMapApiGenerator(object):
             if not val['prop_list']:
                 prop_long_name = self._get_prop_long_name(val)
                 write(self.gen_file_templ, "  %s:" %(prop_long_name))
-                prop_type = self._get_heat_prop_type(val['prop_type'], 
+                prop_type = self._get_heat_prop_type(val['prop_type'],
                                                      val['prop_is_array'])
                 prop_type = self._convert_heat_template_type(prop_type)
                 write(self.gen_file_templ, "    type: %s" %(prop_type).lower())
@@ -1237,7 +1237,7 @@ class IFMapApiGenerator(object):
             prop_type = "LIST"
         write(self.gen_file, "%sproperties.Schema.%s," %(tabs*" ", prop_type))
         write(self.gen_file, "%s_('%s.')," %(tabs*" ",
-            prop_long_name.upper()))
+            val['prop_name'].upper()))
         write(self.gen_file, "%supdate_allowed=True," %(tabs*" "))
         write(self.gen_file, "%srequired=False," %(tabs*" "))
         if val['prop_restr']:
@@ -1269,7 +1269,7 @@ class IFMapApiGenerator(object):
                               prop_names_uc_list):
         for key,val in enumerate(prop_list):
             prop_long_name = self._get_prop_long_name(val)
-            prop_names_list.append("'"+prop_long_name.lower()+"'")
+            prop_names_list.append("'"+val['prop_name'].lower()+"'")
             prop_names_uc_list.append(prop_long_name.upper())
             if val['prop_list']:
                 self._make_heat_properties(val['prop_list'], prop_names_list,
@@ -1476,7 +1476,7 @@ class IFMapApiGenerator(object):
                 prop_long_name.upper()))
             tabs=tabs+4
             write(self.gen_file, "%s_('%s.')," %(tabs*" ",
-                prop_long_name.upper()))
+                val['prop_name'].upper()))
             tabs=tabs-4
             write(self.gen_file, "%s)," %(tabs*" "))
 
@@ -1486,7 +1486,7 @@ class IFMapApiGenerator(object):
                 prop_long_name.upper()))
             tabs=tabs+4
             write(self.gen_file, "%s_('%s.')," %(tabs*" ",
-                prop_long_name.upper()))
+                val['prop_name'].upper()))
             tabs=tabs-4
             write(self.gen_file, "%s)," %(tabs*" "))
         for key,val in enumerate(self.parent_list):
@@ -1495,7 +1495,7 @@ class IFMapApiGenerator(object):
                 prop_long_name.upper()))
             tabs=tabs+4
             write(self.gen_file, "%s_('%s.')," %(tabs*" ",
-                prop_long_name.upper()))
+                val['prop_name'].upper()))
             tabs=tabs-4
             write(self.gen_file, "%s)," %(tabs*" "))
         tabs=tabs-4
