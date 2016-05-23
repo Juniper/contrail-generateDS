@@ -1182,6 +1182,7 @@ class SimpleTypeElement(XschemaElementBase):
         self.listType = 0
         self.documentation = ''
         self.default = None
+        self.restrictionAttrs = None
     def setName(self, name): self.name = name
     def getName(self): return self.name
     def setBase(self, base): self.base = base
@@ -1195,6 +1196,8 @@ class SimpleTypeElement(XschemaElementBase):
     def getAttributeGroup(self): return self.attributeGroup
     def setListType(self, listType): self.listType = listType
     def isListType(self): return self.listType
+    def setRestrictionAttrs(self, restrictionAttrs): self.restrictionAttrs = restrictionAttrs
+    def getRestrictionAttrs(self): return self.restrictionAttrs
     def __str__(self):
         s1 = '<"%s" SimpleTypeElement instance at 0x%x>' % \
             (self.getName(), id(self))
@@ -2108,6 +2111,7 @@ class XschemaHandler(handler.ContentHandler):
                 else:
                     if 'base' in attrs.keys():
                         self.stack[-1].setRestrictionBase(attrs['base'])
+                self.stack[-1].setRestrictionAttrs(dict(attrs))
             self.inRestrictionType = 1
         elif name in [EnumerationType, MinInclusiveType, MaxInclusiveType]:
             if not attrs.has_key('value'):

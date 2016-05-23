@@ -627,33 +627,55 @@ class PyGenerator(object):
         wrt(s1)
         wrt('    """\n')
         for child in self._PGenr.ElementDict[name].children:
-            if child.attrs.get('required'):
-                if child.attrs['required'] != 'system-only':
-                    if child.attrs['required'].lower() == 'true':
+            def required_to_created_by(attrs):
+                if 'required' not in attrs:
+                    return None
+                elif attrs['required'] != 'system-only':
+                    if attrs['required'].lower() == 'true':
                         created_by = 'User (required)'
                     else:
                         created_by = 'User (optional)'
                 else:
                     created_by = 'System'
+                return created_by
+            # end required_to_created_by
+            created_by = required_to_created_by(child.attrs)
+
+            def get_description(attrs):
+                if not attrs:
+                    return None
+                return [attrs[k] for k in sorted(attrs)
+                                 if k.lower().startswith('description')]
+            # end get_description
+            description = get_description(child.attrs)
+
             wrt('    * %s\n' %(child.name.replace('-', '_')))
             wrt('        Type: ')
             child_schema_type = child.getSchemaType()
             if child_schema_type in self._PGenr.SimpleTypeDict:
                 r_base = self._PGenr.SimpleTypeDict[child_schema_type]
+                r_attrs = r_base.getRestrictionAttrs()
                 python_type = self._PGenr.SchemaToPythonTypeMap[r_base.base]
                 wrt('          %s, *one-of* %s\n\n' %(python_type, r_base.values))
+                if not created_by:
+                    created_by = required_to_created_by(r_attrs)
+                if not description:
+                    description = get_description(r_attrs)
             elif child_schema_type in self._PGenr.SchemaToPythonTypeMap:
                 # simple primitive type
                 python_type = self._PGenr.SchemaToPythonTypeMap[child_schema_type]
                 wrt('          %s\n\n' %(python_type))
             else: # complex type and not restriction on simple
                 wrt('          :class:`.%s`\n\n' %(child_schema_type))
-            if child.attrs.get('required'):
+            if created_by:
                 wrt('        Created By: ')
                 wrt('          %s\n\n' %(created_by))
-            if child.attrs.get('description'):
+            if description:
                 wrt('        Description:\n')
-                wrt('          %s\n\n' %(child.attrs['description']))
+                for d_line in description:
+                    for w_line in textwrap.wrap(d_line, 80,
+                                      break_long_words=False):
+                        wrt('          %s\n\n' %(w_line))
         wrt('    """\n')
 
     def generateSubclass(self):
