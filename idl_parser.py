@@ -76,7 +76,9 @@ class IDLParser(object):
         logger = logging.getLogger('idl_parser')
         logger.debug('Type(%s, %s)', type_name, attrs)
 
-    def _Property(self, prop_name, ident_name):
+    def _Property(self, prop_name, ident_name,
+                  property_required='OPTIONAL', property_operations='CRUD',
+                  *args, **kwargs):
         logger = logging.getLogger('idl_parser')
         logger.debug('Property(%s, %s)', prop_name, ident_name)
         try:
@@ -86,7 +88,9 @@ class IDLParser(object):
             idl_prop = IDLParser.Property(prop_name)
             self._ElementDict[prop_name] = (idl_prop, [ident_name])
 
-    def _ListProperty(self, prop_name, ident_name):
+    def _ListProperty(self, prop_name, ident_name,
+                      property_required='OPTIONAL', property_operations='CRUD',
+                      *args, **kwargs):
         logger = logging.getLogger('idl_parser')
         logger.debug('ListProperty(%s, %s)', prop_name, ident_name)
         try:
@@ -96,7 +100,9 @@ class IDLParser(object):
             idl_prop = IDLParser.Property(prop_name, is_list=True)
             self._ElementDict[prop_name] = (idl_prop, [ident_name])
 
-    def _MapProperty(self, prop_name, ident_name, key_name):
+    def _MapProperty(self, prop_name, ident_name, key_name,
+                     property_required='OPTIONAL', property_operations='CRUD',
+                     *args, **kwargs):
         logger = logging.getLogger('idl_parser')
         logger.debug('MapProperty(%s, %s)', prop_name, ident_name)
         try:
@@ -111,7 +117,9 @@ class IDLParser(object):
         logger = logging.getLogger('idl_parser')
         logger.debug('Exclude(%s, %s)', elem_name, excluded)
 
-    def _Link(self, link_name, from_name, to_name, attrs):
+    def _Link(self, link_name, from_name, to_name, attrs,
+              link_required='OPTIONAL', link_operations='CRUD',
+              *args, **kwargs):
         logger = logging.getLogger('idl_parser')
 
         mch = re.match(r'(.*):(.*)', from_name)
