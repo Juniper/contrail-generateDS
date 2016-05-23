@@ -1037,6 +1037,7 @@ if __name__ == '__main__':
             self.PositiveIntegerType : 'int',
         }
         self.SchemaToPythonTypeMap.update(dict((x, 'int') for x in self.IntegerType))
+        self.SchemaToPythonTypeMap.update(dict((x, 'string') for x in self.StringType))
     
         #LG global SchemaToCppTypeMap
         self.SchemaToCppTypeMap = {
@@ -1282,6 +1283,8 @@ class XschemaElement(XschemaElementBase):
         self.choice = None
         self.listType = 0
         self.simpleBase = []
+        self.required = attrs.get('required')
+        self.description = attrs.get('description')
         self.documentation = ''
         self.restrictionBase = None
         self.simpleContent = False
