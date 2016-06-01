@@ -2657,6 +2657,9 @@ class IFMapApiGenerator(object):
                                             %(method_name))
             write(gen_file, "        # read in refs from ifmap to determine which ones become inactive after update")
             write(gen_file, "        existing_metas = self._ifmap_%s_read_to_meta_index(ifmap_id)" %(method_name))
+            write(gen_file, "        if not existing_metas:")
+            write(gen_file, "            # UPDATE notify queued before CREATE notify, Skip publish to IFMAP.")
+            write(gen_file, "            return (True, '')")
             write(gen_file, "")
             write(gen_file, "        # remove properties that are no longer active")
             props = [p.getName() for p in ident.getProperties()]
