@@ -207,6 +207,10 @@ class IFMapApiGenerator(object):
             write(gen_file, '    """')
             write(gen_file, "")
 
+            write(gen_file, "    resource_type = '%s'" %(ident_name))
+            write(gen_file, "    object_type = '%s'" %(ident_name.replace('-', '_')))
+            write(gen_file, "")
+
             prop_fields = [prop.getName().replace('-', '_') for prop in ident.getProperties()]
             ref_fields = ['%s_refs' %(ref_ident.getName().replace('-', '_')) for ref_ident in ident.getReferences()]
             back_ref_fields = ['%s_back_refs' %(back_ref_ident.getName().replace('-', '_')) for back_ref_ident in ident.getBackReferences()]
@@ -1082,7 +1086,7 @@ class IFMapApiGenerator(object):
             if not val['prop_list']:
                 prop_long_name = self._get_prop_long_name(val)
                 write(self.gen_file_templ, "  %s:" %(prop_long_name))
-                prop_type = self._get_heat_prop_type(val['prop_type'], 
+                prop_type = self._get_heat_prop_type(val['prop_type'],
                                                      val['prop_is_array'])
                 prop_type = self._convert_heat_template_type(prop_type)
                 write(self.gen_file_templ, "    type: %s" %(prop_type).lower())
