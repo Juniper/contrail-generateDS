@@ -226,9 +226,15 @@ class IFMapApiGenerator(object):
                     restrictions = self._xsd_parser.SimpleTypeDict[simple_type].values
                 else:
                     restrictions = None
+                description = prop.getDescription(width=100)
+                presence = prop.getPresence()
+                operations = prop.getOperations()
                 prop_field_types.append("'%s': %s" %(name,
                                         {'is_complex': is_complex,
                                          'restrictions': restrictions,
+                                         'description': description,
+                                         'required': presence,
+                                         'operations': operations,
                                          'simple_type': simple_type,
                                          'xsd_type': xsd_type}))
             write(gen_file, '    prop_field_types = {\n        %s\n    }\n' %(
@@ -237,13 +243,14 @@ class IFMapApiGenerator(object):
             ref_field_type_vals = [('%s_refs' %(ident.getLinkTo(li).getName().replace('-', '_')),
                                     (ident.getLinkTo(li).getName(),
                                      ident.getLink(li).getXsdType(),
-                                     ident.isLinkDerived(li))
+                                     ident.isLinkDerived(li),
+                                     ident.getLink(li).getDescription(width=100)),
                                    ) for li in ident.getLinksInfo()
                                      if ident.isLinkRef(li)]
             write(gen_file, "    ref_field_types = {}")
-            for ref_field, (ref_type, ref_link_type, is_weakref) in ref_field_type_vals:
-                write(gen_file, "    ref_field_types['%s'] = ('%s', '%s', %s)"
-                      %(ref_field, ref_type, ref_link_type, is_weakref))
+            for ref_field, (ref_type, ref_link_type, is_weakref, ref_desc) in ref_field_type_vals:
+                write(gen_file, "    ref_field_types['%s'] = ('%s', '%s', %s, %s)"
+                      %(ref_field, ref_type, ref_link_type, is_weakref, ref_desc))
             write(gen_file, "")
             backref_field_type_vals = [('%s_back_refs' %(ident.getLinkTo(li).getName().replace('-', '_')),
                                     (ident.getBackLinkFrom(li).getName(),
@@ -1080,14 +1087,28 @@ class IFMapApiGenerator(object):
         # print parameters
         for key,val in enumerate(prop_list):
             if not val['prop_list']:
+                if val.get('prop_reqd') == "system-only":
+                    continue
                 prop_long_name = self._get_prop_long_name(val)
                 write(self.gen_file_templ, "  %s:" %(prop_long_name))
                 prop_type = self._get_heat_prop_type(val['prop_type'], 
                                                      val['prop_is_array'])
                 prop_type = self._convert_heat_template_type(prop_type)
                 write(self.gen_file_templ, "    type: %s" %(prop_type).lower())
-                write(self.gen_file_templ, "    description: %s for the %s"
-                    %(val['prop_name'], self.resource_dict['class']))
+                if val['prop_desc']:
+                    write(self.gen_file_templ, "    description: %s"
+                        %(val['prop_desc']))
+                else:
+                    write(self.gen_file_templ, "    description: %s for the %s"
+                        %(val['prop_name'], self.resource_dict['class']))
+                if val.get('prop_opers'):
+                    write(self.gen_file_templ, "    # operations: %s"
+                        %(val['prop_opers']))
+                if val.get('prop_reqd'):
+                    write(self.gen_file_templ, "    # required: %s"
+                        %(val['prop_reqd']))
+                else:
+                    write(self.gen_file_templ, "    # required: optional")
                 continue
             self._create_heat_template_params(val['prop_list'])
     #end _create_heat_template_params
@@ -1098,6 +1119,8 @@ class IFMapApiGenerator(object):
         for key,val in enumerate(prop_list):
             prop_type = self._get_heat_prop_type(val['prop_type'],
                                                  val['prop_is_array'])
+            if val.get('prop_reqd') == "system-only":
+                continue
             if not val['prop_list']:
                 prop_long_name = self._get_prop_long_name(val)
                 if prop_type.startswith('LIST'):
@@ -1147,7 +1170,7 @@ class IFMapApiGenerator(object):
                 elif prop_type == 'STRING':
                     write(self.gen_file_env, "  %s: '%s'" %(prop_long_name, val['prop_restr'][0]))
             self._create_heat_env_params(val['prop_list'])
-    #end _create_heat_template_params
+    #end _create_heat_env_params
 
     def _get_heat_prop_type(self, typename, is_array):
         if typename.lower().endswith(
@@ -1178,8 +1201,8 @@ class IFMapApiGenerator(object):
         return prop_type
 
     def _make_heat_prop_list(self, prop_list, prop_name, prop_type,
-                             restrictions, is_array, prop_get_list,
-                             skip):
+                             restrictions, description, required, operations,
+                             is_array, prop_get_list, skip):
         is_list = False
         if self._get_heat_prop_type(prop_type, is_array).startswith('LIST'):
             is_list = True
@@ -1188,6 +1211,9 @@ class IFMapApiGenerator(object):
             'prop_name': prop_name,
             'prop_type': prop_type,
             'prop_restr': restrictions,
+            'prop_desc': description,
+            'prop_reqd': required,
+            'prop_opers': operations,
             'prop_is_array': is_array,
             'prop_list' : new_list,
             'prop_get_list' : prop_get_list,
@@ -1199,9 +1225,10 @@ class IFMapApiGenerator(object):
 
     def _process_heat_complex_property(self, cls, prop_list, prop_name,
                                        prop_type, is_simple, is_array,
-                                       prop_get_list):
+                                       desc, reqd, opers, prop_get_list):
         prop = self._make_heat_prop_list(prop_list, prop_name, prop_type,
-                                         None, is_array, prop_get_list, False)
+                                         None, desc, reqd, opers, is_array,
+                                         prop_get_list, False)
         new_list = prop['prop_list']
         new_prop_get_list = list(prop_get_list)
         new_prop_get_list.append(prop)
@@ -1211,10 +1238,14 @@ class IFMapApiGenerator(object):
             attr_is_array = cls.attr_field_type_vals[attr_name]['is_array']
             attr_restrictions = cls.attr_field_type_vals[
                 attr_name]['restrictions']
+            desc = cls.attr_field_type_vals[attr_name]['description']
+            attr_description = desc[0] if desc else None
+            attr_reqd = cls.attr_field_type_vals[attr_name]['required']
 
             if not attr_is_complex:
                 self._make_heat_prop_list(new_list, attr_name,
                                           attr_type, attr_restrictions,
+                                          attr_description, attr_reqd, opers,
                                           attr_is_array, new_prop_get_list,
                                           False)
                 continue
@@ -1223,7 +1254,7 @@ class IFMapApiGenerator(object):
             new_cls = getattr(self.res_xsd, attr_type)
             self._process_heat_complex_property(new_cls, new_list, attr_name,
                 attr_type, (not attr_is_complex), attr_is_array,
-                new_prop_get_list)
+                attr_description, attr_reqd, opers, new_prop_get_list)
     #end _process_heat_complex_property
 
     def _make_heat_property_schema(self, val, tabs):
@@ -1385,9 +1416,14 @@ class IFMapApiGenerator(object):
                 continue
             prop_is_simple = not self.cls.prop_field_types[prop_name]['is_complex']
             prop_type = self.cls.prop_field_types[prop_name]['xsd_type']
+            desc = self.cls.prop_field_types[prop_name]['description']
+            prop_desc = desc[0] if desc else None
+            prop_reqd = self.cls.prop_field_types[prop_name]['required']
+            prop_opers = self.cls.prop_field_types[prop_name]['operations']
             if prop_is_simple:
-                self._make_heat_prop_list(self.prop_list, prop_name,
-                                          prop_type, None, False, [], False)
+                self._make_heat_prop_list(self.prop_list, prop_name, prop_type,
+                                          None, prop_desc, prop_reqd,
+                                          prop_opers, False, [], False)
                 continue
 
             # complex object
@@ -1396,7 +1432,8 @@ class IFMapApiGenerator(object):
             except:
                 continue
             self._process_heat_complex_property(cls, self.prop_list,
-                prop_name, prop_type, prop_is_simple, False, [])
+                prop_name, prop_type, prop_is_simple, False,
+                prop_desc, prop_reqd, prop_opers, [])
      #end _build_heat_properties
 
     def _build_heat_refs(self):
@@ -1404,8 +1441,10 @@ class IFMapApiGenerator(object):
 
             ref_type = self.cls.ref_field_types[ref_name][1]
             skip = False if ref_type is 'None' else True
-            self._make_heat_prop_list(self.ref_list, ref_name, 'string',
-                                      None, True, [], skip)
+            desc = self.cls.ref_field_types[ref_name][3]
+            ref_desc = desc[0] if desc else None
+            self._make_heat_prop_list(self.ref_list, ref_name, 'string', None,
+                                      ref_desc, None, None, True, [], skip)
             ref_name = self.cls.ref_field_types[ref_name][0].replace("-", "_")
             ref_name = ref_name + "_refs_data"
             try:
@@ -1414,14 +1453,15 @@ class IFMapApiGenerator(object):
                 continue
 
             self._process_heat_complex_property(cls, self.ref_list,
-                ref_name, ref_type, False, True, [])
+                ref_name, ref_type, False, True,
+                ref_desc, None, None, [])
      #end _build_heat_refs
 
     def _build_heat_parents(self):
         for parent_name in self.cls.parent_types:
             pname = parent_name.replace('-', '_')
             self._make_heat_prop_list(self.parent_list, pname, 'string',
-                None, False, [], False)
+                None, None, None, None, False, [], False)
      #end _build_heat_parents
 
     def _gen_heat_properties(self, prop_names_list, prop_names_uc_list):
@@ -1453,7 +1493,7 @@ class IFMapApiGenerator(object):
         self._create_heat_env_params(self.ref_list)
         self._create_heat_env_params(self.parent_list)
         write(self.gen_file_env, "")
-    #end _gen_heat_templ_params
+    #end _gen_heat_env_params
 
     def _gen_heat_properties_schema(self):
         tabs = 4
@@ -1791,8 +1831,8 @@ class IFMapApiGenerator(object):
         for ident in self._non_exclude_idents():
             #if ident.getName() != "virtual-machine-interface":
             #if ident.getName() != "network-policy":
-            #if ident.getName() != "virtual-network":
             #if ident.getName() != "service-template":
+            #if ident.getName() != "virtual-network":
             #    continue
 
             self.resource_name = ident.getName()
@@ -1840,6 +1880,7 @@ class IFMapApiGenerator(object):
                 'prop_name': 'name',
                 'prop_type': 'STRING',
                 'prop_restr': None,
+                'prop_desc': 'name for the %s' %(class_name),
                 'prop_is_array': False,
                 'prop_list' : [],
                 'prop_get_list' : [],
@@ -1851,6 +1892,7 @@ class IFMapApiGenerator(object):
                 'prop_name': 'fq_name',
                 'prop_type': 'STRING',
                 'prop_restr': None,
+                'prop_desc': 'fq_name for the %s' %(class_name),
                 'prop_is_array': False,
                 'prop_list' : [],
                 'prop_get_list' : [],
