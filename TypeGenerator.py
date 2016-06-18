@@ -609,6 +609,19 @@ class PyGenerator(object):
     def __init__(self, parser_generator):
         self._PGenr = parser_generator
 
+    def get_description(self, attrs):
+        if not attrs:
+            return None
+        return [attrs[k] for k in sorted(attrs)
+                         if k.lower().startswith('description')]
+    # end get_description
+
+    def get_required(self, attrs):
+        if not attrs:
+            return None
+        return attrs.get('required')
+    # end get_required
+
     def generateHeader(self, wrt, prefix):
         tstamp = (not self._PGenr.NoDates and time.ctime()) or ''
         if self._PGenr.NoVersion:
@@ -641,13 +654,7 @@ class PyGenerator(object):
             # end required_to_created_by
             created_by = required_to_created_by(child.attrs)
 
-            def get_description(attrs):
-                if not attrs:
-                    return None
-                return [attrs[k] for k in sorted(attrs)
-                                 if k.lower().startswith('description')]
-            # end get_description
-            description = get_description(child.attrs)
+            description = self.get_description(child.attrs)
 
             wrt('    * %s\n' %(child.name.replace('-', '_')))
             wrt('        Type: ')
@@ -660,7 +667,7 @@ class PyGenerator(object):
                 if not created_by:
                     created_by = required_to_created_by(r_attrs)
                 if not description:
-                    description = get_description(r_attrs)
+                    description = self.get_description(r_attrs)
             elif child_schema_type in self._PGenr.SchemaToPythonTypeMap:
                 # simple primitive type
                 python_type = self._PGenr.SchemaToPythonTypeMap[child_schema_type]
@@ -742,6 +749,8 @@ class PyGenerator(object):
             if child.getSchemaType() in self._PGenr.SimpleTypeDict:
                 restrictions = self._PGenr.SimpleTypeDict[
                     child.getSchemaType()].values
+            description = self.get_description(child.attrs)
+            required = self.get_required(child.attrs)
             get_max_occurs = child.getMaxOccurs()
             attr_fields.append(name)
             is_array = child.getMaxOccurs() > 1
@@ -749,6 +758,8 @@ class PyGenerator(object):
             attr_type = child.getType().replace('xsd:', '')
             attr_field_type_vals[name] = {'is_complex': is_complex,
                                           'restrictions': restrictions,
+                                          'description': description,
+                                          'required': required,
                                           'is_array': is_array,
                                           'attr_type': attr_type,
                                           'simple_type' : child.getSchemaType()}
