@@ -113,6 +113,57 @@ import net.juniper.contrail.api.ApiPropertyBase;
         file.write(' ' * indent_level)
         file.write('}\n')
 
+        # constructors with default parameters
+        param_count = len(ctype.getDataMembers())
+        for param_end in range(1, param_count):
+            file.write(' ' * indent_level)
+            file.write('public %s(' % ctype.getName())
+            index = 0
+            for member in ctype.getDataMembers()[0:param_end]:
+                if index > 0:
+                    file.write(', ')
+                file.write('%s %s' % (member.jtypename, member.membername))
+                index += 1
+            file.write(') {\n')
+
+            indent_level += 4
+            file.write(' ' * indent_level)
+            first = True
+            for member in ctype.getDataMembers()[0:param_end]:
+                if first:
+                    file.write('this(')
+                    first = False
+                else:
+                    file.write(', ')
+                file.write(member.membername)
+            file.write(', ')
+            for member in ctype.getDataMembers()[param_end:]:
+                if member.isComplex:
+                    file.write('null')
+                elif member.jtypename is 'boolean':
+                    file.write(member.default or 'false')
+                elif member.jtypename is 'String':
+                    default = 'null'
+                    if member.default:
+                        default = '\"' + member.default + '\"'
+                    file.write(default)
+                elif member.jtypename in ['Integer', 'Long']:
+                    default = 'null'
+                    if member.default:
+                        default = str(member.default)
+                    file.write(default)
+                else:
+                    file.write('null')
+                if member != ctype.getDataMembers()[param_count-1]:
+                    file.write(', ')
+                else:
+                    file.write(');')
+
+            indent_level -= 4
+            file.write(' ' * indent_level)
+            file.write(' }\n')
+
+
         self._GenerateTypePropertyAccessors(file, ctype, indent_level);
         self._GenerateTypePropertyConvinience(file, ctype, indent_level)
 
