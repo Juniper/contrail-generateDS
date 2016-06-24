@@ -247,6 +247,7 @@ class IFMapIdentifier(IFMapObject):
         member.membername = prop.getPropertyName() + '_'
         member.xsd_object = prop._xelement
         member.isComplex = False
+        member.default = prop.getDefault()
         member.ctypename = getCppType(prop._xelement.getType())
         prop._memberinfo = member
         self._data_members.append(member)
@@ -335,6 +336,12 @@ class IFMapProperty(IFMapMetadata):
         if self._xelement.isComplex():
             return self._complexType.getName()
         return getJavaType(self._xelement.getType())
+
+    def getDefault(self):
+        if not self._xelement.isComplex():
+            return self._xelement.getDefault()
+        return None
+
 
     def getGoLangTypename(self):
         if self._xelement.isComplex():
