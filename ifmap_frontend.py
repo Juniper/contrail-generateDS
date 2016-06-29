@@ -785,7 +785,7 @@ class IFMapApiGenerator(object):
                 prop_name = prop.getName().replace('-', '_')
                 complex_type = prop.getCType()
                 xsd_type = prop.getXsdType()
-                write(gen_file, "        if '%s' in kwargs:" %(prop_name))
+                write(gen_file, "        try:")
                 if complex_type and xsd_type:
                     write(gen_file, "            if kwargs['%s'] is None:" % prop_name)
                     write(gen_file, "                props_dict['%s'] = None" % prop_name)
@@ -798,20 +798,25 @@ class IFMapApiGenerator(object):
                         write(gen_file, "                        vnc_api.gen.%s_xsd.%s(**elem))" \
                                                                  %(gen_filename_pfx, xsd_type))
                     else:
-                        write(gen_file, "                props_dict['%s'] = vnc_api.gen.%s_xsd.%s(**kwargs['%s'])" \
+                        write(gen_file, "                props_dict['%s'] = vnc_api.gen.%s_xsd.%s(params_dict=kwargs[u'%s'])" \
                                                                  %(prop_name, gen_filename_pfx, xsd_type, prop_name))
                 else:
-                    write(gen_file, "            props_dict['%s'] = kwargs['%s']" %(prop_name, prop_name))
+                    write(gen_file, "            props_dict['%s'] = kwargs[u'%s']" %(prop_name, prop_name))
+                write(gen_file, "        except KeyError:")
+                write(gen_file, "            pass")
+                write(gen_file, "")
 
             write(gen_file, "")
             write(gen_file, "        # obj constructor takes only props")
-            write(gen_file, "        parent_type = kwargs.get('parent_type', None)")
-            write(gen_file, "        fq_name = kwargs['fq_name']")
+            write(gen_file, "        parent_type = kwargs.get(u'parent_type', None)")
+            write(gen_file, "        fq_name = kwargs[u'fq_name']")
             write(gen_file, "        props_dict.update({'parent_type': parent_type, 'fq_name': fq_name})")
             write(gen_file, "        obj = %s(fq_name[-1], **props_dict)" %(class_name))
-            write(gen_file, "        obj.uuid = kwargs['uuid']")
-            write(gen_file, "        if 'parent_uuid' in kwargs:")
-            write(gen_file, "            obj.parent_uuid = kwargs['parent_uuid']")
+            write(gen_file, "        obj.uuid = kwargs[u'uuid']")
+            write(gen_file, "        try:")
+            write(gen_file, "            obj.parent_uuid = kwargs[u'parent_uuid']")
+            write(gen_file, "        except KeyError:")
+            write(gen_file, "            pass")
             write(gen_file, "")
             write(gen_file, "        # add summary of any children...")
             children_idents = ident.getChildren()
@@ -819,13 +824,10 @@ class IFMapApiGenerator(object):
                 for child_ident in children_idents:
                     child_name = child_ident.getName()
                     child_method_name = child_name.replace('-', '_')
-                    write(gen_file, "        if '%ss' in kwargs:" %(child_method_name))
-                    write(gen_file, "            obj.%ss = kwargs['%ss']" %(child_method_name, child_method_name))
-                    #write(gen_file, "            for child in kwargs['%ss']:" %(child_method_name))
-                    #write(gen_file, "                child_obj = ChildObj(child['to'], child['uuid'])")
-                    #write(gen_file, "            if not obj.get_%ss():" %(child_method_name))
-                    #write(gen_file, "                obj.%ss = []" %(child_method_name))
-                    #write(gen_file, "            obj.%ss.append(child_obj)" %(child_method_name))
+                    write(gen_file, "        try:")
+                    write(gen_file, "            obj.%ss = kwargs[u'%ss']" %(child_method_name, child_method_name))
+                    write(gen_file, "        except KeyError:")
+                    write(gen_file, "            pass")
             write(gen_file, "")
 
             write(gen_file, "        # add any specified references...")
@@ -837,12 +839,13 @@ class IFMapApiGenerator(object):
                 link_type = ident.getLink(link_info).getXsdType()
                 to_ident = ident.getLinkTo(link_info)
                 to_name = to_ident.getName().replace('-', '_')
-                write(gen_file, "        if '%s_refs' in kwargs:" %(to_name))
-                write(gen_file, "            obj.%s_refs = kwargs['%s_refs']" %(to_name, to_name))
+                write(gen_file, "        try:")
+                write(gen_file, "            obj.%s_refs = kwargs[u'%s_refs']" %(to_name, to_name))
                 if link_type: # link with attributes
                     write(gen_file, "            for ref in obj.%s_refs:" %(to_name))
-                    write(gen_file, "                ref['attr'] = vnc_api.gen.%s_xsd.%s(**ref['attr'])" %(gen_filename_pfx, link_type))
-                #    write(gen_file, "                obj.add_%s(ref_obj)" %(to_name))
+                    write(gen_file, "                ref['attr'] = vnc_api.gen.%s_xsd.%s(params_dict=ref[u'attr'])" %(gen_filename_pfx, link_type))
+                write(gen_file, "        except KeyError:")
+                write(gen_file, "            pass")
 
             write(gen_file, "")
             write(gen_file, "        # and back references but no obj api for it...")
@@ -854,14 +857,10 @@ class IFMapApiGenerator(object):
                 back_link_type = ident.getLink(back_link_info).getXsdType()
                 from_ident = ident.getBackLinkFrom(back_link_info)
                 from_name = from_ident.getName().replace('-', '_')
-                write(gen_file, "        if '%s_back_refs' in kwargs:" %(from_name))
-                write(gen_file, "            obj.%s_back_refs = kwargs['%s_back_refs']" %(from_name, from_name))
-                #write(gen_file, "            obj.%s_back_refs = []" %(from_name))
-                #write(gen_file, "            for back_ref in kwargs['%s_back_refs']:" %(from_name))
-                #if back_link_type: # link with attributes
-                #    write(gen_file, "                back_ref['attr'] = vnc_api.gen.%s_xsd.%s(**back_ref['attr'])" \
-                #                                                                        %(gen_filename_pfx, back_link_type))
-                #write(gen_file, "                obj.%s_back_refs.append(back_ref)" %(from_name))
+                write(gen_file, "        try:")
+                write(gen_file, "            obj.%s_back_refs = kwargs[u'%s_back_refs']" %(from_name, from_name))
+                write(gen_file, "        except KeyError:")
+                write(gen_file, "            pass")
 
             write(gen_file, "")
             write(gen_file, "        return obj")

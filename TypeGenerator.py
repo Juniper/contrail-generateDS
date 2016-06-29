@@ -891,7 +891,9 @@ class PyGenerator(object):
         elName = element.getCleanName()
         childCount = self._PGenr.countChildren(element, 0)
         s2 = self.buildCtorArgs_multilevel(element, childCount)
-        wrt('    def __init__(self%s, **kwargs):\n' % s2)
+        wrt('    def __init__(self%s, params_dict=None, **kwargs):\n' % s2)
+        wrt('        # Prefer params_dict based value over arg for from_dict path\n')
+        wrt('        params_dict = params_dict or {}\n')
         base = element.getBase()
         parentName, parent = self._PGenr.getParentName(element)
         if parentName:
@@ -917,9 +919,14 @@ class PyGenerator(object):
         member = 0
         nestedElements = 0
         for child in element.getChildren():
-            name = self._PGenr.cleanupName(child.getCleanName())
+            arg_name = self._PGenr.cleanupName(child.getCleanName())
+            name = '_'+arg_name
             logging.debug("Constructor child: %s" % name)
             logging.debug("Dump: %s" % child.__dict__)
+            wrt('        try:\n')
+            wrt('            %s = params_dict[u"%s"]\n' %(name, arg_name))
+            wrt('        except KeyError:\n')
+            wrt('            %s = %s\n' % (name, arg_name))
             if child.getType() == self._PGenr.AnyTypeIdentifier:
                 if child.getMaxOccurs() > 1:
                     wrt('        if anytypeobjs_ is None:\n')
@@ -931,38 +938,38 @@ class PyGenerator(object):
             else:
                 if child.getMaxOccurs() > 1:
                     child_type = child.getType()
-                    wrt('        if (%s is None) or (%s == []):\n' % (name, name))
-                    wrt('            self.%s = []\n' % (name, ))
+                    wrt('        if not %s:\n' % (name))
+                    wrt('            self.%s = []\n' % (arg_name))
                     wrt('        else:\n')
                     if (child.isComplex()):
                         wrt('            if isinstance(%s[0], dict):\n' %(name))
-                        wrt('                objs = [%s(**elem) for elem in %s]\n' \
+                        wrt('                objs = [%s(params_dict=elem) for elem in %s]\n' \
                                                      %(child_type, name))
-                        wrt('                self.%s = objs\n' % (name))
+                        wrt('                self.%s = objs\n' % (arg_name))
                         wrt('            else:\n')
-                        wrt('                self.%s = %s\n' % (name, name))
+                        wrt('                self.%s = %s\n' % (arg_name, name))
                     else:
-                        wrt('            self.%s = %s\n' % (name, name))
+                        wrt('            self.%s = %s\n' % (arg_name, name))
                 else:
                     typeObj = self._PGenr.ElementDict.get(child.getType())
                     if (child.getDefault() and
                         typeObj is not None and
                         typeObj.getSimpleContent()):
-                        wrt('        if %s is None:\n' % (name, ))
-                        wrt("            self.%s = globals()['%s']('%s')\n" % (name,
+                        wrt('        if %s is None:\n' % (name))
+                        wrt("            self.%s = globals()['%s']('%s')\n" % (arg_name,
                             child.getType(), child.getDefault(), ))
                         wrt('        else:\n')
-                        wrt('            self.%s = %s\n' % (name, name))
+                        wrt('            self.%s = %s\n' % (arg_name, name))
                     else:
                         child_type = child.getType()
                         if (child.isComplex()):
                             wrt('        if isinstance(%s, dict):\n' %(name))
                             wrt('            obj = %s(**%s)\n' %(child_type, name))
-                            wrt('            self.%s = obj\n' % (name))
+                            wrt('            self.%s = obj\n' % (arg_name))
                             wrt('        else:\n')
-                            wrt('            self.%s = %s\n' % (name, name))
+                            wrt('            self.%s = %s\n' % (arg_name, name))
                         else:
-                            wrt('        self.%s = %s\n' % (name, name))
+                            wrt('        self.%s = %s\n' % (arg_name, name))
             member = 1
             nestedElements = 1
         eltype = element.getType()
