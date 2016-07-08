@@ -1650,7 +1650,7 @@ class IFMapApiGenerator(object):
             tabs=8
             write(self.gen_file, "%sif self.%s in prop_diff:" %(" "*tabs, ref_name.upper()))
             tabs = tabs+4
-            write(self.gen_file, "%sfor index_%s in range(len(%s or [])):" %(tabs*" ",
+            write(self.gen_file, "%sfor index_%s in range(len(prop_diff.get(self.%s) or [])):" %(tabs*" ",
                 len(val['prop_get_list']), ref_name.upper()))
             tabs = tabs+4
             write(self.gen_file, "%stry:" %(" "*tabs))
@@ -1669,7 +1669,10 @@ class IFMapApiGenerator(object):
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
             tabs = tabs-4
-            write(self.gen_file, "%sref_obj_list.append(ref_obj.fq_name)" %(" "*tabs))
+            if ref_attr_data:
+                write(self.gen_file, "%sref_obj_list.append(ref_obj.fq_name)" %(" "*tabs))
+            else:
+                write(self.gen_file, "%sref_obj_list.append({'to':ref_obj.fq_name})" %(" "*tabs))
             write(self.gen_file, "")
             tabs = tabs-4
 
