@@ -3,6 +3,7 @@ import time
 import logging
 import textwrap
 from pprint import pformat
+from collections import OrderedDict
 
 class TypeGenerator(object):
     def __init__(self, parser_generator):
@@ -15,8 +16,11 @@ class TypeGenerator(object):
         elif (lang == 'c++'):
             self._LangGenr = CppGenerator(self._PGenr)
 
-    def generate(self, root, infile, outfileName, genStandAlone = True):
+    def generate(self, root, infile, outfileName, genStandAlone = True,
+                 openapi_dict = None):
         self._genStandAlone = genStandAlone
+        self._openapi_dict = openapi_dict
+        self._openapi_dict['definitions'] = {}
         # Create an output file.
         # Note that even if the user does not request an output file,
         #   we still need to go through the process of generating classes
@@ -144,7 +148,8 @@ class TypeGenerator(object):
             return
         self._PGenr.ElementsForSubclasses.append(element)
         name = element.getCleanName()
-        self._LangGenr.generateClassDefLine(wrt, parentName, prefix, name)
+        self._LangGenr.generateClassDefLine(wrt, parentName, prefix, name,
+                                            self._openapi_dict)
         # If this element has documentation, generate a doc-string.
         if element.documentation:
             self._LangGenr.generateElemDoc(wrt, element)
@@ -631,7 +636,7 @@ class PyGenerator(object):
         s1 = self._PGenr.TEMPLATE_HEADER % (tstamp, version, self._PGenr.ExternalEncoding, )
         wrt(s1)
 
-    def generateClassDefLine(self, wrt, parentName, prefix, name):
+    def generateClassDefLine(self, wrt, parentName, prefix, name, openapi_dict):
         if parentName:
             s1 = 'class %s%s(%s):\n' % (prefix, name, parentName,)
         else:
@@ -639,20 +644,29 @@ class PyGenerator(object):
 
         wrt(s1)
         wrt('    """\n')
+        openapi_dict['definitions'][name] = OrderedDict({
+            'properties':OrderedDict({}), 'required': []})
+        openapi_properties = openapi_dict['definitions'][name]['properties']
+        openapi_required = openapi_dict['definitions'][name]['required']
         for child in self._PGenr.ElementDict[name].children:
-            def required_to_created_by(attrs):
+            def get_doc_info(attrs):
+                doc_info = {}
+                doc_info['description'] = self.get_description(attrs)
+                doc_info['is_optional'] = True
                 if 'required' not in attrs:
-                    return None
+                    return doc_info
                 elif attrs['required'] != 'system-only':
                     if attrs['required'].lower() == 'true':
-                        created_by = 'User (required)'
+                        doc_info['created_by'] = 'User (required)'
+                        doc_info['is_optional'] = False
                     else:
-                        created_by = 'User (optional)'
+                        doc_info['created_by'] = 'User (optional)'
                 else:
                     created_by = 'System'
-                return created_by
-            # end required_to_created_by
-            created_by = required_to_created_by(child.attrs)
+                return doc_info
+            # end get_doc_info
+            doc_info = get_doc_info(child.attrs)
+            created_by = doc_info.get('created_by')
 
             description = self.get_description(child.attrs)
 
@@ -661,11 +675,21 @@ class PyGenerator(object):
             child_schema_type = child.getSchemaType()
             if child_schema_type in self._PGenr.SimpleTypeDict:
                 r_base = self._PGenr.SimpleTypeDict[child_schema_type]
+                if r_base.values and isinstance(r_base.values[0], dict): # range
+                    restriction_type = '*within*'
+                    restriction_values = [r_base.values[0]['minimum'],
+                                          r_base.values[1]['maximum']]
+                else: # enum
+                    restriction_type = '*one-of*'
+                    if r_base.values:
+                        restriction_values = r_base.values
+                    else:
+                        restriction_values = r_base.base
                 r_attrs = r_base.getRestrictionAttrs()
                 python_type = self._PGenr.SchemaToPythonTypeMap[r_base.base]
-                wrt('          %s, *one-of* %s\n\n' %(python_type, r_base.values))
+                wrt('          %s, %s %s\n\n' %(python_type, restriction_type, restriction_values))
                 if not created_by:
-                    created_by = required_to_created_by(r_attrs)
+                    doc_info = get_doc_info(r_attrs)
                 if not description:
                     description = self.get_description(r_attrs)
             elif child_schema_type in self._PGenr.SchemaToPythonTypeMap:
@@ -677,12 +701,51 @@ class PyGenerator(object):
             if created_by:
                 wrt('        Created By: ')
                 wrt('          %s\n\n' %(created_by))
+
+            description_lines = []
             if description:
                 wrt('        Description:\n')
                 for d_line in description:
                     for w_line in textwrap.wrap(d_line, 80,
                                       break_long_words=False):
+                        description_lines.append(w_line)
                         wrt('          %s\n\n' %(w_line))
+
+            openapi_properties[child.name.replace('-', '_')] = {}
+            openapi_prop = openapi_properties[child.name.replace('-', '_')]
+            if description_lines:
+                openapi_prop['description'] = '\n'.join(description_lines)
+            if child.isComplex():
+                openapi_prop["$ref"] = "#/definitions/%s" %(child.getType())
+            else:
+                child_schema_type = child.getSchemaType()
+                child_type = child.getType()
+                if child_schema_type in self._PGenr.SimpleTypeDict:
+                    r_base = self._PGenr.SimpleTypeDict[child_schema_type]
+                    if r_base.values and isinstance(r_base.values[0], dict): # range
+                        openapi_prop['minimum'] = r_base.values[0]['minimum']
+                        openapi_prop['maximum'] = r_base.values[1]['maximum']
+                    elif r_base.values:
+                        openapi_prop['enum'] = r_base.values
+
+                if child_type.lower() == 'xsd:datetime':
+                    openapi_prop["type"] = "string"
+                    openapi_prop["format"] = "date-time"
+                elif child_type.lower() == 'xsd:time':
+                    openapi_prop["type"] = "string"
+                elif child_type.lower() == 'xsd:unsignedlong':
+                    openapi_prop["type"] = "number"
+                    openapi_prop["format"] = "double"
+                else:
+                    openapi_prop["type"] = child_type.replace('xsd:','')
+            # end child is simple type
+
+            if doc_info['is_optional'] == False:
+                openapi_required.append(child.name.replace('-', '_'))
+        # end for all attrs of type
+        if not openapi_required:
+            del openapi_dict['definitions'][name]['required']
+
         wrt('    """\n')
 
     def generateSubclass(self):
@@ -746,9 +809,17 @@ class PyGenerator(object):
             unmapped_name = self._PGenr.cleanupName(child.getName())
             cap_name = self._PGenr.make_gs_name(unmapped_name)
             restrictions = None
+            restriction_type = None
             if child.getSchemaType() in self._PGenr.SimpleTypeDict:
-                restrictions = self._PGenr.SimpleTypeDict[
+                restrict_values = self._PGenr.SimpleTypeDict[
                     child.getSchemaType()].values
+                if restrict_values and isinstance(restrict_values[0], dict):
+                    restrictions = [restrict_values[0]['minimum'],
+                                    restrict_values[1]['maximum']]
+                    restriction_type = 'range'
+                else:
+                    restrictions = restrict_values
+                    restriction_type = 'enum'
             description = self.get_description(child.attrs)
             required = self.get_required(child.attrs)
             get_max_occurs = child.getMaxOccurs()
@@ -758,6 +829,7 @@ class PyGenerator(object):
             attr_type = child.getType().replace('xsd:', '')
             attr_field_type_vals[name] = {'is_complex': is_complex,
                                           'restrictions': restrictions,
+                                          'restriction_type': restriction_type,
                                           'description': description,
                                           'required': required,
                                           'is_array': is_array,
@@ -1170,9 +1242,15 @@ class PyGenerator(object):
                 s1+= '            v1, v2 = min(v_int), max(v_int)\n'
                 s1+= '        else:\n'
                 s1+= '            v1, v2 = int(value), int(value)\n'
-                if st.values[0]:
+                if isinstance(st.values[0], dict):
+                    if st.values[0]['minimum']:
+                        s1+= '        error = (%s > v1)\n' % st.values[0]['minimum']
+                elif st.values[0]:
                     s1+= '        error = (%s > v1)\n' % st.values[0]
-                if st.values[1]:
+                if isinstance(st.values[1], dict):
+                    if st.values[1]['maximum']:
+                        s1+= '        error |= (v2 > %s)\n' % st.values[1]['maximum']
+                elif st.values[1]:
                     s1+= '        error |= (v2 > %s)\n' % st.values[1]
                 errorStr = (stName + ' must be in the range %s-%s' %
                             (st.values[0], st.values[1]))
