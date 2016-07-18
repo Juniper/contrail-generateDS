@@ -5,12 +5,14 @@
 from ifmap_global import CamelCase
 from ifmap_model import IFMapIdentifier, IFMapProperty, IFMapLink, IFMapLinkAttr
 from TypeGenerator import TypeGenerator
+from collections import OrderedDict
 
 import importlib
 import pprint
 import re
 import os
 import sys
+import json
 
 _BASE_URL = ""
 _BASE_PARENT = 'config-root'
@@ -31,12 +33,13 @@ class IFMapApiGenerator(object):
     #end __init__
 
     def Generate(self, gen_filepath_pfx):
+        openapi_dict = {}
         # Grab directory where to generate (if not locally)
         gen_filename_pfx = os.path.basename(gen_filepath_pfx)
         self._type_genr = TypeGenerator(self._xsd_parser)
         self._type_genr.setLanguage('py')
         self._type_genr.generate(self._xsd_root, None, gen_filepath_pfx + "_xsd.py",
-                           genStandAlone = False)
+                           genStandAlone = False, openapi_dict=openapi_dict)
         gendir = os.path.dirname(gen_filepath_pfx)
         if gendir:
            gendir = gendir + '/'
@@ -57,6 +60,8 @@ class IFMapApiGenerator(object):
         self._generate_extension_impl(gendir + "vnc_api_extension_gen.py", gen_filename_pfx)
         self._generate_test_impl(gendir + "vnc_api_test_gen.py", gen_filename_pfx)
         self._generate_docs_schema(gendir + "vnc_api_schema.py", gen_filename_pfx)
+        self._generate_docs_openapi(gendir + "contrail_openapi.json",
+            gen_filename_pfx, openapi_dict)
         #self._generate_docs_impl(gendir + "vnc_api_doc_gen.rst", gen_filename_pfx)
     #end Generate
 
@@ -133,9 +138,18 @@ class IFMapApiGenerator(object):
                 elif prop_xml_elem.getSchemaType() in self._xsd_parser.SimpleTypeDict:
                     # handle simple restriction
                     r_base = self._xsd_parser.SimpleTypeDict[prop_xml_elem.getSchemaType()]
+                    if r_base.values and isinstance(r_base.values[0], dict): # range
+                        restriction_type = '*within*'
+                    else: # enum
+                        restriction_type = '*one-of*'
+                    if r_base.values:
+                        restriction_values = r_base.values
+                    else:
+                        restriction_values = r_base.base
                     python_type = self._xsd_parser.SchemaToPythonTypeMap[r_base.base]
                     write(gen_file, "        * %s" %(prop_name))
-                    write(gen_file, "            Type: %s, *one-of* %s\n" %(python_type, r_base.values))
+                    write(gen_file, "            Type: %s, %s %s\n" %(
+                              python_type, restriction_type, r_base.values))
                     write(gen_file, "            Created By: %s\n" %(created_by))
                     write(gen_file, "            Operations Allowed: %s\n" %(prop.getOperations()))
                     write(gen_file, "            Description:\n")
@@ -226,16 +240,24 @@ class IFMapApiGenerator(object):
                 is_complex = prop.getCType() is not None
                 simple_type = prop.getElement().getSimpleType()
                 xsd_type = prop.getElement().getType().replace('xsd:', '')
+                restrictions = None
+                restriction_type = None
                 if simple_type:
-                    restrictions = self._xsd_parser.SimpleTypeDict[simple_type].values
-                else:
-                    restrictions = None
+                    restrict_values = self._xsd_parser.SimpleTypeDict[simple_type].values
+                    if restrict_values and isinstance(restrict_values[0], dict):
+                        restrictions = [restrict_values[0]['minimum'],
+                                        restrict_values[1]['maximum']]
+                        restriction_type = 'range'
+                    else:
+                        restrictions = restrict_values
+                        restriction_type = 'enum'
                 description = prop.getDescription(width=100)
                 presence = prop.getPresence()
                 operations = prop.getOperations()
                 prop_field_types.append("'%s': %s" %(name,
                                         {'is_complex': is_complex,
                                          'restrictions': restrictions,
+                                         'restriction_type': restriction_type,
                                          'description': description,
                                          'required': presence,
                                          'operations': operations,
@@ -2526,5 +2548,583 @@ class IFMapApiGenerator(object):
         write(gen_file, "#end write_schema_graph")
         write(gen_file, "")
     #end _generate_docs_schema
+
+    def _generate_docs_openapi(self, gen_fname, gen_type_pfx, xsd_openapi_dict):
+        gen_file = self._xsd_parser.makeFile(gen_fname)
+        write(gen_file, "")
+        openapi_dict = OrderedDict({
+            'swagger': '2.0',
+            'info': {
+                'title': 'Contrail Configuration API',
+                'version': '1.0.0',
+            },
+            'host': 'localhost:8082',
+            'basePath': '/',
+            'schemes': ['http'],
+            'produces': ['application/json'],
+            'consumes': ['application/json'],
+            #'securityDefinitions': {
+            #    'contrail_auth': {
+            #        'type': 'oauth2',
+            #        'authorizationUrl': 'http://www.opencontrail.org/oauth/dialog',
+            #        'flow': 'implicit',
+            #        'scopes': {
+            #            'write:resources': 'modify resources in your account',
+            #            'read:resources': 'read resources'
+            #        }
+            #    },
+            #    'api_key': {
+            #        'type': 'apiKey',
+            #        'name': 'api_key',
+            #        'in': 'header'
+            #    }
+            #},
+            'definitions': {
+                'Error': {
+                    'properties': {
+                        'message': {
+                            'type': 'string',
+                        }
+                    },
+                    'required': ['message'],
+                },
+                'FQName': {
+                    'properties': {
+                        'fq_name': {
+                            'type': 'array',
+                            'items': {
+                                'type': 'string',
+                            },
+                        },
+                    },
+                    'required': ['fq_name'],
+                },
+                'Uuid': {
+                    'properties': {
+                        'uuid': {
+                            'type': 'string',
+                            'format': 'uuid',
+                        },
+                    },
+                    'required': ['uuid'],
+                },
+                'Type': {
+                    'properties': {
+                        'type': {
+                            'type': 'string',
+                        },
+                    },
+                    'required': ['type'],
+                },
+                'TypeFQName': {
+                   'allOf': [
+                       {'$ref': '#/definitions/Type'},
+                       {'$ref': '#/definitions/FQName'},
+                   ],
+                },
+                'Href': {
+                    'properties': {
+                        'href': {
+                            'type': 'string',
+                            'format': 'url',
+                        },
+                    },
+                    'required': ['href'],
+                },
+                'To': {
+                    'properties': {
+                        'to': {
+                            'type': 'array',
+                            'items': {
+                                'type': 'string',
+                            },
+                        },
+                    },
+                },
+                'ResourceListSummary': {
+                    'allOf': [
+                        {'$ref': '#/definitions/FQName'},
+                        {'$ref': '#/definitions/Uuid'},
+                        {'$ref': '#/definitions/Href'},
+                    ],
+                },
+                'ResourceReferenceRead': {
+                    'allOf': [
+                        {'$ref': '#/definitions/Href'},
+                        {'$ref': '#/definitions/Uuid'},
+                        {'$ref': '#/definitions/To'},
+                    ],
+                    'required': ['to', 'href', 'uuid'],
+                },
+                'ResourceReferenceCreate': {
+                    'allOf': [
+                        {'$ref': '#/definitions/To'},
+                    ],
+                    'required': ['to'],
+                },
+                'ResourceCommon': {
+                    'allOf': [
+                        {'$ref': '#/definitions/FQName'},
+                        {'$ref': '#/definitions/Uuid'},
+                    ],
+                    'required': ['fq_name', 'uuid'],
+                },
+                'ResourceWithParent': {
+                    'allOf': [
+                        {'$ref': '#/definitions/ResourceCommon'},
+                        {'properties': {
+                            'parent_type': {
+                                'type': 'string',
+                            },
+                            'parent_uuid': {
+                                'type': 'string',
+                                'format': 'uuid',
+                            },
+                        },},
+                    ],
+                },
+            },
+            'tags': [
+            ],
+            'paths': {
+                '/id-to-fqname': {
+                    'post': {
+                        'parameters': [
+                            {
+                                'name': 'uuid',
+                                'in': 'body',
+                                'schema': {
+                                    '$ref': '#/definitions/Uuid',
+                                },
+                                'required': True,
+                            },
+                        ],
+                        'responses': {
+                            '200': {
+                                'description': 'Success',
+                                'schema': {
+                                    '$ref': '#/definitions/TypeFQName',
+                                },
+                            },
+                            '404': {
+                                'description': 'Not Found',
+                                'schema': {
+                                    '$ref': '#/definitions/Error',
+                                },
+                            },
+                        },
+                    },
+                },
+                '/fqname-to-id': {
+                    'post': {
+                        'parameters': [
+                            {
+                                'name': 'type',
+                                'in': 'body',
+                                'schema': {
+                                    '$ref': '#/definitions/Type',
+                                },
+                                'required': True,
+                            },
+                            {
+                                'name': 'fq_name',
+                                'in': 'body',
+                                'schema': {
+                                    '$ref': '#/definitions/FQName',
+                                },
+                                'required': True,
+                            },
+                        ],
+                        'responses': {
+                            '200': {
+                                'description': 'Success',
+                                'schema': {
+                                    '$ref': '#/definitions/Uuid',
+                                },
+                            },
+                            '404': {
+                                'description': 'Not Found',
+                                'schema': {
+                                    '$ref': '#/definitions/Error',
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        })
+        openapi_dict['definitions'].update(
+            xsd_openapi_dict['definitions'])
+
+        definitions = openapi_dict['definitions']
+        paths = openapi_dict['paths']
+        tags = openapi_dict['tags']
+        for ident in self._non_exclude_idents():
+            parents = ident.getParents()
+            ident_name = ident.getName()
+            camel_name = CamelCase(ident_name)
+            method_name = ident_name.replace('-', '_')
+            tags.append({
+                'name': ident_name,
+                'description': 'Operations on %s' %(ident_name),
+            })
+            definitions.update({
+                camel_name+'Create': {
+                    'properties': {'fq_name': {'$ref': '#/definitions/FQName',}},
+                    'required': ['fq_name']
+                },
+                camel_name+'Read': {'properties': {}},
+                camel_name+'Update': {'properties': {}},
+            })
+            create_props = definitions[camel_name+'Create']['properties']
+            create_required = definitions[camel_name+'Create']['required']
+            read_props = definitions[camel_name+'Read']['properties']
+            update_props = definitions[camel_name+'Update']['properties']
+            if parents:
+                # grab only non config-root parent types
+                parent_types = [p[0].getName() for p in parents if p[0].getName() != _BASE_PARENT]
+                if parent_types:
+                    create_props['parent_type'] = {'type': 'string', 'enum': parent_types}
+                    create_required.append('parent_type')
+            for prop in ident.getProperties():
+                prop_name = prop.getName().replace('-', '_')
+                prop_xml_elem = prop.getElement()
+                complex_type = prop.getCType()
+                xsd_type = prop.getXsdType()
+                enum_values = None
+                range_values = None
+                if xsd_type.startswith('xsd:'):
+                    type_name = xsd_type
+                elif not complex_type: # simpletype [with restriction]
+                    type_name = prop.getElement().getType()
+                    r_base = self._xsd_parser.SimpleTypeDict[xsd_type]
+                    if r_base.values and isinstance(r_base.values[0], dict):
+                        range_values = {'minimum': r_base.values[0]['minimum'],
+                                        'maximum': r_base.values[1]['maximum']}
+                    elif r_base.values:
+                        enum_values = {'enum': r_base.values}
+                else: # complex
+                    type_name = xsd_type
+
+                presence = prop.getPresence()
+                operations = prop.getOperations()
+                description_values = None
+                description = prop.getDescription(width=100)
+                if description:
+                    if isinstance(description, list):
+                        description_values = {'description': '\n'.join(description)}
+                    else:
+                        description_values = {'description': description}
+
+                if type_name.startswith('xsd:'):
+                    if 'C' in operations:
+                        create_props[prop_name] = {
+                            'type': type_name.replace('xsd:','').replace(
+                                              'integer', 'number')}
+                    if 'R' in operations:
+                        read_props[prop_name] = {
+                            'type': type_name.replace('xsd:','').replace(
+                                              'integer', 'number')}
+                    if 'U' in operations:
+                        update_props[prop_name] = {
+                            'type': type_name.replace('xsd:','').replace(
+                                              'integer', 'number')}
+                else:
+                    if 'C' in operations:
+                        create_props[prop_name] = {
+                            '$ref': '#/definitions/%s' %(type_name)}
+                    if 'R' in operations:
+                        read_props[prop_name] = {
+                            '$ref': '#/definitions/%s' %(type_name)}
+                    if 'U' in operations:
+                        update_props[prop_name] = {
+                            '$ref': '#/definitions/%s' %(type_name)}
+
+                if enum_values:
+                    if 'C' in operations:
+                        create_props[prop_name].update(enum_values)
+                    if 'R' in operations:
+                        read_props[prop_name].update(enum_values)
+                    if 'U' in operations:
+                        update_props[prop_name].update(enum_values)
+                elif range_values:
+                    if 'C' in operations:
+                        create_props[prop_name].update(range_values)
+                    if 'R' in operations:
+                        read_props[prop_name].update(range_values)
+                    if 'U' in operations:
+                        update_props[prop_name].update(range_values)
+
+                if description_values:
+                    if 'C' in operations:
+                        create_props[prop_name].update(description_values)
+                    if 'R' in operations:
+                        read_props[prop_name].update(description_values)
+                    if 'U' in operations:
+                        update_props[prop_name].update(description_values)
+
+                if presence == 'required':
+                    create_required.append(prop_name)
+            # end for all ident properties
+
+            for link_info in ident.getLinksInfo():
+                link = ident.getLink(link_info)
+                to_ident = ident.getLinkTo(link_info)
+                to_method_name = to_ident.getName().replace('-', '_')
+                to_class_name = CamelCase(to_ident.getName())
+                is_ref = ident.isLinkRef(link_info)
+                if not is_ref:
+                    continue
+                presence = link.getPresence()
+                operations = prop.getOperations()
+                link_attr_type = link.getXsdType()
+                if link_attr_type:
+                    if 'C' in operations:
+                        create_props['%s_refs' %(to_method_name)] = {
+                            'allOf': [
+                                {'$ref': '#/definitions/ResourceReferenceCreate'},
+                                {'properties': {
+                                    'attr': {
+                                        '$ref': '#/definitions/%s' %(link_attr_type),
+                                    },
+                                },},
+                            ],
+                        }
+                    if 'R' in operations:
+                        read_props['%s_refs' %(to_method_name)] = {
+                            'allOf': [
+                                {'$ref': '#/definitions/ResourceReferenceRead'},
+                                {'properties': {
+                                    'attr': {
+                                        '$ref': '#/definitions/%s' %(link_attr_type),
+                                    },
+                                },},
+                            ],
+                        }
+                    if 'U' in operations:
+                        update_props['%s_refs' %(to_method_name)] = {
+                            'allOf': [
+                                {'$ref': '#/definitions/ResourceReferenceCreate'},
+                                {'properties': {
+                                    'attr': {
+                                        '$ref': '#/definitions/%s' %(link_attr_type),
+                                    },
+                                },},
+                            ],
+                        }
+                else: # link without attr
+                    if 'C' in operations:
+                        create_props['%s_refs' %(to_method_name)] = {
+                            'allOf': [
+                                {'$ref': '#/definitions/ResourceReferenceCreate'},
+                            ],
+                        }
+                    if 'R' in operations:
+                        read_props['%s_refs' %(to_method_name)] = {
+                            'allOf': [
+                                {'$ref': '#/definitions/ResourceReferenceRead'},
+                            ],
+                        }
+                    if 'U' in operations:
+                        update_props['%s_refs' %(to_method_name)] = {
+                            'allOf': [
+                                {'$ref': '#/definitions/ResourceReferenceCreate'},
+                            ],
+                        }
+
+                if presence == 'required':
+                    create_required.append('%s_refs' %(to_method_name))
+            # end for all refs
+
+            for back_link_info in ident.getBackLinksInfo():
+                back_link = ident.getLink(back_link_info)
+                is_back_ref = ident.isLinkRef(back_link_info)
+                if not is_back_ref:
+                    continue
+                from_ident = ident.getBackLinkFrom(back_link_info)
+                from_method_name = from_ident.getName().replace('-', '_')
+                from_class_name = CamelCase(from_ident.getName())
+                link_attr_type = back_link.getXsdType()
+                if link_attr_type:
+                    read_props['%s_back_refs' %(from_method_name)] = {
+                        'allOf': [
+                            {'$ref': '#/definitions/ResourceReferenceRead'},
+                            {'properties': {
+                                'attr': {
+                                    '$ref': '#/definitions/%s' %(link_attr_type),
+                                },
+                            },},
+                        ],
+                    }
+                else: # link without attr
+                    read_props['%s_refs' %(to_method_name)] = {
+                        'allOf': [
+                            {'$ref': '#/definitions/ResourceReferenceRead'},
+                        ],
+                    }
+            # end for all backrefs
+
+            paths.update({
+                '/%s/{id}' %(ident_name): {
+                    'get': {
+                        'tags': [ ident_name ],
+                        'summary': 'Fetch a specific %s' %(ident_name),
+                        'parameters': [
+                            {
+                                'description': 'The id of resource',
+                                'in': 'path',
+                                'name': 'id',
+                                'required': True,
+                                'type': 'string'
+                            }
+                        ],
+                        'responses': {
+                            '200': {
+                                'description': 'Success',
+                                'schema': {
+                                    '$ref': '#/definitions/%sRead' %(camel_name),
+                                }
+                            },
+                            '404': {
+                                'description': 'Not Found',
+                                'schema': {
+                                    '$ref': '#/definitions/Error'
+                                }
+                            }
+                        }
+                    },
+                    'put': {
+                        'tags': [ ident_name ],
+                        'summary': 'Update a specific %s' %(ident_name),
+                        'parameters': [
+                            {
+                                'description': 'The id of resource',
+                                'in': 'path',
+                                'name': 'id',
+                                'required': True,
+                                'type': 'string'
+                            },
+                            {
+                                'in': 'body',
+                                'name': '%s' %(ident_name),
+                                'schema': {
+                                    '$ref': '#/definitions/%sUpdate' %(camel_name),
+                                }
+                            }
+                        ],
+                        'responses': {
+                            '200': {
+                                'description': 'Success',
+                                'schema': {
+                                    '$ref': '#/definitions/Uuid'
+                                }
+                            },
+                            '404': {
+                                'description': 'Not Found',
+                                'schema': {
+                                    '$ref': '#/definitions/Error'
+                                }
+                            }
+                        }
+                    },
+                    'delete': {
+                        'tags': [ ident_name ],
+                        'summary': 'Delete a specific %s' %(ident_name),
+                        'parameters': [
+                            {
+                                'description': 'The id of resource',
+                                'in': 'path',
+                                'name': 'id',
+                                'required': True,
+                                'type': 'string'
+                            }
+                        ],
+                        'responses': {
+                            '200': {
+                                'description': 'Success',
+                                'schema': {
+                                    '$ref': '#/definitions/Uuid'
+                                }
+                            },
+                            '404': {
+                                'description': 'Not Found',
+                                'schema': {
+                                    '$ref': '#/definitions/Error'
+                                }
+                            },
+                            '409': {
+                                'description': 'Conflict',
+                                'schema': {
+                                    '$ref': '#/definitions/Error'
+                                }
+                            }
+                        }
+                    },
+                },
+                '/%ss' %(ident_name): {
+                    'get': {
+                        'tags': [ ident_name ],
+                        'summary': 'List collection of %s' %(ident_name),
+                        'parameters': [
+                            {
+                                'description': 'Report all fields of resource.',
+                                'in': 'query',
+                                'name': 'detail',
+                                'required': False,
+                                'type': 'boolean'
+                            },
+                            {
+                                'description': 'List of specific fields to report.',
+                                'in': 'query',
+                                'name': 'fields',
+                                'required': False,
+                                'type': 'string'
+                            },
+                            {
+                                'description': 'Count of resource',
+                                'in': 'query',
+                                'name': 'count',
+                                'required': False,
+                                'type': 'boolean'
+                            }
+                        ],
+                        'responses': {
+                            '200': {
+                                'description': 'Success',
+                                'schema': {
+                                    '$ref': '#/definitions/ResourceListSummary'
+                                }
+                            }
+                        }
+                    },
+                    'post': {
+                        'tags': [ ident_name ],
+                        'summary': 'Create a new %s' %(ident_name),
+                        'parameters': [
+                            {
+                                'in': 'body',
+                                'name': '%s' %(ident_name),
+                                'schema': {
+                                    '$ref': '#/definitions/%sCreate' %(camel_name),
+                                }
+                            }
+                        ],
+                        'responses': {
+                            '200': {
+                                'description': 'Success',
+                                'schema': {
+                                    '$ref': '#/definitions/Uuid'
+                                }
+                            }
+                        }
+                    }
+                },
+            })
+        # end for all idents
+
+        #pprint.pprint(dict(openapi_dict))
+        #json.encoder.c_make_encoder = None
+        write(gen_file, json.dumps(openapi_dict, indent=4))
+    # end _generate_docs_openapi
 
 #end class IFMapApiGenerator
