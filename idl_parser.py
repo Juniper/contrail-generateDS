@@ -24,7 +24,7 @@ class IDLParser(object):
             self.is_map = kwargs.get('is_map', 'False')
             self.map_key_name = kwargs.get('map_key_name')
             self.presence = presence
-            self.operations = operations
+            self.operations = operations.upper()
             self.description = description
 
         def IsList(self):
