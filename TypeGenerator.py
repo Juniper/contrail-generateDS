@@ -15,8 +15,11 @@ class TypeGenerator(object):
         elif (lang == 'c++'):
             self._LangGenr = CppGenerator(self._PGenr)
 
-    def generate(self, root, infile, outfileName, genStandAlone = True):
+    def generate(self, root, infile, outfileName, genStandAlone = True,
+                 openapi_dict = None):
         self._genStandAlone = genStandAlone
+        self._openapi_dict = openapi_dict
+        self._openapi_dict['definitions'] = {}
         # Create an output file.
         # Note that even if the user does not request an output file,
         #   we still need to go through the process of generating classes
@@ -144,7 +147,8 @@ class TypeGenerator(object):
             return
         self._PGenr.ElementsForSubclasses.append(element)
         name = element.getCleanName()
-        self._LangGenr.generateClassDefLine(wrt, parentName, prefix, name)
+        self._LangGenr.generateClassDefLine(wrt, parentName, prefix, name,
+                                            self._openapi_dict)
         # If this element has documentation, generate a doc-string.
         if element.documentation:
             self._LangGenr.generateElemDoc(wrt, element)
@@ -631,7 +635,7 @@ class PyGenerator(object):
         s1 = self._PGenr.TEMPLATE_HEADER % (tstamp, version, self._PGenr.ExternalEncoding, )
         wrt(s1)
 
-    def generateClassDefLine(self, wrt, parentName, prefix, name):
+    def generateClassDefLine(self, wrt, parentName, prefix, name, openapi_dict):
         if parentName:
             s1 = 'class %s%s(%s):\n' % (prefix, name, parentName,)
         else:
@@ -639,20 +643,28 @@ class PyGenerator(object):
 
         wrt(s1)
         wrt('    """\n')
+        openapi_dict['definitions'][name] = {'properties':{}, 'required': []}
+        openapi_properties = openapi_dict['definitions'][name]['properties']
+        openapi_required = openapi_dict['definitions'][name]['required']
         for child in self._PGenr.ElementDict[name].children:
-            def required_to_created_by(attrs):
+            def get_doc_info(attrs):
+                doc_info = {}
+                doc_info['description'] = self.get_description(attrs)
+                doc_info['is_optional'] = True
                 if 'required' not in attrs:
-                    return None
+                    return doc_info
                 elif attrs['required'] != 'system-only':
                     if attrs['required'].lower() == 'true':
-                        created_by = 'User (required)'
+                        doc_info['created_by'] = 'User (required)'
+                        doc_info['is_optional'] = False
                     else:
-                        created_by = 'User (optional)'
+                        doc_info['created_by'] = 'User (optional)'
                 else:
                     created_by = 'System'
-                return created_by
-            # end required_to_created_by
-            created_by = required_to_created_by(child.attrs)
+                return doc_info
+            # end get_doc_info
+            doc_info = get_doc_info(child.attrs)
+            created_by = doc_info.get('created_by')
 
             description = self.get_description(child.attrs)
 
@@ -665,7 +677,7 @@ class PyGenerator(object):
                 python_type = self._PGenr.SchemaToPythonTypeMap[r_base.base]
                 wrt('          %s, *one-of* %s\n\n' %(python_type, r_base.values))
                 if not created_by:
-                    created_by = required_to_created_by(r_attrs)
+                    doc_info = get_doc_info(r_attrs)
                 if not description:
                     description = self.get_description(r_attrs)
             elif child_schema_type in self._PGenr.SchemaToPythonTypeMap:
@@ -677,12 +689,40 @@ class PyGenerator(object):
             if created_by:
                 wrt('        Created By: ')
                 wrt('          %s\n\n' %(created_by))
+
+            description_lines = []
             if description:
                 wrt('        Description:\n')
                 for d_line in description:
                     for w_line in textwrap.wrap(d_line, 80,
                                       break_long_words=False):
+                        description_lines.append(w_line)
                         wrt('          %s\n\n' %(w_line))
+
+            openapi_properties[child.name.replace('-', '_')] = {}
+            openapi_prop = openapi_properties[child.name.replace('-', '_')]
+            if description_lines:
+                openapi_prop['description'] = '\n'.join(description_lines)
+            if child.isComplex():
+                openapi_prop["$ref"] = "#/definitions/%s" %(child.getType())
+            else:
+                child_type = child.getType()
+                if child_type.lower() == 'xsd:datetime':
+                    openapi_prop["type"] = "string"
+                    openapi_prop["format"] = "date-time"
+                elif child_type.lower() == 'xsd:time':
+                    openapi_prop["type"] = "string"
+                elif child_type.lower() == 'xsd:unsignedlong':
+                    openapi_prop["type"] = "number"
+                    openapi_prop["format"] = "double"
+                else:
+                    openapi_prop["type"] = child_type.replace('xsd:','')
+            if doc_info['is_optional'] == False:
+                openapi_required.append(child.name.replace('-', '_'))
+        # end for all attrs of type
+        if not openapi_required:
+            del openapi_dict['definitions'][name]['required']
+
         wrt('    """\n')
 
     def generateSubclass(self):
