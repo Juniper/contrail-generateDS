@@ -2146,9 +2146,9 @@ class XschemaHandler(handler.ContentHandler):
                 if len(values) == 0:
                     values.extend([None, None])
                 if name == MinInclusiveType:
-                    values[0] = attrs['value']
+                    values[0] = {'minimum': int(attrs['value'])}
                 else:
-                    values[1] = attrs['value']
+                    values[1] = {'maximum': int(attrs['value'])}
         elif name == UnionType:
             # Union types are only used with a parent simpleType and we want
             # the parent to know what it's a union of.
