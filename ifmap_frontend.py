@@ -229,7 +229,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        # property fields")
             for prop in ident.getProperties():
                 prop_name = prop.getName().replace('-', '_')
-                write(gen_file, "        if %s:" %(prop_name))
+                write(gen_file, "        if %s is not None:" %(prop_name))
                 write(gen_file, "            self._%s = %s" %(prop_name, prop_name))
 
             write(gen_file, "    #end __init__")
@@ -572,7 +572,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "")
             for prop in ident.getProperties():
                 prop_name = prop.getName().replace('-', '_')
-                write(gen_file, "        if %s:" %(prop_name))
+                write(gen_file, "        if %s is not None:" %(prop_name))
                 write(gen_file, "            pending_fields.append('%s')" %(prop_name))
 
             write(gen_file, "")
