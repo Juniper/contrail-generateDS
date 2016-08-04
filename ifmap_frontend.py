@@ -1726,6 +1726,7 @@ class IFMapApiGenerator(object):
             write(self.gen_file, "")
 
     def _gen_heat_handle_create(self):
+        write(self.gen_file, "    @contrail.set_auth_token")
         write(self.gen_file, "    def handle_create(self):")
         if self.parent_list:
             parent_is_project = False
@@ -1788,7 +1789,7 @@ class IFMapApiGenerator(object):
         tabs = tabs-4
         write(self.gen_file, "%sexcept:" %(" "*tabs))
         tabs = tabs+4
-        write(self.gen_file, "%sraise Exception(_('%s %%s could not be updated.') %% self.name)" %(" "*tabs, self.resource_name))
+        write(self.gen_file, "%sraise Exception(_('%s %%s could not be created.') %% self.name)" %(" "*tabs, self.resource_name))
         tabs = tabs-4
         write(self.gen_file, "")
         write(self.gen_file, "%sself.resource_id_set(obj_uuid)" %(" "*tabs))
@@ -1797,6 +1798,7 @@ class IFMapApiGenerator(object):
 
     def _gen_heat_handle_update(self):
         tabs = 4
+        write(self.gen_file, "%s@contrail.set_auth_token" %(" "*tabs))
         write(self.gen_file, "%sdef handle_update(self, json_snippet, tmpl_diff, prop_diff):" %(" "*tabs))
         tabs = tabs+4
         write(self.gen_file, "%stry:" %(" "*tabs))
@@ -1837,6 +1839,7 @@ class IFMapApiGenerator(object):
     #end _gen_heat_handle_update
 
     def _gen_heat_handle_delete(self):
+        write(self.gen_file, "    @contrail.set_auth_token")
         write(self.gen_file, "    def handle_delete(self):")
         write(self.gen_file, "        if self.resource_id is None:")
         write(self.gen_file, "            return")
@@ -1852,6 +1855,7 @@ class IFMapApiGenerator(object):
     #end _gen_heat_handle_delete
 
     def _gen_heat_show_resource(self):
+        write(self.gen_file, "    @contrail.set_auth_token")
         write(self.gen_file, "    def _show_resource(self):")
         write(self.gen_file, "        obj = self.vnc_lib().%s_read(id=self.resource_id)"
             %(self.resource_dict['method']))
