@@ -1603,6 +1603,10 @@ class IFMapApiGenerator(object):
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
             tabs = tabs-4
+            write(self.gen_file, "%sexcept Exception as e:" %(" "*tabs))
+            tabs = tabs+4
+            write(self.gen_file, "%sraise Exception(_('%%s') %% str(e))" %(" "*tabs))
+            tabs = tabs-4
             write(self.gen_file, "%sobj_0.add_%s(ref_obj%s)" %(" "*tabs, ref_name.replace("_refs", ""), attr_str))
 	    write(self.gen_file, "")
             tabs = tabs-4
@@ -1663,13 +1667,17 @@ class IFMapApiGenerator(object):
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
             tabs = tabs-4
-            write(self.gen_file, "%sexcept:" %(" "*tabs))
+            write(self.gen_file, "%sexcept vnc_api.NoIdError:" %(" "*tabs))
             tabs = tabs+4
             write(self.gen_file, "%sref_obj = self.vnc_lib().%s_read(" %(" "*tabs, ref_name.replace("_refs", "")))
             tabs = tabs+4
             write(self.gen_file, "%sfq_name_str=prop_diff.get(self.%s)[index_0]" %(" "*tabs, ref_name.upper()))
             tabs = tabs-4
             write(self.gen_file, "%s)" %(" "*tabs))
+            tabs = tabs-4
+            write(self.gen_file, "%sexcept Exception as e:" %(" "*tabs))
+            tabs = tabs+4
+            write(self.gen_file, "%sraise Exception(_('%%s') %% str(e))" %(" "*tabs))
             tabs = tabs-4
             if ref_attr_data:
                 write(self.gen_file, "%sref_obj_list.append(ref_obj.fq_name)" %(" "*tabs))
@@ -1758,9 +1766,9 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "%sobj_uuid = super(Contrail%s, self).resource_create(obj_0)"
             %(" "*tabs, self.resource_dict['class']))
         tabs = tabs-4
-        write(self.gen_file, "%sexcept:" %(" "*tabs))
+        write(self.gen_file, "%sexcept Exception as e:" %(" "*tabs))
         tabs = tabs+4
-        write(self.gen_file, "%sraise Exception(_('%s %%s could not be created.') %% self.name)" %(" "*tabs, self.resource_name))
+        write(self.gen_file, "%sraise Exception(_('%%s') %% str(e))" %(" "*tabs))
         tabs = tabs-4
         write(self.gen_file, "")
         write(self.gen_file, "%sself.resource_id_set(obj_uuid)" %(" "*tabs))
@@ -1780,9 +1788,9 @@ class IFMapApiGenerator(object):
         tabs = tabs-4
         write(self.gen_file, "%s)" %(" "*tabs))
         tabs = tabs-4
-        write(self.gen_file, "%sexcept:" %(" "*tabs))
+        write(self.gen_file, "%sexcept Exception as e:" %(" "*tabs))
         tabs = tabs+4
-        write(self.gen_file, "%sraise Exception(_('%s %%s not found.') %% self.name)" %(" "*tabs, self.resource_name))
+        write(self.gen_file, "%sraise Exception(_('%%s') %% str(e))" %(" "*tabs))
         write(self.gen_file, "")
 
         for key,val in enumerate(self.prop_list):
@@ -1802,9 +1810,9 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "%sself.vnc_lib().%s_update(obj_0)"
             %(" "*tabs, self.resource_dict['method']))
         tabs = tabs-4
-        write(self.gen_file, "%sexcept:" %(" "*tabs))
+        write(self.gen_file, "%sexcept Exception as e:" %(" "*tabs))
         tabs = tabs+4
-        write(self.gen_file, "%sraise Exception(_('%s %%s could not be updated.') %% self.name)" %(" "*tabs, self.resource_name))
+        write(self.gen_file, "%sraise Exception(_('%%s') %% str(e))" %(" "*tabs))
         write(self.gen_file, "")
 
     #end _gen_heat_handle_update
