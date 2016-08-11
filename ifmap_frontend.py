@@ -2852,7 +2852,7 @@ class IFMapApiGenerator(object):
                 description = prop.getDescription(width=100)
                 if description:
                     if isinstance(description, list):
-                        description_values = {'description': '\n'.join(description)}
+                        description_values = {'description': ' '.join(description)}
                     else:
                         description_values = {'description': description}
 

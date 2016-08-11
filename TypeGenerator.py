@@ -648,6 +648,17 @@ class PyGenerator(object):
             'properties':OrderedDict({}), 'required': []})
         openapi_properties = openapi_dict['definitions'][name]['properties']
         openapi_required = openapi_dict['definitions'][name]['required']
+
+        description = self.get_description(self._PGenr.ElementDict[name].attrs)
+        if description:
+            openapi_dict['definitions'][name]['description'] = ' '.join(description)
+            wrt('    Description:\n')
+            for d_line in description:
+                for w_line in textwrap.wrap(d_line, 80,
+                                            break_long_words=False):
+                    wrt('        %s\n\n' %(w_line))
+
+        wrt('    Attributes:\n')
         for child in self._PGenr.ElementDict[name].children:
             def get_doc_info(attrs):
                 doc_info = {}
@@ -836,6 +847,7 @@ class PyGenerator(object):
                                           'attr_type': attr_type,
                                           'simple_type' : child.getSchemaType()}
 
+        wrt('    class_description = %s\n' %(self.get_description(element.attrs)))
         wrt('    attr_fields = %s\n' %(attr_fields))
         wrt('    attr_field_type_vals = %s\n' %(attr_field_type_vals))
 
