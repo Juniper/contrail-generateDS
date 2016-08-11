@@ -1036,7 +1036,7 @@ class PyGenerator(object):
                         child_type = child.getType()
                         if (child.isComplex()):
                             wrt('        if isinstance(%s, dict):\n' %(name))
-                            wrt('            obj = %s(**%s)\n' %(child_type, name))
+                            wrt('            obj = %s(params_dict=%s)\n' %(child_type, name))
                             wrt('            self.%s = obj\n' % (arg_name))
                             wrt('        else:\n')
                             wrt('            self.%s = %s\n' % (arg_name, name))
