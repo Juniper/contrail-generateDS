@@ -142,6 +142,10 @@ func (obj *%(typecamel)s) Add%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
                }
             file.write(decl)
 
+        # mark as generated
+        ctypename = ctype.getName()
+        self._top_level_map[ctypename] = self._type_map[ctypename]
+
     # end _GenerateCType
 
     def _ExamineInnerTypes(self, inner_type_map, top_level, ctype):
