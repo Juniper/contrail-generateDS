@@ -64,6 +64,8 @@ class IFMapApiGenerator(object):
             gen_filename_pfx, xsd_openapi_dict)
         self._generate_docs_asciidoc(gendir + "contrail_openapi.adoc",
             gen_filename_pfx, openapi_dict)
+        self._generate_docs_sphinx(gendir + "contrail_openapi.rst",
+            gen_filename_pfx, openapi_dict)
         # With generation above, html doc can be built as:
         # asciidoctor build/debug/api-lib/vnc_api/gen/contrail_openapi.adoc \
         #             --backend html5 --doctype book -a toc=left -a toclevels=3 \
@@ -3221,7 +3223,7 @@ class IFMapApiGenerator(object):
                 else:
                     return item_info['type']
             elif 'allOf' in item_info:
-                return '\n'.join([get_schema_str(i) 
+                return '\n'.join([get_schema_str(i)
                                  for i in item_info['allOf']])
             else:
                 return ''
@@ -3343,7 +3345,7 @@ class IFMapApiGenerator(object):
                             write(gen_file, "|%s|%s %s|%s|%s|%s" %(
                                 type_str, name_str, presence_str, desc_str,
                                 schema_str, default_str))
-     
+
                 # end all params on oper
                 write(gen_file, "|===")
                 write(gen_file, "")
@@ -3402,4 +3404,178 @@ class IFMapApiGenerator(object):
         # end for all definitions
         write(gen_file, "")
     # end _generate_docs_asciidoc
+
+    def _generate_docs_sphinx(self, gen_fname, gen_type_pfx, openapi_dict):
+        def csv_scrub(col_str):
+            return '"%s"' %(col_str.replace('\n', ' ').replace('"', "'"))
+
+        def _get_schema_str(item_info):
+            if not item_info:
+                return ''
+            elif '$ref' in item_info:
+                schema_type = item_info['$ref'].split('/')[-1]
+                return '`%s`_' %(schema_type)
+            elif 'type' in item_info:
+                if item_info['type'].lower() == 'array':
+                    if '$ref' in item_info['items']:
+                        item_type = item_info['items']['$ref'].split('/')[-1]
+                        return '`%s`_ array' %(item_type)
+                    elif 'type' in item_info['items']:
+                        item_type = item_info['items']['type']
+                        return '< %s > array' %(item_type)
+                elif 'enum' in item_info:
+                    return 'Any of %s' %([str(x) for x in item_info['enum']])
+                else:
+                    return item_info['type']
+            elif 'allOf' in item_info:
+                return '\n'.join([get_schema_str(i)
+                                 for i in item_info['allOf']])
+            else:
+                return ''
+        # end _get_schema_str
+        def get_schema_str(item_info):
+            return csv_scrub(_get_schema_str(item_info))
+
+        def get_props_and_allof(defn_info):
+            ret_props = OrderedDict({})
+            ret_required = []
+            for allof_item in defn_info.get('allOf', []):
+                for item_key, item_info in allof_item.items():
+                    if item_key == 'properties':
+                        ret_props.update(item_info)
+                    elif item_key == '$ref':
+                        defn_type = item_info.split('/')[-1]
+                        recurse_props, recurse_required = get_props_and_allof(
+                            openapi_dict['definitions'][defn_type])
+                        ret_props.update(recurse_props)
+                        ret_required.extend(recurse_required)
+                    elif item_key == 'required':
+                        ret_required.extend(item_info)
+                # for all keys in allof item
+            # end for allof
+            ret_props.update(defn_info.get('properties', {}))
+            ret_required.extend(defn_info.get('required', []))
+            return ret_props, ret_required
+        # end get_props_and_allof
+
+        tag_dict = OrderedDict()
+        for path_name, path_info in openapi_dict['paths'].items():
+            for oper_name, oper_info in path_info.items():
+                tags = oper_info.get('tags')
+                if not tags:
+                    continue
+                tag_dict.setdefault(tags[0], OrderedDict())
+                summary = oper_info['summary']
+                tag_dict[tags[0]][summary] = oper_info
+                tag_dict[tags[0]][summary]['oper'] = oper_name
+                tag_dict[tags[0]][summary]['path'] = path_name
+        gen_file = self._xsd_parser.makeFile(gen_fname)
+        write(gen_file, "")
+        write(gen_file, "==========================")
+        write(gen_file, "Contrail Configuration API")
+        write(gen_file, "==========================")
+        write(gen_file, "")
+        write(gen_file, "")
+        for tag in tag_dict:
+            write(gen_file, tag)
+            write(gen_file, '='*len(tag))
+            for summary, oper_info in tag_dict[tag].items():
+                write(gen_file, summary)
+                write(gen_file, "-"*len(summary))
+                write(gen_file, "%s %s" %(oper_info['oper'].upper(), oper_info['path']))
+                write(gen_file, "")
+                write(gen_file, "")
+                write(gen_file, "**Parameters**")
+                write(gen_file, "")
+                write(gen_file, ".. csv-table::")
+                write(gen_file, '    :header: "Type", "Name", "Description", "Schema", "Default"')
+                write(gen_file, "")
+
+                for param_info in oper_info['parameters']:
+                    type_str = '**%s**' %(param_info['in'])
+                    if param_info['in'].lower() == 'path':
+                        presence_str = '*required*'
+                    elif (param_info.get('required') and
+                          param_info['required']):
+                        presence_str = '*required*'
+                    else:
+                        presence_str = '*optional*'
+                    if 'name' in param_info:
+                        name_str = '**%s**' %(param_info['name'])
+                        desc_str = csv_scrub(param_info.get('description', ''))
+                        if param_info['in'].lower() == 'query':
+                            schema_str = get_schema_str(param_info)
+                            default_str = param_info.get('default', '')
+                        else:
+                            schema_str = get_schema_str(param_info.get('schema'))
+                            default_str = ''
+                        write(gen_file, "    %s, %s %s, %s, %s, %s" %(
+                            type_str, name_str, presence_str,
+                            desc_str, schema_str, default_str))
+                    else: # anonymous parameter
+                        schema_type = param_info['schema']['$ref'].split(
+                                          '/')[-1]
+                        oap_props, oap_required = get_props_and_allof(
+                            openapi_dict['definitions'][schema_type])
+                        for oap_name, oap_info in oap_props.items():
+                            name_str = '**%s**' %(oap_name)
+                            if oap_name in oap_required:
+                                presence_str = '*required*'
+                            else:
+                                presence_str = '*optional*'
+                            desc_str = csv_scrub(oap_info.get('description', ''))
+                            schema_str = get_schema_str(oap_info)
+                            default_str = ''
+                            write(gen_file, "    %s, %s %s, %s, %s, %s" %(
+                                type_str, name_str, presence_str, desc_str,
+                                schema_str, default_str))
+                write(gen_file, "")
+
+                # end all params on oper
+
+                write(gen_file, "**Responses**")
+                write(gen_file, "")
+                write(gen_file, ".. csv-table::")
+                write(gen_file, '    :header: "HTTP Code", "Description", "Schema"')
+                write(gen_file, "")
+                for rsp_code, rsp_info in oper_info['responses'].items():
+                    code_str = "**%s**" %(rsp_code)
+                    desc_str = csv_scrub(rsp_info.get('description', ''))
+                    schema_str = get_schema_str(rsp_info.get('schema'))
+                    write(gen_file, "    %s, %s, %s" %(
+                        code_str, desc_str, schema_str))
+                # end all responses on oper
+                write(gen_file, "")
+            # end for all oper on path
+            write(gen_file, "")
+        # end for all paths
+
+        write(gen_file, "")
+        write(gen_file, "Definitions")
+        write(gen_file, "===========")
+        write(gen_file, "")
+        for defn_name, defn_info in openapi_dict['definitions'].items():
+            oap_props, oap_required = get_props_and_allof(defn_info)
+            if not oap_props:
+                continue
+            write(gen_file, defn_name)
+            write(gen_file, "-"*len(defn_name))
+            write(gen_file, "")
+            write(gen_file, ".. csv-table::")
+            write(gen_file, '    :header: "Name", "Description", "Schema"')
+            write(gen_file, "")
+            for oap_name, oap_info in oap_props.items():
+                name_str = '**%s**' %(oap_name)
+                if oap_name in oap_required:
+                    presence_str = '*required*'
+                else:
+                    presence_str = '*optional*'
+                desc_str = csv_scrub(oap_info.get('description', ''))
+                schema_str = get_schema_str(oap_info)
+                write(gen_file, "    %s %s, %s, %s" %(
+                    name_str, presence_str, desc_str, schema_str))
+            write(gen_file, "")
+        # end for all definitions
+        write(gen_file, "")
+    # end _generate_docs_sphinx
 #end class IFMapApiGenerator
