@@ -19,7 +19,7 @@ class TypeGenerator(object):
     def generate(self, root, infile, outfileName, genStandAlone = True,
                  openapi_dict = None):
         self._genStandAlone = genStandAlone
-        self._openapi_dict = openapi_dict
+        self._openapi_dict = openapi_dict or {}
         self._openapi_dict['definitions'] = {}
         # Create an output file.
         # Note that even if the user does not request an output file,
