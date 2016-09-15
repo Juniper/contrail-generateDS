@@ -46,7 +46,7 @@ class DeviceApiGenerator(object):
         type_genr = TypeGenerator(self._xsd_parser)
         type_genr.setLanguage('py')
         type_genr.generate(self._xsd_root, None, gen_filepath_pfx + "_xsd.py",
-                           genStandAlone = False)
+                           genStandAlone = False, openapi_dict={})
     #end _generate_common_classes
 
 #end class DeviceApiGenerator
