@@ -3429,12 +3429,29 @@ class IFMapApiGenerator(object):
                     return item_info['type']
             elif 'allOf' in item_info:
                 return '\n'.join([get_schema_str(i)
-                                 for i in item_info['allOf']])
+                                  for i in item_info['allOf']])
             else:
                 return ''
         # end _get_schema_str
+
         def get_schema_str(item_info):
             return csv_scrub(_get_schema_str(item_info))
+
+        def get_schema_name(item_info):
+            if not item_info:
+                return []
+            if '$ref' in item_info:
+                schema_type = item_info['$ref'].split('/')[-1]
+                return [schema_type]
+            if 'type' in item_info:
+                if item_info['type'].lower() == 'array':
+                    if '$ref' in item_info['items']:
+                        item_type = item_info['items']['$ref'].split('/')[-1]
+                        return [item_type]
+            elif 'allOf' in item_info:
+                return [get_schema_name(i) for i in item_info['allOf']]
+            return []
+        # end get_schema_name
 
         def get_props_and_allof(defn_info):
             ret_props = OrderedDict({})
@@ -3469,6 +3486,7 @@ class IFMapApiGenerator(object):
                 tag_dict[tags[0]][summary] = oper_info
                 tag_dict[tags[0]][summary]['oper'] = oper_name
                 tag_dict[tags[0]][summary]['path'] = path_name
+
         gen_file = self._xsd_parser.makeFile(gen_fname)
         write(gen_file, "")
         write(gen_file, "==========================")
@@ -3476,6 +3494,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "==========================")
         write(gen_file, "")
         write(gen_file, "")
+        used_schemas = set()
         for tag in tag_dict:
             write(gen_file, tag)
             write(gen_file, '='*len(tag))
@@ -3505,13 +3524,16 @@ class IFMapApiGenerator(object):
                         desc_str = csv_scrub(param_info.get('description', ''))
                         if param_info['in'].lower() == 'query':
                             schema_str = get_schema_str(param_info)
+                            schema_names = get_schema_name(param_info)
                             default_str = param_info.get('default', '')
                         else:
                             schema_str = get_schema_str(param_info.get('schema'))
+                            schema_names = get_schema_name(param_info.get('schema'))
                             default_str = ''
                         write(gen_file, "    %s, %s %s, %s, %s, %s" %(
                             type_str, name_str, presence_str,
                             desc_str, schema_str, default_str))
+                        used_schemas |= set(schema_names)
                     else: # anonymous parameter
                         schema_type = param_info['schema']['$ref'].split(
                                           '/')[-1]
@@ -3525,10 +3547,12 @@ class IFMapApiGenerator(object):
                                 presence_str = '*optional*'
                             desc_str = csv_scrub(oap_info.get('description', ''))
                             schema_str = get_schema_str(oap_info)
+                            schema_names = get_schema_name(oap_info)
                             default_str = ''
                             write(gen_file, "    %s, %s %s, %s, %s, %s" %(
                                 type_str, name_str, presence_str, desc_str,
                                 schema_str, default_str))
+                            used_schemas |= set(schema_names)
                 write(gen_file, "")
 
                 # end all params on oper
@@ -3542,8 +3566,10 @@ class IFMapApiGenerator(object):
                     code_str = "**%s**" %(rsp_code)
                     desc_str = csv_scrub(rsp_info.get('description', ''))
                     schema_str = get_schema_str(rsp_info.get('schema'))
+                    schema_names = get_schema_name(rsp_info.get('schema'))
                     write(gen_file, "    %s, %s, %s" %(
                         code_str, desc_str, schema_str))
+                    used_schemas |= set(schema_names)
                 # end all responses on oper
                 write(gen_file, "")
             # end for all oper on path
@@ -3554,10 +3580,11 @@ class IFMapApiGenerator(object):
         write(gen_file, "Definitions")
         write(gen_file, "===========")
         write(gen_file, "")
-        for defn_name, defn_info in openapi_dict['definitions'].items():
+        def generate_def(defn_name, defn_info):
+            now_used_schemas = set()
             oap_props, oap_required = get_props_and_allof(defn_info)
             if not oap_props:
-                continue
+                return now_used_schemas
             write(gen_file, defn_name)
             write(gen_file, "-"*len(defn_name))
             write(gen_file, "")
@@ -3572,9 +3599,22 @@ class IFMapApiGenerator(object):
                     presence_str = '*optional*'
                 desc_str = csv_scrub(oap_info.get('description', ''))
                 schema_str = get_schema_str(oap_info)
+                schema_names = get_schema_name(oap_info)
                 write(gen_file, "    %s %s, %s, %s" %(
                     name_str, presence_str, desc_str, schema_str))
+                now_used_schemas |= set(schema_names)
             write(gen_file, "")
+            return now_used_schemas
+        deferred_schemas = set()
+        for defn_name, defn_info in openapi_dict['definitions'].items():
+            if defn_name in used_schemas:
+                deferred_schemas |= generate_def(defn_name, defn_info)
+        while True:
+            if not deferred_schemas:
+                break
+            schema_name = deferred_schemas.pop()
+            deferred_schemas |= generate_def(schema_name, openapi_dict['definitions'][schema_name])
+
         # end for all definitions
         write(gen_file, "")
     # end _generate_docs_sphinx
