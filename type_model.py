@@ -86,8 +86,6 @@ def ComplexTypeLocate(xsdTypeDict, cTypeDict, xtypename):
         return cTypeDict[xtypename]
 
     if not xtypename in xsdTypeDict:
-        logger = logging.getLogger('type_model')
-        logger.warning('%s not found in type dictionary', xtypename)
         return None
 
     ctype = ComplexType(xtypename)
