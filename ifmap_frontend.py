@@ -2719,7 +2719,6 @@ class IFMapApiGenerator(object):
                         'summary': 'Find type and fqname given resource id',
                         'parameters': [
                             OrderedDict({
-                                'name': 'uuid',
                                 'in': 'body',
                                 'schema': {
                                     '$ref': '#/definitions/Uuid',
@@ -3409,7 +3408,7 @@ class IFMapApiGenerator(object):
         def csv_scrub(col_str):
             return '"%s"' %(col_str.replace('\n', ' ').replace('"', "'"))
 
-        def _get_schema_str(item_info):
+        def get_schema_str(item_info):
             if not item_info:
                 return ''
             elif '$ref' in item_info:
@@ -3422,20 +3421,17 @@ class IFMapApiGenerator(object):
                         return '`%s`_ array' %(item_type)
                     elif 'type' in item_info['items']:
                         item_type = item_info['items']['type']
-                        return '< %s > array' %(item_type)
+                        return csv_scrub('< %s > array' %(item_type))
                 elif 'enum' in item_info:
-                    return 'Any of %s' %([str(x) for x in item_info['enum']])
+                    return csv_scrub('Any of %s' %([str(x) for x in item_info['enum']]))
                 else:
                     return item_info['type']
             elif 'allOf' in item_info:
-                return '\n'.join([get_schema_str(i)
+                return ' '.join([get_schema_str(i)
                                   for i in item_info['allOf']])
             else:
                 return ''
-        # end _get_schema_str
-
-        def get_schema_str(item_info):
-            return csv_scrub(_get_schema_str(item_info))
+        # end get_schema_str
 
         def get_schema_name(item_info):
             if not item_info:
@@ -3604,7 +3600,7 @@ class IFMapApiGenerator(object):
                     name_str, presence_str, desc_str, schema_str))
                 now_used_schemas |= set(schema_names)
             write(gen_file, "")
-            return now_used_schemas
+            return now_used_schemas - used_schemas
         deferred_schemas = set()
         for defn_name, defn_info in openapi_dict['definitions'].items():
             if defn_name in used_schemas:
@@ -3613,6 +3609,7 @@ class IFMapApiGenerator(object):
             if not deferred_schemas:
                 break
             schema_name = deferred_schemas.pop()
+            used_schemas.add(schema_name)
             deferred_schemas |= generate_def(schema_name, openapi_dict['definitions'][schema_name])
 
         # end for all definitions

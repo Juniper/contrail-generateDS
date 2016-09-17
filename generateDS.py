@@ -1704,7 +1704,7 @@ class XschemaElement(XschemaElementBase):
                     attr = attrGroup.get(name)
                     self.attributeDefs[name] = attr
             else:
-                err_msg('*** Error. attributeGroup %s not defined.\n' % (
+                logging.debug('attributeGroup %s not defined.\n' % (
                     groupName, ))
 
     def __str__(self):
