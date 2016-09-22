@@ -32,7 +32,6 @@ bool %s::XmlParse(const xml_node &parent) {
             elif cpptype == 'std::string':
                 fmt = '%s = node.child_value();\n'
                 file.write(indent + fmt % member.membername)
-                file.write(indent + 'boost::trim(%s);\n' % member.membername)
             elif cpptype == 'time_t':
                 if member.xsd_object.getType() == 'xsd:dateTime':
                     fmt = 'if (!ParseDateTime(node, &%s)) return false;\n'
@@ -52,7 +51,6 @@ bool %s::XmlParse(const xml_node &parent) {
                 elif member.sequenceType == 'std::string':
                     item = """
             string var(node.child_value());
-            boost::trim(var);
             %s.push_back(var);
 """ % member.membername
                     file.write(item)

@@ -131,7 +131,6 @@ bool %(class)s::Decode(const xml_node &parent, std::string *id_name,
                     indent = ' ' * 16
                     if info.sequenceType == 'std::string':
                         file.write(indent + 'string var(item.child_value());\n')
-                        file.write(indent + 'boost::trim(var);\n')
                         file.write(indent + 'ptr->%s.push_back(var);\n' %
                                    info.membername)
                         file.write(indent + 'ptr->property_set_.set(%s);\n' %
