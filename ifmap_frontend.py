@@ -1661,16 +1661,18 @@ class IFMapApiGenerator(object):
                 ref_attr_data = True
                 ref_name = ref_name+"_refs"
             if ref_attr_data:
-                write(self.gen_file, "%sif not prop_diff.get(self.%s):" %(" "*tabs, ref_name.upper()))
+                write(self.gen_file, "%supdate = 0" %(" "*tabs))
+                write(self.gen_file, "%sif not self.%s in prop_diff:" %(" "*tabs, ref_name.upper()))
                 tabs=tabs+4
                 write(self.gen_file, "%sref_obj_list = [ref['to'] for ref in obj_0.get_%s() or []]" %(" "*tabs, ref_name))
                 tabs=tabs-4
                 write(self.gen_file, "%selse:" %(" "*tabs))
                 tabs=tabs+4
                 write(self.gen_file, "%sref_obj_list = []" %(" "*tabs))
+                write(self.gen_file, "%supdate = 1" %(" "*tabs))
                 tabs=tabs-4
 
-                write(self.gen_file, "%sif not prop_diff.get(self.%s_DATA):" %(" "*tabs, ref_name.upper()))
+                write(self.gen_file, "%sif not self.%s_DATA in prop_diff:" %(" "*tabs, ref_name.upper()))
                 tabs=tabs+4
                 write(self.gen_file, "%sref_data_list = [ref['attr'] for ref in obj_0.get_%s() or []]" %(" "*tabs, ref_name))
                 tabs=tabs-4
@@ -1725,7 +1727,7 @@ class IFMapApiGenerator(object):
                         self.resource_name, ref_name, ref_name))
                 tabs = tabs-4
                 write(self.gen_file, "")
-                write(self.gen_file, "%sif ref_obj_list or ref_data_list:" %(" "*tabs))
+                write(self.gen_file, "%sif update or ref_obj_list or ref_data_list:" %(" "*tabs))
                 tabs = tabs+4
                 write(self.gen_file, "%sobj_0.set_%s_list(ref_obj_list, ref_data_list)" %(" "*tabs, ref_name.replace("_refs", "")))
                 tabs = tabs-4
