@@ -5,6 +5,12 @@ import textwrap
 from pprint import pformat
 from collections import OrderedDict
 
+def escape_string(instring):
+    s1 = instring
+    s1 = s1.replace('\\', '\\\\')
+    s1 = s1.replace("'", "\\'")
+    return s1
+
 class TypeGenerator(object):
     def __init__(self, parser_generator):
         self._PGenr = parser_generator
@@ -229,8 +235,8 @@ class TypeGenerator(object):
             name = self._PGenr.cleanupName(attrDef.getName().replace(':', '_'))
             mappedName = self._PGenr.mapName(name)
             gsName = self._PGenr.make_gs_name(name)
-            self._LangGenr.generateGetter(wrt, gsName, mappedName)
-            self._LangGenr.generateSetter(wrt, gsName, mappedName)
+            self._LangGenr.generateGetter(wrt, gsName, mappedName, attrDef.getType())
+            self._LangGenr.generateSetter(wrt, gsName, mappedName, attrDef.getType())
             if self._PGenr.GenerateProperties:
                 self._LangGenr.generateProperty(wrt, name, gsName, gsName)
             typeName = attrDef.getType()
@@ -334,7 +340,7 @@ class TypeGenerator(object):
             name = attrDef.getName()
             cleanName = self._PGenr.cleanupName(name)
             capName = self._PGenr.make_gs_name(cleanName)
-            mappedName = mapName(cleanName)
+            mappedName = self._PGenr.mapName(cleanName)
             data_type = attrDef.getData_type()
             attrType = attrDef.getType()
             if attrType in self._PGenr.SimpleTypeDict:
@@ -995,7 +1001,7 @@ class PyGenerator(object):
         for key in attrDefs:
             attrDef = attrDefs[key]
             mappedName = self._PGenr.cleanupName(attrDef.getName())
-            mappedName = mapName(mappedName)
+            mappedName = self._PGenr.mapName(mappedName)
             logging.debug("Constructor attribute: %s" % mappedName)
             pythonType = self._PGenr.SchemaToPythonTypeMap.get(attrDef.getType())
             attrVal = "_cast(%s, %s)" % (pythonType, mappedName)
@@ -1134,7 +1140,7 @@ class PyGenerator(object):
             name = attrDef.getName()
             default = attrDef.getDefault()
             mappedName = name.replace(':', '_')
-            mappedName = self._PGenr.cleanupName(mapName(mappedName))
+            mappedName = self._PGenr.cleanupName(self._PGenr.mapName(mappedName))
             if mappedName in addedArgs:
                 continue
             addedArgs[mappedName] = 1
@@ -1366,7 +1372,7 @@ class PyGenerator(object):
             for key in attrDefs.keys():
                 attrDef = attrDefs[key]
                 name = attrDef.getName()
-                cleanName = mapName(self._PGenr.cleanupName(name))
+                cleanName = self._PGenr.mapName(self._PGenr.cleanupName(name))
                 capName = self._PGenr.make_gs_name(cleanName)
                 if True:            # attrDef.getUse() == 'optional':
                     wrt("        if self.%s is not None and '%s' not in already_processed:\n" % (
@@ -1794,7 +1800,7 @@ class PyGenerator(object):
             atype = attrDef.getType()
             if atype in self._PGenr.SimpleTypeDict:
                 atype = self._PGenr.SimpleTypeDict[atype].getBase()
-            self._LangGenr.generateBuildAttributeForType(wrt, element, atype, name, mappedName)
+            self._generateBuildAttributeForType(wrt, element, atype, name, mappedName)
         hasAttributes += self._generateBuildAttributeForAny(wrt, element)
         hasAttributes += self._generateBuildAttributeForExt(wrt, element)
         return hasAttributes
@@ -1862,7 +1868,7 @@ class PyGenerator(object):
                 name, ))
             wrt("            already_processed.append('%s')\n" % (name, ))
             wrt("            self.%s = value\n" % (mappedName, ))
-        typeName = attrDef.getType()
+        typeName = atype
         if typeName and typeName in self._PGenr.SimpleTypeDict:
             wrt("            self.validate_%s(self.%s)    # validate type %s\n" % (
                 typeName, mappedName, typeName, ))
