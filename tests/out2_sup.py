@@ -357,7 +357,7 @@ class MemberSpec_(object):
     def set_container(self, container): self.container = container
     def get_container(self): return self.container
 
-def _cast(typ, value):
+def cast_(typ, value):
     if typ is None or value is None:
         return value
     return typ(value)
@@ -788,11 +788,11 @@ class person(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, vegetable=None, fruit=None, ratio=None, id=None, value=None, name=None, interest=None, category=None, agent=None, promoter=None, description=None, extensiontype_=None):
-        self.vegetable = _cast(None, vegetable)
-        self.fruit = _cast(None, fruit)
-        self.ratio = _cast(float, ratio)
-        self.id = _cast(int, id)
-        self.value = _cast(None, value)
+        self.vegetable = cast_(None, vegetable)
+        self.fruit = cast_(None, fruit)
+        self.ratio = cast_(float, ratio)
+        self.id = cast_(int, id)
+        self.value = cast_(None, value)
         self.name = name
         if interest is None:
             self.interest = []
@@ -1121,12 +1121,12 @@ class programmer(person):
     superclass = person
     def __init__(self, vegetable=None, fruit=None, ratio=None, id=None, value=None, name=None, interest=None, category=None, agent=None, promoter=None, description=None, language=None, area=None, attrnegint=None, attrposint=None, attrnonnegint=None, attrnonposint=None, email=None, elposint=None, elnonposint=None, elnegint=None, elnonnegint=None, eldate=None, eltoken=None, elshort=None, ellong=None, elparam=None, elarraytypes=None, extensiontype_=None):
         super(programmer, self).__init__(vegetable, fruit, ratio, id, value, name, interest, category, agent, promoter, description, extensiontype_, )
-        self.language = _cast(None, language)
-        self.area = _cast(None, area)
-        self.attrnegint = _cast(int, attrnegint)
-        self.attrposint = _cast(int, attrposint)
-        self.attrnonnegint = _cast(int, attrnonnegint)
-        self.attrnonposint = _cast(int, attrnonposint)
+        self.language = cast_(None, language)
+        self.area = cast_(None, area)
+        self.attrnegint = cast_(int, attrnegint)
+        self.attrposint = cast_(int, attrposint)
+        self.attrnonnegint = cast_(int, attrnonnegint)
+        self.attrnonposint = cast_(int, attrnonposint)
         self.email = email
         self.elposint = elposint
         self.elnonposint = elnonposint
@@ -1548,12 +1548,12 @@ class param(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, semantic=None, name=None, flow=None, sid=None, type_=None, id=None, valueOf_=None):
-        self.semantic = _cast(None, semantic)
-        self.name = _cast(None, name)
-        self.flow = _cast(None, flow)
-        self.sid = _cast(None, sid)
-        self.type_ = _cast(None, type_)
-        self.id = _cast(None, id)
+        self.semantic = cast_(None, semantic)
+        self.name = cast_(None, name)
+        self.flow = cast_(None, flow)
+        self.sid = cast_(None, sid)
+        self.type_ = cast_(None, type_)
+        self.id = cast_(None, id)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if param.subclass:
@@ -1745,7 +1745,7 @@ class python_programmer(programmer):
     superclass = programmer
     def __init__(self, vegetable=None, fruit=None, ratio=None, id=None, value=None, name=None, interest=None, category=None, agent=None, promoter=None, description=None, language=None, area=None, attrnegint=None, attrposint=None, attrnonnegint=None, attrnonposint=None, email=None, elposint=None, elnonposint=None, elnegint=None, elnonnegint=None, eldate=None, eltoken=None, elshort=None, ellong=None, elparam=None, elarraytypes=None, nick_name=None, favorite_editor=None):
         super(python_programmer, self).__init__(vegetable, fruit, ratio, id, value, name, interest, category, agent, promoter, description, language, area, attrnegint, attrposint, attrnonnegint, attrnonposint, email, elposint, elnonposint, elnegint, elnonnegint, eldate, eltoken, elshort, ellong, elparam, elarraytypes, )
-        self.nick_name = _cast(None, nick_name)
+        self.nick_name = cast_(None, nick_name)
         self.favorite_editor = favorite_editor
     def factory(*args_, **kwargs_):
         if python_programmer.subclass:
@@ -1887,8 +1887,8 @@ class java_programmer(programmer):
     superclass = programmer
     def __init__(self, vegetable=None, fruit=None, ratio=None, id=None, value=None, name=None, interest=None, category=None, agent=None, promoter=None, description=None, language=None, area=None, attrnegint=None, attrposint=None, attrnonnegint=None, attrnonposint=None, email=None, elposint=None, elnonposint=None, elnegint=None, elnonnegint=None, eldate=None, eltoken=None, elshort=None, ellong=None, elparam=None, elarraytypes=None, status=None, nick_name=None, favorite_editor=None):
         super(java_programmer, self).__init__(vegetable, fruit, ratio, id, value, name, interest, category, agent, promoter, description, language, area, attrnegint, attrposint, attrnonnegint, attrnonposint, email, elposint, elnonposint, elnegint, elnonnegint, eldate, eltoken, elshort, ellong, elparam, elarraytypes, )
-        self.status = _cast(None, status)
-        self.nick_name = _cast(None, nick_name)
+        self.status = cast_(None, status)
+        self.nick_name = cast_(None, nick_name)
         self.favorite_editor = favorite_editor
     def factory(*args_, **kwargs_):
         if java_programmer.subclass:
@@ -2648,9 +2648,9 @@ class info(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, rating=None, type_=None, name=None):
-        self.rating = _cast(float, rating)
-        self.type_ = _cast(int, type_)
-        self.name = _cast(None, name)
+        self.rating = cast_(float, rating)
+        self.type_ = cast_(int, type_)
+        self.name = cast_(None, name)
         pass
     def factory(*args_, **kwargs_):
         if info.subclass:

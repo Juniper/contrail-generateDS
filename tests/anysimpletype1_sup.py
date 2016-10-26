@@ -357,7 +357,7 @@ class MemberSpec_(object):
     def set_container(self, container): self.container = container
     def get_container(self): return self.container
 
-def _cast(typ, value):
+def cast_(typ, value):
     if typ is None or value is None:
         return value
     return typ(value)
@@ -374,7 +374,7 @@ class test1element(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, test1attribute=None, test1member=None):
-        self.test1attribute = _cast(None, test1attribute)
+        self.test1attribute = cast_(None, test1attribute)
         self.test1member = test1member
     def factory(*args_, **kwargs_):
         if test1element.subclass:

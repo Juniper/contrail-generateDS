@@ -357,7 +357,7 @@ class MemberSpec_(object):
     def set_container(self, container): self.container = container
     def get_container(self): return self.container
 
-def _cast(typ, value):
+def cast_(typ, value):
     if typ is None or value is None:
         return value
     return typ(value)
@@ -377,7 +377,7 @@ class PurchaseOrderType(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, orderDate=None, shipTo=None, billTo=None, comment=None, items=None):
-        self.orderDate = _cast(None, orderDate)
+        self.orderDate = cast_(None, orderDate)
         self.shipTo = shipTo
         self.billTo = billTo
         self.comment = comment
@@ -823,7 +823,7 @@ class UKAddress(Address):
     superclass = Address
     def __init__(self, name=None, street=None, city=None, exportCode=None, postcode=None):
         super(UKAddress, self).__init__(name, street, city, )
-        self.exportCode = _cast(int, exportCode)
+        self.exportCode = cast_(int, exportCode)
         self.postcode = postcode
     def factory(*args_, **kwargs_):
         if UKAddress.subclass:
@@ -930,7 +930,7 @@ class itemType(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, partNum=None, productName=None, quantity=None, USPrice=None, comment=None, shipDate=None):
-        self.partNum = _cast(None, partNum)
+        self.partNum = cast_(None, partNum)
         self.productName = productName
         self.quantity = quantity
         self.USPrice = USPrice

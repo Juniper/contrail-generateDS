@@ -357,7 +357,7 @@ class MemberSpec_(object):
     def set_container(self, container): self.container = container
     def get_container(self): return self.container
 
-def _cast(typ, value):
+def cast_(typ, value):
     if typ is None or value is None:
         return value
     return typ(value)
@@ -374,7 +374,7 @@ class SpecialDate(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, SpecialProperty=None, valueOf_=None):
-        self.SpecialProperty = _cast(None, SpecialProperty)
+        self.SpecialProperty = cast_(None, SpecialProperty)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if SpecialDate.subclass:
@@ -453,7 +453,7 @@ class ExtremeDate(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, ExtremeProperty=None, valueOf_=None):
-        self.ExtremeProperty = _cast(None, ExtremeProperty)
+        self.ExtremeProperty = cast_(None, ExtremeProperty)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if ExtremeDate.subclass:

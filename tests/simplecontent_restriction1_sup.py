@@ -357,7 +357,7 @@ class MemberSpec_(object):
     def set_container(self, container): self.container = container
     def get_container(self): return self.container
 
-def _cast(typ, value):
+def cast_(typ, value):
     if typ is None or value is None:
         return value
     return typ(value)
@@ -380,13 +380,13 @@ class IdentifierType(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, schemeDataURI=None, schemeID=None, schemeAgencyName=None, schemeAgencyID=None, schemeName=None, schemeVersionID=None, schemeURI=None, valueOf_=None, extensiontype_=None):
-        self.schemeDataURI = _cast(None, schemeDataURI)
-        self.schemeID = _cast(None, schemeID)
-        self.schemeAgencyName = _cast(None, schemeAgencyName)
-        self.schemeAgencyID = _cast(None, schemeAgencyID)
-        self.schemeName = _cast(None, schemeName)
-        self.schemeVersionID = _cast(None, schemeVersionID)
-        self.schemeURI = _cast(None, schemeURI)
+        self.schemeDataURI = cast_(None, schemeDataURI)
+        self.schemeID = cast_(None, schemeID)
+        self.schemeAgencyName = cast_(None, schemeAgencyName)
+        self.schemeAgencyID = cast_(None, schemeAgencyID)
+        self.schemeName = cast_(None, schemeName)
+        self.schemeVersionID = cast_(None, schemeVersionID)
+        self.schemeURI = cast_(None, schemeURI)
         self.valueOf_ = valueOf_
         self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
