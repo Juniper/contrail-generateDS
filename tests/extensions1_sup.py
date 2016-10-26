@@ -357,7 +357,7 @@ class MemberSpec_(object):
     def set_container(self, container): self.container = container
     def get_container(self): return self.container
 
-def _cast(typ, value):
+def cast_(typ, value):
     if typ is None or value is None:
         return value
     return typ(value)
@@ -374,7 +374,7 @@ class SpecialDate(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, SpecialProperty=None, valueOf_=None):
-        self.SpecialProperty = _cast(None, SpecialProperty)
+        self.SpecialProperty = cast_(None, SpecialProperty)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if SpecialDate.subclass:
@@ -453,7 +453,7 @@ class ExtremeDate(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, ExtremeProperty=None, valueOf_=None):
-        self.ExtremeProperty = _cast(None, ExtremeProperty)
+        self.ExtremeProperty = cast_(None, ExtremeProperty)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if ExtremeDate.subclass:
@@ -532,7 +532,7 @@ class singleExtremeDate(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, ExtremeProperty=None, valueOf_=None):
-        self.ExtremeProperty = _cast(None, ExtremeProperty)
+        self.ExtremeProperty = cast_(None, ExtremeProperty)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if singleExtremeDate.subclass:
@@ -900,8 +900,8 @@ class BaseType(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, BaseProperty1=None, BaseProperty2=None, valueOf_=None, extensiontype_=None):
-        self.BaseProperty1 = _cast(None, BaseProperty1)
-        self.BaseProperty2 = _cast(None, BaseProperty2)
+        self.BaseProperty1 = cast_(None, BaseProperty1)
+        self.BaseProperty2 = cast_(None, BaseProperty2)
         self.valueOf_ = valueOf_
         self.extensiontype_ = extensiontype_
     def factory(*args_, **kwargs_):
@@ -1006,8 +1006,8 @@ class DerivedType(BaseType):
     superclass = BaseType
     def __init__(self, BaseProperty1=None, BaseProperty2=None, DerivedProperty1=None, DerivedProperty2=None, valueOf_=None):
         super(DerivedType, self).__init__(BaseProperty1, BaseProperty2, valueOf_, )
-        self.DerivedProperty1 = _cast(None, DerivedProperty1)
-        self.DerivedProperty2 = _cast(None, DerivedProperty2)
+        self.DerivedProperty1 = cast_(None, DerivedProperty1)
+        self.DerivedProperty2 = cast_(None, DerivedProperty2)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if DerivedType.subclass:
@@ -1105,7 +1105,7 @@ class MyInteger(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, MyAttr=None, valueOf_=None):
-        self.MyAttr = _cast(None, MyAttr)
+        self.MyAttr = cast_(None, MyAttr)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if MyInteger.subclass:
@@ -1184,7 +1184,7 @@ class MyBoolean(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, MyAttr=None, valueOf_=None):
-        self.MyAttr = _cast(None, MyAttr)
+        self.MyAttr = cast_(None, MyAttr)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if MyBoolean.subclass:
@@ -1263,7 +1263,7 @@ class MyFloat(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, MyAttr=None, valueOf_=None):
-        self.MyAttr = _cast(None, MyAttr)
+        self.MyAttr = cast_(None, MyAttr)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if MyFloat.subclass:
@@ -1342,7 +1342,7 @@ class MyDouble(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, MyAttr=None, valueOf_=None):
-        self.MyAttr = _cast(None, MyAttr)
+        self.MyAttr = cast_(None, MyAttr)
         self.valueOf_ = valueOf_
     def factory(*args_, **kwargs_):
         if MyDouble.subclass:
