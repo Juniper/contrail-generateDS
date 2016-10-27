@@ -2327,12 +2327,14 @@ class PyGenerator(object):
         childCount = self._PGenr.countChildren(element, 0)
         comps = []
         hash_fields = []
+        str_fields = []
         for child in element.getChildren():
             if child.getType() == self._PGenr.AnyTypeIdentifier:
                 continue
             else:
                 name = self._PGenr.cleanupName(child.getCleanName())
                 comps.append('self.%s == other.%s' %(name, name))
+                str_fields.append('"%s = " + str(self.%s)' % (name, name))
                 if child.getMaxOccurs() > 1:
                     hash_fields.append('tuple(self.%s or [])' % name)
                 else:
@@ -2342,22 +2344,27 @@ class PyGenerator(object):
             wrt('    def __eq__(self, other): return True\n')
             wrt('    def __ne__(self, other): return False\n')
             wrt('    def __hash__(self): return 0\n')
+            wrt('    def __repr__(self): return ''\n')
             return
 
-        comp_str = ' and\n                '.join(comps)
-        hash_str = ',\n            '.join(hash_fields)
+        comp_str = ' and\n                    '.join(comps)
+        hash_str = ',\n                     '.join(hash_fields)
+        str_str = ' + ", " +\n                '.join(str_fields)
         wrt('    def __eq__(self, other):\n')
         wrt('        if isinstance(other, self.__class__):\n')
         wrt('            return (%s)\n' % comp_str)
         wrt('        return NotImplemented\n')
+        wrt('\n')
         wrt('    def __ne__(self, other):\n')
         wrt('        if isinstance(other, self.__class__):\n')
         wrt('            return not self.__eq__(other)\n')
         wrt('        return NotImplemented\n')
+        wrt('\n')
         wrt('    def __hash__(self):\n')
-        wrt('        return hash((\n')
-        wrt('            %s\n' % hash_str)
-        wrt('        ))\n')
+        wrt('        return hash((%s))\n' % hash_str)
+        wrt('\n')
+        wrt('    def __repr__(self):\n')
+        wrt('        return (%s)\n' % str_str)
         wrt('\n')
 
 
