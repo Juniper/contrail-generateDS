@@ -555,7 +555,7 @@ class MemberSpec_(object):
     def set_container(self, container): self.container = container
     def get_container(self): return self.container
 
-def _cast(typ, value):
+def cast_(typ, value):
     if typ is None or value is None:
         return value
     return typ(value)
@@ -3820,7 +3820,7 @@ MixedCtorInitializers = '''\
 #LG        mappedName = mapName(mappedName)
 #LG        logging.debug("Constructor attribute: %s" % mappedName)
 #LG        pythonType = SchemaToPythonTypeMap.get(attrDef.getType())
-#LG        attrVal = "_cast(%s, %s)" % (pythonType, mappedName)
+#LG        attrVal = "cast_(%s, %s)" % (pythonType, mappedName)
 #LG        wrt('        self.%s = %s\n' % (mappedName, attrVal))
 #LG        member = 1
 #LG    # Generate member initializers in ctor.
@@ -4581,7 +4581,7 @@ MixedCtorInitializers = '''\
 #LG     def set_container(self, container): self.container = container
 #LG     def get_container(self): return self.container
 #LG 
-#LG def _cast(typ, value):
+#LG def cast_(typ, value):
 #LG     if typ is None or value is None:
 #LG         return value
 #LG     return typ(value)

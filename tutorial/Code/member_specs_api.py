@@ -354,7 +354,7 @@ class MemberSpec_(object):
     def set_container(self, container): self.container = container
     def get_container(self): return self.container
 
-def _cast(typ, value):
+def cast_(typ, value):
     if typ is None or value is None:
         return value
     return typ(value)
@@ -372,7 +372,7 @@ class contactlistType(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, locator=None, description=None, contact=None):
-        self.locator = _cast(None, locator)
+        self.locator = cast_(None, locator)
         self.description = description
         if contact is None:
             self.contact = []
@@ -483,9 +483,9 @@ class contactType(GeneratedsSuper):
     subclass = None
     superclass = None
     def __init__(self, priority=None, color_code=None, id=None, first_name=None, last_name=None, interest=None, category=None):
-        self.priority = _cast(float, priority)
-        self.color_code = _cast(None, color_code)
-        self.id = _cast(int, id)
+        self.priority = cast_(float, priority)
+        self.color_code = cast_(None, color_code)
+        self.id = cast_(int, id)
         self.first_name = first_name
         self.last_name = last_name
         if interest is None:

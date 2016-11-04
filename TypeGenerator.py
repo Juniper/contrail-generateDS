@@ -1004,7 +1004,7 @@ class PyGenerator(object):
             mappedName = self._PGenr.mapName(mappedName)
             logging.debug("Constructor attribute: %s" % mappedName)
             pythonType = self._PGenr.SchemaToPythonTypeMap.get(attrDef.getType())
-            attrVal = "_cast(%s, %s)" % (pythonType, mappedName)
+            attrVal = "cast_('%s', %s)" % (pythonType, mappedName)
             wrt('        self.%s = %s\n' % (mappedName, attrVal))
             member = 1
         # Generate member initializers in ctor.
