@@ -33,7 +33,7 @@ class IFMapApiGenerator(object):
     #end __init__
 
     def Generate(self, gen_filepath_pfx):
-        xsd_openapi_dict = {}
+        xsd_openapi_dict = OrderedDict([])
         # Grab directory where to generate (if not locally)
         gen_filename_pfx = os.path.basename(gen_filepath_pfx)
         self._type_genr = TypeGenerator(self._xsd_parser)
@@ -109,14 +109,57 @@ class IFMapApiGenerator(object):
 
             write(gen_file, "class %s(object):" %(class_name))
             write(gen_file, '    """')
-            write(gen_file, "    Represents %s configuration representation." %(ident_name))
+
+            # Document description for object
+            description = ident.getElement().attrs.get('description')
+            if not description:
+                description = ''
+                for parent_ident, parent_link, _ in ident.getParents() or []:
+                    if len(ident.getParents()) > 1:
+                        indent = ' '*8
+                        description += ' '*4 + 'When parent is %s:\n%s' %(parent_ident.getName(), indent)
+                        description += ('\n'+indent).join(parent_link.getDescription(width=100))
+                        description += '\n'
+                    else:
+                        indent = ' '*4
+                        description += indent
+                        description += ('\n'+indent).join(parent_link.getDescription(width=100))
+
+            write(gen_file, description)
             write(gen_file, "")
+
+            # Document created-by for object
+            created_by = ident.getElement().attrs.get('created-by')
+            write(gen_file, "    Created By:")
+            if created_by:
+                write(gen_file, "        %s" %(created_by))
+            elif parents and len(parents) == 1:
+                (parent_ident, meta, _) = parents[0]
+                if (parent_ident.getName().lower() == 'config-root' or
+                    meta.getPresence().lower() != 'system-only'):
+                    created_by = 'User'
+                else:
+                    created_by = 'System'
+                write(gen_file, "        %s" %(created_by))
+            else:
+                for i in range(len(parents or [])):
+                    (parent_ident, meta, _) = parents[i]
+                    if meta.getPresence().lower() != 'system-only':
+                        created_by = 'User'
+                    else:
+                        created_by = 'System'
+                    parent_class_name = CamelCase(parent_ident.getName())
+                    write(gen_file, "        %s when parent is :class:`.%s`" %(
+                        created_by, parent_class_name))
+            write(gen_file, "")
+
+            # Document parents for object
             if parents:
                 write(gen_file, "    Child of:")
                 for i in range(len(parents)):
-                    (parent_ident, meta) = parents[i]
+                    (parent_ident, meta, _) = parents[i]
                     parent_class_name = CamelCase(parent_ident.getName())
-                    if i == len(parents):
+                    if i == len(parents)-1:
                         write(gen_file, "        :class:`.%s` object" %(parent_class_name))
                     else:
                         write(gen_file, "        :class:`.%s` object OR" %(parent_class_name))
@@ -300,7 +343,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "")
             children_field_type_vals = [('%ss' %(child_ident.getName().replace('-', '_')),
                                          (child_ident.getName(),
-                                          child_ident.isDerived()))
+                                          child_ident.isDerived(ident)))
                                         for child_ident in ident.getChildren()]
             write(gen_file, "    children_field_types = {}")
             for child_field, (child_type, is_derived) in children_field_type_vals:
@@ -308,7 +351,7 @@ class IFMapApiGenerator(object):
                     %(child_field, child_type, is_derived))
             write(gen_file, "")
             if parents:
-                p_class_names = [p_ident.getName() for p_ident, _ in parents
+                p_class_names = [p_ident.getName() for p_ident, _, _ in parents
                                  if p_ident.getName() != 'config-root']
                 write(gen_file, "    parent_types = %s" %(p_class_names))
             else:
@@ -401,15 +444,15 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        else: # No parent obj specified")
                 if len(parents) > 1:
                     # use config-root if it is one of the possible parents
-                    if 'config-root' in [parent_ident.getName() for (parent_ident, meta) in parents]:
+                    if 'config-root' in [parent_ident.getName() for (parent_ident, meta, _) in parents]:
                         write(gen_file, "            fq_name = [name]")
                     else:
                         write(gen_file, "            # if obj constructed from within server, ignore if parent not specified")
                         write(gen_file, "            if not kwargs['parent_type']:")
-                        parent_fq_names = [parent_ident.getDefaultFQName() for (parent_ident, meta) in parents]
+                        parent_fq_names = [parent_ident.getDefaultFQName() for (parent_ident, meta, _) in parents]
                         write(gen_file, "                raise AmbiguousParentError(\"%s\")" %(parent_fq_names))
                 else: # only one possible parent
-                    (parent_ident, meta) = parents[0]
+                    (parent_ident, meta, _) = parents[0]
                     if parent_ident.getName() == _BASE_PARENT:
                         write(gen_file, "            self.fq_name = [name]")
                     else: # parent is not config-root
@@ -2237,11 +2280,11 @@ class IFMapApiGenerator(object):
                     write(gen_file, "        self._obj = vnc_api.%s(self._name)" %(class_name))
                 else:
                     if len(parents) > 1:
-                        parent_fq_names = [parent_ident.getDefaultFQName() for (parent_ident, meta) in parents]
+                        parent_fq_names = [parent_ident.getDefaultFQName() for (parent_ident, meta, _) in parents]
                         write(gen_file, "        if not self._parent_fixt:")
                         write(gen_file, "            raise AmbiguousParentError(\"%s\")" %(parent_fq_names))
                     else: # single parent in schema
-                        (parent_ident, meta) = parents[0]
+                        (parent_ident, meta, _) = parents[0]
                         parent_name = parent_ident.getName()
                         parent_class_name = CamelCase(parent_name)
                         write(gen_file, "        if not self._parent_fixt:")
@@ -2580,268 +2623,320 @@ class IFMapApiGenerator(object):
     def _generate_docs_openapi(self, gen_fname, gen_type_pfx, xsd_openapi_dict):
         gen_file = self._xsd_parser.makeFile(gen_fname)
         write(gen_file, "")
-        openapi_dict = OrderedDict({
-            'swagger': '2.0',
-            'info': OrderedDict({
-                'title': 'Contrail Configuration API',
-                'version': '1.0.0',
-            }),
-            'host': 'localhost:8082',
-            'basePath': '/',
-            'schemes': ['http'],
-            'produces': ['application/json'],
-            'consumes': ['application/json'],
-            #'securityDefinitions': {
-            #    'contrail_auth': {
-            #        'type': 'oauth2',
-            #        'authorizationUrl': 'http://www.opencontrail.org/oauth/dialog',
-            #        'flow': 'implicit',
-            #        'scopes': {
-            #            'write:resources': 'modify resources in your account',
-            #            'read:resources': 'read resources'
-            #        }
-            #    },
-            #    'api_key': {
-            #        'type': 'apiKey',
-            #        'name': 'api_key',
-            #        'in': 'header'
-            #    }
-            #},
-            'definitions': OrderedDict({
-                'Error': OrderedDict({
-                    'properties': OrderedDict({
-                        'message': OrderedDict({
-                            'type': 'string',
-                        }),
-                    }),
-                    'required': ['message'],
-                }),
-                'FQName': OrderedDict({
-                    'properties': OrderedDict({
-                        'fq_name': OrderedDict({
-                            'description': 'Fully Qualified Name of resource',
-                            'type': 'array',
-                            'items': OrderedDict({
-                                'type': 'string',
-                            }),
-                        }),
-                    }),
-                    'required': ['fq_name'],
-                }),
-                'Uuid': OrderedDict({
-                    'properties': OrderedDict({
-                        'uuid': OrderedDict({
-                            'type': 'string',
-                            'format': 'uuid',
-                        }),
-                    }),
-                    'required': ['uuid'],
-                }),
-                'Type': OrderedDict({
-                    'properties': OrderedDict({
-                        'type': OrderedDict({
-                            'type': 'string',
-                        }),
-                    }),
-                    'required': ['type'],
-                }),
-                'TypeFQName': OrderedDict({
-                   'allOf': [
+        openapi_dict = OrderedDict([
+            ('swagger', '2.0'),
+            ('info', OrderedDict([
+                ('title', 'Contrail Configuration API'),
+                ('version', '1.0.0'),
+            ])),
+            ('host', 'localhost:8082'),
+            ('basePath', '/'),
+            ('schemes', ['http']),
+            ('produces', ['application/json']),
+            ('consumes', ['application/json']),
+            ('definitions', OrderedDict([
+                ('Error', OrderedDict([
+                    ('properties', OrderedDict([
+                        ('message', OrderedDict([
+                            ('type', 'string'),
+                        ])),
+                    ])),
+                    ('required', ['message']),
+                ])),
+                ('FQName', OrderedDict([
+                    ('properties', OrderedDict([
+                        ('fq_name', OrderedDict([
+                            ('description', 'Fully Qualified Name of resource'),
+                            ('type', 'array'),
+                            ('items', OrderedDict([
+                                ('type', 'string'),
+                            ])),
+                        ])),
+                    ])),
+                    ('required', ['fq_name']),
+                ])),
+                ('Uuid', OrderedDict([
+                    ('properties', OrderedDict([
+                        ('uuid', OrderedDict([
+                            ('type', 'string'),
+                            ('format', 'uuid'),
+                        ])),
+                    ])),
+                    ('required', ['uuid']),
+                ])),
+                ('Type', OrderedDict([
+                    ('properties', OrderedDict([
+                        ('type', OrderedDict([
+                            ('type', 'string'),
+                        ])),
+                    ])),
+                    ('required', ['type']),
+                ])),
+                ('TypeFQName', OrderedDict([
+                   ('allOf', [
                        {'$ref': '#/definitions/Type'},
                        {'$ref': '#/definitions/FQName'},
-                   ],
-                }),
-                'Href': OrderedDict({
-                    'properties': OrderedDict({
-                        'href': OrderedDict({
-                            'type': 'string',
-                            'format': 'url',
-                        }),
-                    }),
-                    'required': ['href'],
-                }),
-                'To': OrderedDict({
-                    'properties': OrderedDict({
-                        'to': OrderedDict({
-                            'description': 'Fully Qualified Name of resource',
-                            'type': 'array',
-                            'items': OrderedDict({
-                                'type': 'string',
-                            }),
-                        }),
-                    }),
-                }),
-                'ResourceListSummary': OrderedDict({
-                    'allOf': [
+                   ]),
+                ])),
+                ('Href', OrderedDict([
+                    ('properties', OrderedDict([
+                        ('href', OrderedDict([
+                            ('type', 'string'),
+                            ('format', 'url'),
+                        ])),
+                    ])),
+                    ('required', ['href']),
+                ])),
+                ('To', OrderedDict([
+                    ('properties', OrderedDict([
+                        ('to', OrderedDict([
+                            ('description', 'Fully Qualified Name of resource'),
+                            ('type', 'array'),
+                            ('items', OrderedDict([
+                                ('type', 'string'),
+                            ])),
+                        ])),
+                    ])),
+                ])),
+                ('ResourceListSummary', OrderedDict([
+                    ('allOf', [
                         {'$ref': '#/definitions/FQName'},
                         {'$ref': '#/definitions/Uuid'},
                         {'$ref': '#/definitions/Href'},
-                    ],
-                }),
-                'ResourceReference': OrderedDict({
-                    'allOf': [
+                    ]),
+                ])),
+                ('ResourceReference', OrderedDict([
+                    ('allOf', [
                         {'$ref': '#/definitions/Href'},
                         {'$ref': '#/definitions/Uuid'},
                         {'$ref': '#/definitions/To'},
-                    ],
-                    'required': ['to'],
-                }),
-                'ResourceCommon': OrderedDict({
-                    'allOf': [
+                    ]),
+                    ('required', ['to']),
+                ])),
+                ('ResourceCommon', OrderedDict([
+                    ('allOf', [
                         {'$ref': '#/definitions/FQName'},
                         {'$ref': '#/definitions/Uuid'},
-                    ],
-                    'required': ['fq_name', 'uuid'],
-                }),
-                'ResourceWithParent': OrderedDict({
-                    'allOf': [
+                    ]),
+                    ('required', ['fq_name', 'uuid']),
+                ])),
+                ('ResourceWithParent', OrderedDict([
+                    ('allOf', [
                         {'$ref': '#/definitions/ResourceCommon'},
-                        {'properties': OrderedDict({
-                            'parent_type': OrderedDict({
-                                'type': 'string',
-                            }),
-                            'parent_uuid': OrderedDict({
-                                'type': 'string',
-                                'format': 'uuid',
-                            }),
-                        }),},
-                    ],
-                }),
-            }),
-            'tags': [
-                {
-                    'name': 'actions',
-                    'description': 'Actions common to all resources',
-                }
-            ],
-            'paths': OrderedDict({
-                '/id-to-fqname': OrderedDict({
-                    'post': OrderedDict({
-                        'tags': [ 'actions' ],
-                        'summary': 'Find type and fqname given resource id',
-                        'parameters': [
-                            OrderedDict({
-                                'in': 'body',
-                                'schema': {
-                                    '$ref': '#/definitions/Uuid',
-                                },
-                                'required': True,
-                            }),
-                        ],
-                        'responses': OrderedDict({
-                            '200': OrderedDict({
-                                'description': 'Success',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/TypeFQName',
-                                }),
-                            }),
-                            '404': OrderedDict({
-                                'description': 'Not Found',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/Error',
-                                }),
-                            }),
-                        }),
-                    }),
-                }),
-                '/fqname-to-id': OrderedDict({
-                    'post': OrderedDict({
-                        'tags': [ 'actions' ],
-                        'summary': 'Find resource id given its type and fqname',
-                        'parameters': [
-                            OrderedDict({
-                                'in': 'body',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/TypeFQName',
-                                }),
-                            }),
-                            #{
-                            #    'name': 'type',
-                            #    'in': 'body',
-                            #    'schema': {
-                            #        '$ref': '#/definitions/Type',
-                            #    },
-                            #    'required': True,
-                            #},
-                            #{
-                            #    'name': 'fq_name',
-                            #    'in': 'body',
-                            #    'schema': {
-                            #        '$ref': '#/definitions/FQName',
-                            #    },
-                            #    'required': True,
-                            #},
-                        ],
-                        'responses': OrderedDict({
-                            '200': OrderedDict({
-                                'description': 'Success',
-                                'schema': OrderedDict({
+                        {'properties': OrderedDict([
+                            ('parent_type', OrderedDict([
+                                ('type', 'string'),
+                            ])),
+                            ('parent_uuid', OrderedDict([
+                                ('type', 'string'),
+                                ('format', 'uuid'),
+                            ])),
+                        ]),},
+                    ]),
+                ])),
+            ])),
+            ('tags', [
+                OrderedDict([
+                    ('name', 'actions'),
+                    ('description', 'Actions common to all resources'),
+                ]),
+                OrderedDict([
+                    ('name', 'user-created'),
+                    ('description', 'User created resource'),
+                ]),
+                OrderedDict([
+                    ('name', 'system-created'),
+                    ('description', 'System created resource'),
+                ]),
+            ]),
+            ('paths', OrderedDict([
+                ('/id-to-fqname', OrderedDict([
+                    ('post', OrderedDict([
+                        ('tags', [ 'actions' ]),
+                        ('summary', 'Find type and fqname given resource id'),
+                        ('parameters', [
+                            OrderedDict([
+                                ('in', 'body'),
+                                ('schema', {
                                     '$ref': '#/definitions/Uuid',
                                 }),
-                            }),
-                            '404': OrderedDict({
-                                'description': 'Not Found',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/Error',
-                                }),
-                            }),
-                        }),
-                    }),
-                }),
-            }),
-        })
+                                ('required', True),
+                            ]),
+                        ]),
+                        ('responses', OrderedDict([
+                            ('200', OrderedDict([
+                                ('description', 'Success'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/TypeFQName'),
+                                ])),
+                            ])),
+                            ('404', OrderedDict([
+                                ('description', 'Not Found'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Error'),
+                                ])),
+                            ])),
+                        ])),
+                    ])),
+                ])),
+                ('/fqname-to-id', OrderedDict([
+                    ('post', OrderedDict([
+                        ('tags', [ 'actions' ]),
+                        ('summary', 'Find resource id given its type and fqname'),
+                        ('parameters', [
+                            OrderedDict([
+                                ('in', 'body'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/TypeFQName'),
+                                ])),
+                            ]),
+                        ]),
+                        ('responses', OrderedDict([
+                            ('200', OrderedDict([
+                                ('description', 'Success'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Uuid'),
+                                ])),
+                            ])),
+                            ('404', OrderedDict([
+                                ('description', 'Not Found'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Error'),
+                                ])),
+                            ])),
+                        ])),
+                    ])),
+                ])),
+            ])),
+            ('x-datamodel', OrderedDict([
+                ('objects', OrderedDict({})),
+                ('common-properties', OrderedDict([
+                    ('id-perms', OrderedDict([
+                        ('description', ''),
+                        ('operations', 'CR'),
+                        ('created-by', 'User (optional)'),
+                        ('$ref', '#/definitions/IdPermsType'),
+                    ])),
+                    ('perms2', OrderedDict([
+                        ('description', ''),
+                        ('operations', 'CRU'),
+                        ('created-by', 'User (optional)'),
+                        ('$ref', '#/definitions/PermType2'),
+                    ])),
+                    ('annotations', OrderedDict([
+                        ('description', ''),
+                        ('operations', 'CRU'),
+                        ('created-by', 'User (optional)'),
+                    ])),
+                    ('display-name', OrderedDict([
+                        ('description', 'Display name user configured string(name) that can be updated any time. Used as openstack name.'),
+                        ('operations', 'CRU'),
+                        ('created-by', 'User (optional)'),
+                    ])),
+                ])),
+            ])),
+        ])
         openapi_dict['definitions'].update(
             xsd_openapi_dict['definitions'])
 
         definitions = openapi_dict['definitions']
         paths = openapi_dict['paths']
         tags = openapi_dict['tags']
+        datamodel_objects = openapi_dict['x-datamodel']['objects']
         for ident in sorted(self._non_exclude_idents(), key=lambda i: i.getName()):
             parents = ident.getParents()
             ident_name = ident.getName()
             camel_name = CamelCase(ident_name)
             method_name = ident_name.replace('-', '_')
-            tags.append(OrderedDict({
-                'name': ident_name,
-                'description': 'Operations on %s' %(ident_name),
-            }))
-            definitions.update(OrderedDict({
-                camel_name+'Create': {
-                    'allOf': [
+
+            tags.append(OrderedDict([
+                ('name', ident_name),
+                ('description', 'Operations on %s' %(ident_name)),
+            ]))
+            # Definitions init for ident
+            definitions.update(OrderedDict([
+                (camel_name+'Create', OrderedDict([
+                    ('allOf', [
                         {'$ref': '#/definitions/FQName'},
-                        {
-                            'properties': {},
-                            'required': [],
-                        },
-                    ],
-                },
-                camel_name+'Read': {
-                    'allOf': [
+                        OrderedDict([
+                            ('properties', OrderedDict()),
+                            ('required', []),
+                        ]),
+                    ]),
+                ])),
+                (camel_name+'ReadDetail', OrderedDict([
+                    ('allOf', [
                         {'$ref': '#/definitions/FQName'},
-                        {'properties': {}},
-                    ],
-                },
-                camel_name+'Update': OrderedDict({'properties': {}}),
-            }))
+                        {'properties': OrderedDict()},
+                    ]),
+                ])),
+                (camel_name+'ReadAll', OrderedDict([
+                    ('allOf', [
+                        {'$ref': '#/definitions/FQName'},
+                        {'properties': OrderedDict()},
+                    ]),
+                ])),
+                (camel_name+'Update', OrderedDict([
+                    ('properties', OrderedDict()),
+                ])),
+            ]))
             create_props = definitions[camel_name+'Create']['allOf'][1]['properties']
             create_required = definitions[camel_name+'Create']['allOf'][1]['required']
-            read_props = definitions[camel_name+'Read']['allOf'][1]['properties']
+            read_detail_props = definitions[camel_name+'ReadDetail']['allOf'][1]['properties']
+            read_all_props = definitions[camel_name+'ReadAll']['allOf'][1]['properties']
             update_props = definitions[camel_name+'Update']['properties']
+
             if parents:
                 # grab only non config-root parent types
                 parent_types = [p[0].getName() for p in parents if p[0].getName() != _BASE_PARENT]
                 if parent_types:
-                    create_props['parent_type'] = OrderedDict({
-                        'type': 'string',
-                        'enum': parent_types,
-                        'description': 'Parent resource type',
-                    })
+                    create_props['parent_type'] = OrderedDict([
+                        ('type', 'string'),
+                        ('enum', parent_types),
+                        ('description', 'Parent resource type'),
+                    ])
                     create_required.append('parent_type')
+
+            # Datamodel init for ident
+            datamodel_objects[ident_name] = OrderedDict([
+                ('description', ''),
+                ('parents', OrderedDict()),
+                ('properties', OrderedDict()),
+                ('references', OrderedDict()),
+            ])
+            datamodel_props = datamodel_objects[ident_name]['properties']
+            datamodel_refs = datamodel_objects[ident_name]['references']
+            # compute datamodel details for object
+            description = ident.getElement().attrs.get('description')
+            if not description:
+                description = ''
+                for parent_ident, parent_link, is_derived in ident.getParents() or []:
+                    parent_name = parent_ident.getName()
+                    if parent_name == _BASE_PARENT:
+                        continue
+                    if len(ident.getParents()) > 1:
+                        indent = ' '*4
+                        description += 'When parent is %s,\n%s' %(parent_ident.getName(), indent)
+                        description += ' '.join(parent_link.getDescription(width=100))
+                        description += '\n'
+                    else:
+                        description += ' '.join(parent_link.getDescription(width=100))
+
+                    datamodel_objects[ident_name]['parents'][parent_name] = OrderedDict([
+                        ('is_derived', is_derived)])
+
+            datamodel_objects[ident_name]['description'] = description
+
+            # Definitions + Datamodel init for props of ident
             for prop in ident.getProperties():
                 prop_name = prop.getName().replace('-', '_')
                 prop_xml_elem = prop.getElement()
                 complex_type = prop.getCType()
                 xsd_type = prop.getXsdType()
+                if prop.getName() in openapi_dict['x-datamodel']['common-properties']:
+                    is_common_prop = True
+                else:
+                    is_common_prop = False
                 enum_values = None
                 range_values = None
                 if xsd_type.startswith('xsd:'):
@@ -2850,8 +2945,9 @@ class IFMapApiGenerator(object):
                     type_name = prop.getElement().getType()
                     r_base = self._xsd_parser.SimpleTypeDict[xsd_type]
                     if r_base.values and isinstance(r_base.values[0], dict):
-                        range_values = {'minimum': r_base.values[0]['minimum'],
-                                        'maximum': r_base.values[1]['maximum']}
+                        range_values = OrderedDict([
+                            ('minimum', r_base.values[0]['minimum']),
+                            ('maximum', r_base.values[1]['maximum'])])
                     elif r_base.values:
                         enum_values = {'enum': r_base.values}
                 else: # complex
@@ -2868,58 +2964,81 @@ class IFMapApiGenerator(object):
                         description_values = {'description': description}
 
                 if type_name.startswith('xsd:'):
-                    if 'C' in operations:
-                        create_props[prop_name] = OrderedDict({
-                            'type': type_name.replace('xsd:','').replace(
-                                              'integer', 'number')})
-                    if 'R' in operations:
-                        read_props[prop_name] = OrderedDict({
-                            'type': type_name.replace('xsd:','').replace(
-                                              'integer', 'number')})
-                    if 'U' in operations:
-                        update_props[prop_name] = OrderedDict({
-                            'type': type_name.replace('xsd:','').replace(
-                                              'integer', 'number')})
+                    type_key = 'type'
+                    type_val = type_name.replace('xsd:','').replace(
+                                              'integer', 'number')
                 else:
-                    if 'C' in operations:
-                        create_props[prop_name] = OrderedDict({
-                            '$ref': '#/definitions/%s' %(type_name)})
-                    if 'R' in operations:
-                        read_props[prop_name] = OrderedDict({
-                            '$ref': '#/definitions/%s' %(type_name)})
-                    if 'U' in operations:
-                        update_props[prop_name] = OrderedDict({
-                            '$ref': '#/definitions/%s' %(type_name)})
+                    type_key = '$ref'
+                    type_val = '#/definitions/%s' %(type_name)
+
+                if 'C' in operations:
+                    create_props[prop_name] = OrderedDict([(type_key, type_val)])
+                if 'R' in operations:
+                    read_detail_props[prop_name] = OrderedDict([(type_key, type_val)])
+                    read_all_props[prop_name] = OrderedDict([(type_key, type_val)])
+                if 'U' in operations:
+                    update_props[prop_name] = OrderedDict([(type_key, type_val)])
+
+                if not is_common_prop:
+                    datamodel_props[prop.getName()] = OrderedDict([
+                        (type_key, type_val),
+                        ('operations', operations),
+                    ])
 
                 if enum_values:
                     if 'C' in operations:
                         create_props[prop_name].update(enum_values)
                     if 'R' in operations:
-                        read_props[prop_name].update(enum_values)
+                        read_detail_props[prop_name].update(enum_values)
+                        read_all_props[prop_name].update(enum_values)
                     if 'U' in operations:
                         update_props[prop_name].update(enum_values)
+
+                    if not is_common_prop:
+                        datamodel_props[prop.getName()].update(enum_values)
                 elif range_values:
                     if 'C' in operations:
                         create_props[prop_name].update(range_values)
                     if 'R' in operations:
-                        read_props[prop_name].update(range_values)
+                        read_detail_props[prop_name].update(range_values)
+                        read_all_props[prop_name].update(range_values)
                     if 'U' in operations:
                         update_props[prop_name].update(range_values)
+
+                    if not is_common_prop:
+                        datamodel_props[prop.getName()].update(range_values)
 
                 if description_values:
                     if 'C' in operations:
                         create_props[prop_name].update(description_values)
                     if 'R' in operations:
-                        read_props[prop_name].update(description_values)
+                        read_detail_props[prop_name].update(description_values)
+                        read_all_props[prop_name].update(description_values)
                     if 'U' in operations:
                         update_props[prop_name].update(description_values)
 
+                    if not is_common_prop:
+                        datamodel_props[prop.getName()].update(description_values)
+
                 if presence == 'required':
                     create_required.append(prop_name)
+
+                if not is_common_prop:
+                    if 'system-only' not in presence.lower():
+                        datamodel_props[prop.getName()]['created-by'] = 'user'
+                    else:
+                        datamodel_props[prop.getName()]['created-by'] = 'system'
+
+                    if 'required' in presence.lower():
+                        datamodel_props[prop.getName()]['required'] = True
+                    else:
+                        datamodel_props[prop.getName()]['required'] = False
             # end for all ident properties
+
             if not create_required:
                 del definitions[camel_name+'Create']['allOf'][1]['required']
 
+            # Definitions + Datamodel init for props of ident
             for link_info in ident.getLinksInfo():
                 link = ident.getLink(link_info)
                 to_ident = ident.getLinkTo(link_info)
@@ -2932,73 +3051,104 @@ class IFMapApiGenerator(object):
                 operations = link.getOperations()
                 link_attr_type = link.getXsdType()
                 if link_attr_type:
-                    definitions.update(OrderedDict({
-                        camel_name+to_class_name+'Refs': {
-                            'allOf': [
+                    definitions.update(OrderedDict([
+                        (camel_name+to_class_name+'Refs', OrderedDict([
+                            ('allOf', [
                                 {'$ref': '#/definitions/ResourceReference'},
                                 {'properties': {
                                     'attr': {
                                         '$ref': '#/definitions/%s' %(link_attr_type),
                                     },
                                 },},
-                            ],
-                        },
-                    }))
+                            ]),
+                        ])),
+                    ]))
                     if 'C' in operations:
-                        create_props['%s_refs' %(to_method_name)] = OrderedDict({
-                            'type': 'array',
-                            'items':  OrderedDict({
-                                '$ref': '#/definitions/%s%sRefs' %(camel_name, to_class_name),
-                            }),
-                            'description': 'List of %s references' %(
-                                to_ident.getName()),
-                        })
+                        create_props['%s_refs' %(to_method_name)] = OrderedDict([
+                            ('type', 'array'),
+                            ('items',  OrderedDict([
+                                ('$ref', '#/definitions/%s%sRefs' %(camel_name, to_class_name)),
+                            ])),
+                            ('description', 'List of %s references' %(
+                                to_ident.getName())),
+                        ])
                     if 'R' in operations:
-                        read_props['%s_refs' %(to_method_name)] = OrderedDict({
-                            'type': 'array',
-                            'items':  OrderedDict({
-                                '$ref': '#/definitions/%s%sRefs' %(camel_name, to_class_name),
-                            }),
-                            'description': 'List of %s references' %(
-                                to_ident.getName()),
-                        })
+                        read_detail_props['%s_refs' %(to_method_name)] = OrderedDict([
+                            ('type', 'array'),
+                            ('items',  OrderedDict([
+                                ('$ref', '#/definitions/%s%sRefs' %(camel_name, to_class_name)),
+                            ])),
+                            ('description', 'List of %s references' %(
+                                to_ident.getName())),
+                        ])
+                        read_all_props['%s_refs' %(to_method_name)] = OrderedDict([
+                            ('type', 'array'),
+                            ('items',  OrderedDict([
+                                ('$ref', '#/definitions/%s%sRefs' %(camel_name, to_class_name)),
+                            ])),
+                            ('description', 'List of %s references' %(
+                                to_ident.getName())),
+                        ])
                     if 'U' in operations:
-                        update_props['%s_refs' %(to_method_name)] = OrderedDict({
-                            'type': 'array',
-                            'items':  OrderedDict({
-                                '$ref': '#/definitions/%s%sRefs' %(camel_name, to_class_name),
-                            }),
-                            'description': 'List of %s references' %(
-                                to_ident.getName()),
-                        })
+                        update_props['%s_refs' %(to_method_name)] = OrderedDict([
+                            ('type', 'array'),
+                            ('items',  OrderedDict([
+                                ('$ref', '#/definitions/%s%sRefs' %(camel_name, to_class_name)),
+                            ])),
+                            ('description', 'List of %s references' %(
+                                to_ident.getName())),
+                        ])
                 else: # link without attr
                     if 'C' in operations:
-                        create_props['%s_refs' %(to_method_name)] = OrderedDict({
-                            'type': 'array',
-                            'items':  OrderedDict({
-                                '$ref': '#/definitions/ResourceReference',
-                            }),
-                            'description': 'List of %s references' %(
-                                to_ident.getName()),
-                        })
+                        create_props['%s_refs' %(to_method_name)] = OrderedDict([
+                            ('type', 'array'),
+                            ('items',  OrderedDict([
+                                ('$ref', '#/definitions/ResourceReference'),
+                            ])),
+                            ('description', 'List of %s references' %(
+                                to_ident.getName())),
+                        ])
                     if 'R' in operations:
-                        read_props['%s_refs' %(to_method_name)] = OrderedDict({
-                            'type': 'array',
-                            'items':  OrderedDict({
-                                '$ref': '#/definitions/ResourceReference',
-                            }),
-                            'description': 'List of %s references' %(
-                                to_ident.getName()),
-                        })
+                        read_detail_props['%s_refs' %(to_method_name)] = OrderedDict([
+                            ('type', 'array'),
+                            ('items',  OrderedDict([
+                                ('$ref', '#/definitions/ResourceReference'),
+                            ])),
+                            ('description', 'List of %s references' %(
+                                to_ident.getName())),
+                        ])
+                        read_all_props['%s_refs' %(to_method_name)] = OrderedDict([
+                            ('type', 'array'),
+                            ('items',  OrderedDict([
+                                ('$ref', '#/definitions/ResourceReference'),
+                            ])),
+                            ('description', 'List of %s references' %(
+                                to_ident.getName())),
+                        ])
                     if 'U' in operations:
-                        update_props['%s_refs' %(to_method_name)] = OrderedDict({
-                            'type': 'array',
-                            'items':  OrderedDict({
-                                '$ref': '#/definitions/ResourceReference',
-                            }),
-                            'description': 'List of %s references' %(
-                                to_ident.getName()),
-                        })
+                        update_props['%s_refs' %(to_method_name)] = OrderedDict([
+                            ('type', 'array'),
+                            ('items',  OrderedDict([
+                                ('$ref', '#/definitions/ResourceReference'),
+                            ])),
+                            ('description', 'List of %s references' %(
+                                to_ident.getName())),
+                        ])
+
+                if 'system-only' not in presence.lower():
+                    created_by = 'user'
+                else:
+                    created_by = 'system'
+                datamodel_refs[to_ident.getName()] = OrderedDict([
+                    ('created-by', created_by),
+                    ('required', 'required' in presence.lower()),
+                    ('operations', operations),
+                    ('description', '\n'.join(link.getDescription(width=100))),
+                ])
+                if link_attr_type:
+                    datamodel_refs[to_ident.getName()]['attr'] = OrderedDict([
+                        ('$ref', '#/definitions/%s' %(link_attr_type))
+                    ])
 
                 if presence == 'required':
                     create_required.append('%s_refs' %(to_method_name))
@@ -3014,186 +3164,294 @@ class IFMapApiGenerator(object):
                 from_class_name = CamelCase(from_ident.getName())
                 link_attr_type = back_link.getXsdType()
                 if link_attr_type:
-                    read_props['%s_back_refs' %(from_method_name)] = OrderedDict({
-                        'type': 'array',
-                        'items':  OrderedDict({
-                            '$ref': '#/definitions/%s%sRefs' %(from_class_name, camel_name),
-                        }),
-                        'description': 'List of %s back references' %(
-                            from_ident.getName()),
-                    })
+                    read_all_props['%s_back_refs' %(from_method_name)] = OrderedDict([
+                        ('type', 'array'),
+                        ('items',  OrderedDict([
+                            ('$ref', '#/definitions/%s%sRefs' %(from_class_name, camel_name)),
+                        ])),
+                        ('description', 'List of %s back references' %(
+                            from_ident.getName())),
+                    ])
                 else: # link without attr
-                    read_props['%s_back_refs' %(from_method_name)] = OrderedDict({
-                        'type': 'array',
-                        'items':  OrderedDict({
-                            '$ref': '#/definitions/ResourceReference',
-                        }),
-                        'description': 'List of %s references' %(
-                            from_ident.getName()),
-                    })
+                    read_all_props['%s_back_refs' %(from_method_name)] = OrderedDict([
+                        ('type', 'array'),
+                        ('items',  OrderedDict([
+                            ('$ref', '#/definitions/ResourceReference'),
+                        ])),
+                        ('description', 'List of %s references' %(
+                            from_ident.getName())),
+                    ])
             # end for all backrefs
 
-            paths.update(OrderedDict({
-                '/%s/{id}' %(ident_name): OrderedDict({
-                    'get': OrderedDict({
-                        'tags': [ ident_name ],
-                        'summary': 'Fetch a specific %s' %(ident_name),
-                        'parameters': [
-                            OrderedDict({
-                                'description': 'The id of resource',
-                                'in': 'path',
-                                'name': 'id',
-                                'required': True,
-                                'type': 'string'
-                            }),
-                        ],
-                        'responses': OrderedDict({
-                            '200': OrderedDict({
-                                'description': 'Success',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/%sRead' %(camel_name),
-                                }),
-                            }),
-                            '404': OrderedDict({
-                                'description': 'Not Found',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/Error'
-                                }),
-                            }),
-                        }),
-                    }),
-                    'put': OrderedDict({
-                        'tags': [ ident_name ],
-                        'summary': 'Update a specific %s' %(ident_name),
-                        'parameters': [
-                            OrderedDict({
-                                'description': 'The id of resource',
-                                'in': 'path',
-                                'name': 'id',
-                                'required': True,
-                                'type': 'string'
-                            }),
-                            OrderedDict({
-                                'in': 'body',
-                                'name': '%s' %(ident_name),
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/%sUpdate' %(camel_name),
-                                }),
-                            }),
-                        ],
-                        'responses': OrderedDict({
-                            '200': OrderedDict({
-                                'description': 'Success',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/Uuid'
-                                }),
-                            }),
-                            '404': OrderedDict({
-                                'description': 'Not Found',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/Error'
-                                }),
-                            }),
-                        }),
-                    }),
-                    'delete': OrderedDict({
-                        'tags': [ ident_name ],
-                        'summary': 'Delete a specific %s' %(ident_name),
-                        'parameters': [
-                            OrderedDict({
-                                'description': 'The id of resource',
-                                'in': 'path',
-                                'name': 'id',
-                                'required': True,
-                                'type': 'string'
-                            }),
-                        ],
-                        'responses': OrderedDict({
-                            '200': OrderedDict({
-                                'description': 'Success',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/Uuid'
-                                }),
-                            }),
-                            '404': OrderedDict({
-                                'description': 'Not Found',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/Error'
-                                }),
-                            }),
-                            '409': OrderedDict({
-                                'description': 'Conflict',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/Error'
-                                }),
-                            }),
-                        }),
-                    }),
-                }),
-                '/%ss' %(ident_name): OrderedDict({
-                    'get': OrderedDict({
-                        'tags': [ ident_name ],
-                        'summary': 'List collection of %s' %(ident_name),
-                        'parameters': [
-                            OrderedDict({
-                                'description': 'Report all fields of resource.',
-                                'in': 'query',
-                                'name': 'detail',
-                                'required': False,
-                                'type': 'boolean',
-                                'default': False,
-                            }),
-                            OrderedDict({
-                                'description': 'List of specific fields to report.',
-                                'in': 'query',
-                                'name': 'fields',
-                                'required': False,
-                                'type': 'string',
-                                'default': 'fq_name, uuid, href',
-                            }),
-                            OrderedDict({
-                                'description': 'Count of resource',
-                                'in': 'query',
-                                'name': 'count',
-                                'required': False,
-                                'type': 'boolean',
-                                'default': False,
-                            }),
-                        ],
-                        'responses': OrderedDict({
-                            '200': OrderedDict({
-                                'description': 'Success',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/ResourceListSummary'
-                                }),
-                            }),
-                        }),
-                    }),
-                    'post': OrderedDict({
-                        'tags': [ ident_name ],
-                        'summary': 'Create a new %s' %(ident_name),
-                        'parameters': [
-                            OrderedDict({
-                                'in': 'body',
-                                'name': '%s' %(ident_name),
-                                'schema': {
+            path_tags = [ident_name]
+            is_derived_set = set([pl['is_derived'] for _, pl in datamodel_objects[ident_name]['parents'].items()])
+            if True in is_derived_set:
+                path_tags.append('system-created')
+            if False in is_derived_set:
+                path_tags.append('user-created')
+
+            paths.update(OrderedDict([
+                ('/%s/{id}' %(ident_name), OrderedDict([
+                    ('get', OrderedDict([
+                        ('tags', path_tags + ['read']),
+                        ('summary', 'Fetch a specific %s' %(ident_name)),
+                        ('parameters', [
+                            OrderedDict([
+                                ('name', 'id'),
+                                ('description', 'The id of resource'),
+                                ('in', 'path'),
+                                ('required', True),
+                                ('type', 'string')
+                            ]),
+                            OrderedDict([
+                                ('name', 'fields'),
+                                ('description', 'If specified, backref and children fields '
+                                                'to be returned (properties and refs always returned)'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('collectionFormat', 'csv')
+                            ]),
+                            OrderedDict([
+                                ('name', 'exclude_back_refs'),
+                                ('description', 'If specified, backref fields will not be returned'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('allowEmptyValue', True),
+                            ]),
+                            OrderedDict([
+                                ('name', 'exclude_children'),
+                                ('description', 'If specified, children fields will not be returned'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('allowEmptyValue', True),
+                            ]),
+                            OrderedDict([
+                                ('name', 'exclude_hrefs'),
+                                ('description', 'Omit reporting href field for children/refs/backrefs.'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('allowEmptyValue', True),
+                            ]),
+                        ]),
+                        ('responses', OrderedDict([
+                            ('200', OrderedDict([
+                                ('description', 'Success'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/%sReadAll' %(camel_name)),
+                                ])),
+                            ])),
+                            ('404', OrderedDict([
+                                ('description', 'Not Found'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Error'),
+                                ])),
+                            ])),
+                        ])),
+                    ])),
+                    ('put', OrderedDict([
+                        ('tags', path_tags + ['update']),
+                        ('summary', 'Update a specific %s' %(ident_name)),
+                        ('parameters', [
+                            OrderedDict([
+                                ('description', 'The id of resource'),
+                                ('in', 'path'),
+                                ('name', 'id'),
+                                ('required', True),
+                                ('type', 'string'),
+                            ]),
+                            OrderedDict([
+                                ('in', 'body'),
+                                ('name', '%s' %(ident_name)),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/%sUpdate' %(camel_name)),
+                                ])),
+                            ]),
+                        ]),
+                        ('responses', OrderedDict([
+                            ('200', OrderedDict([
+                                ('description', 'Success'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Uuid'),
+                                ])),
+                            ])),
+                            ('404', OrderedDict([
+                                ('description', 'Not Found'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Error'),
+                                ])),
+                            ])),
+                        ])),
+                    ])),
+                    ('delete', OrderedDict([
+                        ('tags', path_tags + ['delete']),
+                        ('summary', 'Delete a specific %s' %(ident_name)),
+                        ('parameters', [
+                            OrderedDict([
+                                ('description', 'The id of resource'),
+                                ('in', 'path'),
+                                ('name', 'id'),
+                                ('required', True),
+                                ('type', 'string'),
+                            ]),
+                        ]),
+                        ('responses', OrderedDict([
+                            ('200', OrderedDict([
+                                ('description', 'Success'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Uuid'),
+                                ])),
+                            ])),
+                            ('404', OrderedDict([
+                                ('description', 'Not Found'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Error'),
+                                ])),
+                            ])),
+                            ('409', OrderedDict([
+                                ('description', 'Conflict'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Error'),
+                                ])),
+                            ])),
+                        ])),
+                    ])),
+                ])),
+                ('/%ss' %(ident_name), OrderedDict([
+                    ('get', OrderedDict([
+                        ('tags', path_tags + ['list']),
+                        ('summary', 'List collection of %s' %(ident_name)),
+                        ('parameters', [
+                            OrderedDict([
+                                ('name', 'detail'),
+                                ('description', 'Report all :ref:`property and reference <%sReadDetail-label>`'
+                                                ' fields of resource' %(camel_name)),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'boolean'),
+                                ('default', False),
+                            ]),
+                            OrderedDict([
+                                ('name', 'fields'),
+                                ('description', 'CSV List of specific :ref:`fields <%sReadAll-label>`'
+                                                ' to report' %(camel_name)),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('collectionFormat', 'csv'),
+                                ('default', 'fq_name, uuid, href'),
+                            ]),
+                            OrderedDict([
+                                ('name', 'filters'),
+                                ('description', 'CSV List of <property field>==<value> to match for reported collection.'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('collectionFormat', 'csv')
+                            ]),
+                            OrderedDict([
+                                ('name', 'count'),
+                                ('description', 'Only report count of resource collection matching anchor criteria'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'boolean'),
+                                ('default', False),
+                            ]),
+                            OrderedDict([
+                                ('name', 'exclude_hrefs'),
+                                ('description', 'Omit reporting href field in collection report'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('allowEmptyValue', True),
+                            ]),
+                            OrderedDict([
+                                ('name', 'shared'),
+                                ('description', 'Include globally shared resources in collection report'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'boolean'),
+                            ]),
+                            OrderedDict([
+                                ('name', 'parent_type'),
+                                ('description', 'This along with parent_fq_name_str can be used as anchor'
+                                                ' for collection report'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                            ]),
+                            OrderedDict([
+                                ('name', 'parent_fq_name_str'),
+                                ('description', 'This along with parent_type can be used as anchor'
+                                                ' for collection report'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                            ]),
+                            OrderedDict([
+                                ('name', 'parent_id'),
+                                ('description', 'List of csv parent uuids that form anchor'
+                                                ' for collection report'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('collectionFormat', 'csv'),
+                            ]),
+                            OrderedDict([
+                                ('name', 'back_ref_id'),
+                                ('description', 'List of csv backref uuids that form anchor'
+                                                ' for collection report'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('collectionFormat', 'csv'),
+                            ]),
+                            OrderedDict([
+                                ('name', 'obj_uuids'),
+                                ('description', 'List of object uuids for collection report'),
+                                ('in', 'query'),
+                                ('required', False),
+                                ('type', 'string'),
+                                ('collectionFormat', 'csv'),
+                            ]),
+                        ]),
+                        ('responses', OrderedDict([
+                            ('200', OrderedDict([
+                                ('description', 'Success'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/ResourceListSummary'),
+                                ])),
+                            ])),
+                        ])),
+                    ])),
+                    ('post', OrderedDict([
+                        ('tags', path_tags + ['create']),
+                        ('summary', 'Create a new %s' %(ident_name)),
+                        ('parameters', [
+                            OrderedDict([
+                                ('in', 'body'),
+                                ('name', '%s' %(ident_name)),
+                                ('schema', {
                                     '$ref': '#/definitions/%sCreate' %(camel_name),
-                                },
-                                'required': True,
-                                'description': 'Body of %s resource' %(ident_name),
-                            }),
-                        ],
-                        'responses': OrderedDict({
-                            '200': OrderedDict({
-                                'description': 'Success',
-                                'schema': OrderedDict({
-                                    '$ref': '#/definitions/Uuid'
                                 }),
-                            }),
-                        }),
-                    }),
-                }),
-            }))
+                                ('required', True),
+                                ('description', 'Body of %s resource' %(ident_name)),
+                            ]),
+                        ]),
+                        ('responses', OrderedDict([
+                            ('200', OrderedDict([
+                                ('description', 'Success'),
+                                ('schema', OrderedDict([
+                                    ('$ref', '#/definitions/Uuid'),
+                                ])),
+                            ])),
+                        ])),
+                    ])),
+                ])),
+            ]))
         # end for all idents
 
         #pprint.pprint(dict(openapi_dict))
@@ -3452,7 +3710,7 @@ class IFMapApiGenerator(object):
         # end get_schema_name
 
         def get_props_and_allof(defn_info):
-            ret_props = OrderedDict({})
+            ret_props = OrderedDict()
             ret_required = []
             for allof_item in defn_info.get('allOf', []):
                 for item_key, item_info in allof_item.items():
@@ -3468,41 +3726,245 @@ class IFMapApiGenerator(object):
                         ret_required.extend(item_info)
                 # for all keys in allof item
             # end for allof
-            ret_props.update(defn_info.get('properties', {}))
+            ret_props.update(defn_info.get('properties', OrderedDict()))
             ret_required.extend(defn_info.get('required', []))
             return ret_props, ret_required
         # end get_props_and_allof
 
-        tag_dict = OrderedDict()
-        for path_name, path_info in openapi_dict['paths'].items():
-            for oper_name, oper_info in path_info.items():
-                tags = oper_info.get('tags')
-                if not tags:
-                    continue
-                tag_dict.setdefault(tags[0], OrderedDict())
-                summary = oper_info['summary']
-                tag_dict[tags[0]][summary] = oper_info
-                tag_dict[tags[0]][summary]['oper'] = oper_name
-                tag_dict[tags[0]][summary]['path'] = path_name
-
         gen_file = self._xsd_parser.makeFile(gen_fname)
         write(gen_file, "")
-        write(gen_file, "==========================")
-        write(gen_file, "Contrail Configuration API")
-        write(gen_file, "==========================")
+        write(gen_file, "========================================")
+        write(gen_file, "Contrail Configuration API Specification")
+        write(gen_file, "========================================")
         write(gen_file, "")
         write(gen_file, "")
+        write(gen_file, "Configuration objects in Contrail are created either by")
+        write(gen_file, "")
+        write(gen_file, "  * User (via GUI, api or an external program) for abstractions visible to End Users.")
+        write(gen_file, "  * System (contrail processes like contrail-schema, contrail-svc-monitor etc.)")
+        write(gen_file, "    to aid in functioning of all the control components/services.")
+        write(gen_file, "")
+        write(gen_file, "So for e.g. an end-user might create a virtual-network, but the system creates a")
+        write(gen_file, "routing-instance and route-target for that virtual-network.")
+
         used_schemas = set()
-        for tag in tag_dict:
-            write(gen_file, tag)
-            write(gen_file, '='*len(tag))
-            for summary, oper_info in tag_dict[tag].items():
-                write(gen_file, summary)
-                write(gen_file, "-"*len(summary))
-                write(gen_file, "%s %s" %(oper_info['oper'].upper(), oper_info['path']))
+        user_obj_types = set([])
+        system_obj_types = set([])
+        for res_type, dmo in openapi_dict['x-datamodel']['objects'].items():
+            for parent_link in dmo['parents'].values():
+                if parent_link['is_derived']:
+                    system_obj_types.add(res_type)
+                else:
+                    user_obj_types.add(res_type)
+        write(gen_file, "")
+        write(gen_file, 'User created object types')
+        write(gen_file, '=========================')
+        write(gen_file, '.. hlist::')
+        write(gen_file, '    :columns: 3')
+        write(gen_file, '')
+
+        user_obj_types_str = '    * ' + '\n    * '.join([':ref:`%s <%s-label>`' %(uot, uot) for uot in user_obj_types])
+        write(gen_file, user_obj_types_str)
+        #for user_obj_type in user_obj_types:
+        #    write(gen_file, "     :ref:`%s <%s-label>`" %(user_obj_type, user_obj_type))
+        #write(gen_file, "    "+ ', '.join(list(user_obj_types)))
+        write(gen_file, "")
+        write(gen_file, 'System created object types')
+        write(gen_file, '===========================')
+        write(gen_file, '.. hlist::')
+        write(gen_file, '    :columns: 3')
+        write(gen_file, '')
+        sys_obj_types_str = '    * ' + '\n    * '.join([':ref:`%s <%s-label>`' %(sot, sot) for sot in system_obj_types])
+        write(gen_file, sys_obj_types_str)
+        #for sys_obj_type in system_obj_types:
+        #    write(gen_file, "    * "+sys_obj_type)
+        #write(gen_file, "    "+ ', '.join(list(system_obj_types)))
+
+        write(gen_file, "")
+        write(gen_file, 'Type specific REST API and data model')
+        write(gen_file, '======================================')
+        for resource_type, datamodel_object in openapi_dict['x-datamodel']['objects'].items():
+            write(gen_file, '.. _%s-label: ' %(resource_type))
+            write(gen_file, '')
+            write(gen_file, resource_type)
+            write(gen_file, '-'*len(resource_type))
+            write(gen_file, 'Data Model')
+            write(gen_file, '^^^^^^^^^^')
+            write(gen_file, '*Description*')
+            for desc_line in datamodel_object.get('description', '').split('\n'):
+                write(gen_file, '        ' + desc_line)
+            else:
+                write(gen_file, '')
+            if not datamodel_object.get('parents'):
+                write(gen_file, '*Parents*: None')
+            else:
+                write(gen_file, '*Parents*: %s' %(', '.join(
+                    [':ref:`%s <%s-label>`' %(p, p) for p in datamodel_object.get('parents', [])])))
+            write(gen_file, '')
+            write(gen_file, '*Children*')
+            children = [res_type for res_type, dmo in openapi_dict['x-datamodel']['objects'].items()
+                                           if resource_type in dmo.get('parents', [])]
+            if not children:
+                write(gen_file, '        None')
+            else:
+                write(gen_file, '        ' + ', '.join(
+                    [':ref:`%s <%s-label>`' %(c, c) for c in children]))
+
+            write(gen_file, '')
+            write(gen_file, '*Properties*')
+            write(gen_file, '')
+            if datamodel_object.get('properties'):
+                write(gen_file, '.. csv-table::')
+                write(gen_file, '    :header: "Name", "Description", "Required", "Type", "Operations", "Created By"')
+                write(gen_file, '')
+            else:
+                write(gen_file, '')
+            for prop_name, prop_info in datamodel_object.get('properties', {}).items():
+                prop_desc = csv_scrub(prop_info.get('description', 'None').replace('\n', ' '))
+                prop_reqd = prop_info['required']
+                if '$ref' in prop_info:
+                    prop_type = prop_info['$ref'].split('/')[-1]
+                    prop_type_str = ':ref:`%s <%s-label>`' %(prop_type, prop_type)
+                    used_schemas.add(prop_type)
+                else:
+                    prop_type_str = prop_info['type']
+                prop_oper = prop_info.get('operations')
+                prop_by = prop_info.get('created-by')
+                write(gen_file, '        %s, %s, %s, %s, %s, %s' %(
+                    prop_name, prop_desc, prop_reqd, prop_type_str, prop_oper, prop_by))
+                write(gen_file, '')
+            write(gen_file, '')
+            write(gen_file, '*References*')
+            write(gen_file, '')
+            if datamodel_object.get('references'):
+                write(gen_file, '.. csv-table::')
+                write(gen_file, '    :header: "To", "Description", "Required", "Type", "Operations", "Created By"')
+                write(gen_file, '')
+            else:
+                write(gen_file, '    None')
+            for ref_name, ref_info in datamodel_object.get('references', {}).items():
+                ref_desc = csv_scrub(ref_info.get('description', 'None').replace('\n', ' '))
+                ref_reqd = ref_info.get('required')
+                ref_attr = ref_info.get('attr', {}).get('$ref', 'None').split('/')[-1]
+                ref_oper = ref_info.get('operations')
+                ref_by = ref_info.get('created-by')
+                write(gen_file, '    :ref:%s `%s-label`, %s, %s, %s, %s, %s' %(
+                    ref_name, ref_name, ref_desc, ref_reqd, ref_attr, ref_oper, ref_by))
+                if ref_attr:
+                    used_schemas.add(ref_attr)
+                write(gen_file, '')
+            write(gen_file, '')
+            write(gen_file, '*Back References*')
+            write(gen_file, '')
+            backrefs = set([])
+            for res_type, dmo in openapi_dict['x-datamodel']['objects'].items():
+                if res_type == resource_type:
+                    continue
+                if resource_type in dmo.get('references', {}):
+                    backrefs.add(res_type)
+            if backrefs:
+                write(gen_file, '    ' + ', '.join([':ref:%s `%s-label`'%(b, b) for b in backrefs]))
+            else:
+                write(gen_file, '    None')
+            write(gen_file, '')
+            write(gen_file, 'REST API')
+            write(gen_file, '^^^^^^^^')
+            for path_name, path_info in openapi_dict['paths'].items():
+                if resource_type not in path_name:
+                    continue
+
+                for oper_name, oper_info in path_info.items():
+                    write(gen_file, '**%s**'%(oper_info['summary']))
+                    write(gen_file, "")
+                    write(gen_file, "%s %s" %(oper_name.upper(), path_name))
+                    write(gen_file, "")
+                    write(gen_file, "*Parameters*")
+                    write(gen_file, "")
+                    write(gen_file, ".. csv-table::")
+                    write(gen_file, '    :header: "Type", "Name", "Description", "Schema", "Default"')
+                    write(gen_file, "")
+
+                    for param_info in oper_info['parameters']:
+                        type_str = '**%s**' %(param_info['in'])
+                        if param_info['in'].lower() == 'path':
+                            presence_str = '*required*'
+                        elif (param_info.get('required') and
+                              param_info['required']):
+                            presence_str = '*required*'
+                        else:
+                            presence_str = '*optional*'
+                        if 'name' in param_info:
+                            name_str = '**%s**' %(param_info['name'])
+                            desc_str = csv_scrub(param_info.get('description', ''))
+                            if param_info['in'].lower() == 'query':
+                                schema_str = get_schema_str(param_info)
+                                schema_names = get_schema_name(param_info)
+                                default_str = param_info.get('default', '')
+                            else:
+                                schema_str = get_schema_str(param_info.get('schema'))
+                                schema_names = get_schema_name(param_info.get('schema'))
+                                default_str = ''
+                            write(gen_file, "    %s, %s %s, %s, %s, %s" %(
+                                type_str, name_str, presence_str,
+                                desc_str, schema_str, default_str))
+                            used_schemas |= set(schema_names)
+                        else: # anonymous parameter
+                            schema_type = param_info['schema']['$ref'].split(
+                                              '/')[-1]
+                            oap_props, oap_required = get_props_and_allof(
+                                openapi_dict['definitions'][schema_type])
+                            for oap_name, oap_info in oap_props.items():
+                                name_str = '**%s**' %(oap_name)
+                                if oap_name in oap_required:
+                                    presence_str = '*required*'
+                                else:
+                                    presence_str = '*optional*'
+                                desc_str = csv_scrub(oap_info.get('description', ''))
+                                schema_str = get_schema_str(oap_info)
+                                schema_names = get_schema_name(oap_info)
+                                default_str = ''
+                                write(gen_file, "    %s, %s %s, %s, %s, %s" %(
+                                    type_str, name_str, presence_str, desc_str,
+                                    schema_str, default_str))
+                                used_schemas |= set(schema_names)
+                    write(gen_file, "")
+
+                    # end all params on oper
+
+                    write(gen_file, "*Responses*")
+                    write(gen_file, "")
+                    write(gen_file, ".. csv-table::")
+                    write(gen_file, '    :header: "HTTP Code", "Description", "Schema"')
+                    write(gen_file, "")
+                    for rsp_code, rsp_info in oper_info['responses'].items():
+                        code_str = "**%s**" %(rsp_code)
+                        desc_str = csv_scrub(rsp_info.get('description', ''))
+                        schema_str = get_schema_str(rsp_info.get('schema'))
+                        schema_names = get_schema_name(rsp_info.get('schema'))
+                        write(gen_file, "    %s, %s, %s" %(
+                            code_str, desc_str, schema_str))
+                        used_schemas |= set(schema_names)
+                    # end all responses on oper
+                    write(gen_file, '')
+                # end for all oper on path
+                write(gen_file, '')
+            # end for all paths on resource_type
+            write(gen_file, '')
+        # end for all resource types
+
+        write(gen_file, "")
+        write(gen_file, 'Generic REST API')
+        write(gen_file, '================')
+        datamodel_object_types = openapi_dict['x-datamodel']['objects'].keys()
+        generic_path_items = dict((pname, pinfo) for pname, pinfo in openapi_dict['paths'].items()
+                                                 if not any([x in pname for x in datamodel_object_types]))
+        for path_name, path_info in generic_path_items.items():
+            for oper_name, oper_info in path_info.items():
+                write(gen_file, '**%s**'%(oper_info['summary']))
                 write(gen_file, "")
+                write(gen_file, "%s %s" %(oper_name.upper(), path_name))
                 write(gen_file, "")
-                write(gen_file, "**Parameters**")
+                write(gen_file, "*Parameters*")
                 write(gen_file, "")
                 write(gen_file, ".. csv-table::")
                 write(gen_file, '    :header: "Type", "Name", "Description", "Schema", "Default"')
@@ -3555,7 +4017,7 @@ class IFMapApiGenerator(object):
 
                 # end all params on oper
 
-                write(gen_file, "**Responses**")
+                write(gen_file, "*Responses*")
                 write(gen_file, "")
                 write(gen_file, ".. csv-table::")
                 write(gen_file, '    :header: "HTTP Code", "Description", "Schema"')
@@ -3569,10 +4031,9 @@ class IFMapApiGenerator(object):
                         code_str, desc_str, schema_str))
                     used_schemas |= set(schema_names)
                 # end all responses on oper
-                write(gen_file, "")
+                write(gen_file, '')
             # end for all oper on path
-            write(gen_file, "")
-        # end for all paths
+            write(gen_file, '')
 
         write(gen_file, "")
         write(gen_file, "Definitions")
@@ -3583,6 +4044,8 @@ class IFMapApiGenerator(object):
             oap_props, oap_required = get_props_and_allof(defn_info)
             if not oap_props:
                 return now_used_schemas
+            write(gen_file, '.. _%s-label: ' %(defn_name))
+            write(gen_file, "")
             write(gen_file, defn_name)
             write(gen_file, "-"*len(defn_name))
             write(gen_file, "")
@@ -3605,7 +4068,8 @@ class IFMapApiGenerator(object):
             return now_used_schemas - used_schemas
         deferred_schemas = set()
         for defn_name, defn_info in openapi_dict['definitions'].items():
-            if defn_name in used_schemas:
+            if (defn_name in used_schemas or
+                defn_name.endswith('ReadDetail') or defn_name.endswith('ReadAll')):
                 deferred_schemas |= generate_def(defn_name, defn_info)
         while True:
             if not deferred_schemas:

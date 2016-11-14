@@ -341,7 +341,7 @@ public class %(cls)s extends ApiObjectBase {
         fq_name = ''
         parents = ident.getParents()
         if parents:
-            (parent, meta) = parents[0]
+            (parent, meta, _) = parents[0]
             quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
             fq_name = ', '.join(quoted_list)
 
@@ -362,7 +362,7 @@ public class %(cls)s extends ApiObjectBase {
         typename = 'null';
         parents = ident.getParents()
         if parents:
-            (parent, meta) = parents[0]
+            (parent, meta, _) = parents[0]
             typename = quote(parent.getName())
 
         decl = """
