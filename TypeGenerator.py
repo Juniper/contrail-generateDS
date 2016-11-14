@@ -25,10 +25,10 @@ class TypeGenerator(object):
     def generate(self, root, infile, outfileName, genStandAlone = True,
                  openapi_dict = None):
         self._genStandAlone = genStandAlone
-        self._openapi_dict = {}
+        self._openapi_dict = OrderedDict([])
         if openapi_dict is not None:
             self._openapi_dict = openapi_dict
-        self._openapi_dict['definitions'] = {}
+        self._openapi_dict['definitions'] = OrderedDict([])
         # Create an output file.
         # Note that even if the user does not request an output file,
         #   we still need to go through the process of generating classes
@@ -652,8 +652,10 @@ class PyGenerator(object):
 
         wrt(s1)
         wrt('    """\n')
-        openapi_dict['definitions'][name] = OrderedDict({
-            'properties':OrderedDict({}), 'required': []})
+        openapi_dict['definitions'][name] = OrderedDict([
+            ('properties', OrderedDict({})),
+            ('required', []),
+        ])
         openapi_properties = openapi_dict['definitions'][name]['properties']
         openapi_required = openapi_dict['definitions'][name]['required']
 
@@ -730,7 +732,7 @@ class PyGenerator(object):
                         description_lines.append(w_line)
                         wrt('          %s\n\n' %(w_line))
 
-            openapi_properties[child.name.replace('-', '_')] = {}
+            openapi_properties[child.name.replace('-', '_')] = OrderedDict([])
             openapi_prop = openapi_properties[child.name.replace('-', '_')]
             if description_lines:
                 openapi_prop['description'] = '\n'.join(description_lines)

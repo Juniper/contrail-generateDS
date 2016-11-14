@@ -63,7 +63,6 @@ class IFMapIdentifier(IFMapObject):
         self._children = []
         self._references = []
         self._back_references = []
-        self._is_derived = False
 
     def getCppName(self):
         return self._cppname
@@ -74,8 +73,9 @@ class IFMapIdentifier(IFMapObject):
     def getProperties(self):
         return self._properties
 
-    def setParent(self, parent_ident, meta):
-        parent_info = {'ident': parent_ident, 'meta': meta}
+    def setParent(self, parent_ident, meta, is_derived):
+        parent_info = {'ident': parent_ident, 'meta': meta,
+                       'derived': is_derived}
         if not self._parents:
             self._parents = [parent_info]
         else:
@@ -85,7 +85,8 @@ class IFMapIdentifier(IFMapObject):
         if not self._parents:
             return None
 
-        return [(parent_info['ident'], parent_info['meta']) for parent_info in self._parents]
+        return [(parent_info['ident'], parent_info['meta'],
+                 parent_info['derived']) for parent_info in self._parents]
 
     def getParentName(self, parent_info):
         return parent_info['ident'].getName()
@@ -125,8 +126,9 @@ class IFMapIdentifier(IFMapObject):
         fq_name.append('default-%s' %(self._name))
         return fq_name
 
-    def isDerived(self):
-        return self._is_derived
+    def isDerived(self, parent_ident):
+        return [pi['derived'] for pi in self._parents
+                              if pi['ident'] == parent_ident][0]
 
     def addLinkInfo(self, meta, to_ident, attrs):
         link_info = (meta, to_ident, attrs)
@@ -134,15 +136,10 @@ class IFMapIdentifier(IFMapObject):
         if (self.isLinkHas(link_info)):
             self._children.append(to_ident)
 
-            to_ident.setParent(self, meta)
-            if self.isLinkDerived(link_info):
-                to_ident._is_derived = True
+            to_ident.setParent(self, meta,
+                self.isLinkDerived(link_info))
         elif self.isLinkRef(link_info):
             self._references.append(to_ident)
-
-            # relax back-ref check on delete
-            if self.isLinkDerived(link_info):
-                self._is_derived = True
 
     def getLinksInfo(self):
         return self._links
