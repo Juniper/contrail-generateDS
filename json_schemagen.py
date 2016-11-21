@@ -19,7 +19,7 @@ class JsonSchemaGenerator(object):
         #map which will hold the schema for the types which will be generated below
         self._json_type_map = {}
 
-
+    #For mapping the js data type given the ctype or jtype
     def _getJSDataType (self,type):
         if (type.lower() == "string" or type.lower() == 'std::string') :
             return "string"
@@ -41,6 +41,7 @@ class JsonSchemaGenerator(object):
     def _GenerateJavascriptSchema(self, ident, filename):
         file = self._parser.makeFile(filename)
         propertiesJSON = {}
+
         #Get the parent type and add to properties
         parents = ident.getParents()
         parent_types = []
@@ -57,9 +58,6 @@ class JsonSchemaGenerator(object):
             xelementType = prop._xelement.type
             presence = prop.getPresence()
             simple_type = prop.getElement().getSimpleType()
-            restrictions = None
-            if simple_type:
-                restrictions = self._parser.SimpleTypeDict[prop.getElement().getSimpleType()].values
             propSchema = {}
             if propType == "object" :
                 if  self._json_type_map.get(xelementType):
@@ -70,17 +68,24 @@ class JsonSchemaGenerator(object):
             else :
                 subJson = {"type" : propType}
             subJson["required"] = presence
-            # TODO need to identify the type and restriction and add
-            # appropriately
-#                 if (restrictions):
-#                     subJson["enum"] = restrictions
+            restrictions = None
+            if simple_type:
+                restrictions = self._parser.SimpleTypeDict[prop.getElement().getSimpleType()].values
+                if (restrictions and len(restrictions) > 0):
+                    if(type(restrictions[0]) is dict):
+                    # If it is a dict we assume it to be min max type
+                        subJson["minimum"] = restrictions[0]["minimum"]
+                        subJson["maximum"] = restrictions[1]["maximum"]
+                    else:
+                    # else they are enum
+                        subJson["enum"] = restrictions
             try:
                 subJson["description"] = prop.getDescription()
             except ValueError as detail:
-                print "Warning: Description not found"
+                pass
             propertiesJSON[self._convertHyphensToUnderscores(prop._name)] = subJson
 
-#       Now look for the links and generate respective schema, exclude the children (has relation) objects
+#       Now look for the links and generate respective schema, exclude the children (has relationship) objects
         for link_info in ident.getLinksInfo():
 #             link_type = getLinkInfoType(ident, link_info)
             if ident.isLinkRef(link_info):
@@ -91,16 +96,42 @@ class JsonSchemaGenerator(object):
         jsonSchema = {"type":"object", "properties":{ ident._name:{ "type": "object", "properties" : propertiesJSON}}}
         file.write(json.dumps(jsonSchema,indent=4))
 
+    def _getSubJS (self,type,dataMember):
+        if (type.lower() == "string" or type.lower() == 'std::string') :
+            return {"type":"string"}
+        elif (type.lower() == "integer" or type.lower() == "int" or type.lower() == "number") :
+            return {"type":"number"}
+        elif (type.lower() == "boolean" or type.lower() == "bool") :
+            return {"type":"boolean"}
+        elif (type.lower().startswith("list")) :
+            ret = {"type":"array"}
+            if(dataMember.sequenceType == "std::string"):
+                ret["items"] = {"type":"string"}
+            elif(self._type_map.get(dataMember.sequenceType)) :
+                ret["items"] = self._GenerateTypeMap(self._type_map.get(dataMember.sequenceType))
+            else:
+                ret["items"] = {"type":"string"}
+            return ret
+        elif (type.lower() == "java.util.date"):
+            return {"type":"string"}
+        elif (type.lower() == "long"):
+            return {"type":"number"}
+        else :
+            ret = {}
+            ret = self._GenerateTypeMap(self._type_map.get(type))
+            return ret
+
     def _GenerateTypeMap(self,ctype):
         self._json_type_map[ctype.getName()] = {"type": "object","properties":{}}
         typeDataMembers = ctype._data_members
         for dataMember in typeDataMembers:
-            self._json_type_map[ctype.getName()]["properties"][dataMember.membername] = {"type":self._getJSDataType(dataMember.jtypename)}
+            subJson = self._getSubJS(dataMember.jtypename, dataMember)
             if(dataMember.xsd_object.description):
-                self._json_type_map[ctype.getName()]["properties"][dataMember.membername]['description'] = dataMember.xsd_object.description
+                subJson['description'] = dataMember.xsd_object.description
             if(dataMember.xsd_object.required):
-                self._json_type_map[ctype.getName()]["properties"][dataMember.membername]['required'] = dataMember.xsd_object.required
-
+                subJson['required'] = dataMember.xsd_object.required 
+            self._json_type_map[ctype.getName()]["properties"][dataMember.membername] = subJson
+        return self._json_type_map[ctype.getName()]
 
     def Generate(self, dirname):
         if not os.path.exists(dirname):
@@ -109,9 +140,10 @@ class JsonSchemaGenerator(object):
             print "-o option must specify directory"
             sys.exit(1)
         for ctype in self._type_map.values():
-                self._GenerateTypeMap(ctype)
+            self._GenerateTypeMap(ctype)
         for ident in self._identifier_map.values():
             filename = os.path.join(dirname, ident._name + "-schema.json")
             self._GenerateJavascriptSchema(ident, filename)
-        print "Done! Schemas under directory: " + dirname
+        print "Done!"
+        print "Schemas generated under directory: " + dirname
 
