@@ -18,6 +18,7 @@ class JsonSchemaGenerator(object):
         self._type_count = {}
         #map which will hold the schema for the types which will be generated below
         self._json_type_map = {}
+        self._objectsList = []
 
     #For mapping the js data type given the ctype or jtype
     def _getJSDataType (self,type):
@@ -142,8 +143,14 @@ class JsonSchemaGenerator(object):
         for ctype in self._type_map.values():
             self._GenerateTypeMap(ctype)
         for ident in self._identifier_map.values():
+            self._objectsList.append(ident._name)
             filename = os.path.join(dirname, ident._name + "-schema.json")
             self._GenerateJavascriptSchema(ident, filename)
+        #Generate the file containing the list of all identfiers/objects
+        objFileName = os.path.join(dirname, "objectList.json")
+        objFile = self._parser.makeFile(objFileName)
+        objJson = {"objects":self._objectsList}
+        objFile.write(json.dumps(objJson,indent=4))
         print "Done!"
         print "Schemas generated under directory: " + dirname
 
