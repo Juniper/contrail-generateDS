@@ -1004,7 +1004,7 @@ class PyGenerator(object):
             mappedName = self._PGenr.mapName(mappedName)
             logging.debug("Constructor attribute: %s" % mappedName)
             pythonType = self._PGenr.SchemaToPythonTypeMap.get(attrDef.getType())
-            attrVal = "cast_('%s', %s)" % (pythonType, mappedName)
+            attrVal = "cast_(%s, %s)" % (pythonType, mappedName)
             wrt('        self.%s = %s\n' % (mappedName, attrVal))
             member = 1
         # Generate member initializers in ctor.
@@ -1123,7 +1123,7 @@ class PyGenerator(object):
             return default
         elif etype in types.StringType + (types.TokenType, \
                        types.DateTimeType, types.TimeType, types.DateType):
-            escape_default = self.escape_string(default)
+            escape_default = escape_string(default)
             return "\'" + escape_default + "\'"
         elif etype == types.BooleanType:
             if default in ('false', '0'):
