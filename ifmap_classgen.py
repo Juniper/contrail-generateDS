@@ -25,12 +25,32 @@ class IFMapGenBase(object):
         cdecl = """
 class DBTable_%(impl)s_%(class)s : public IFMap%(impl)sTable {
   public:
-    DBTable_%(impl)s_%(class)s(DB *db, const std::string &name, DBGraph *graph);
+""" % {'impl':component, 'class':self.getName()}
 
+        if component == "Server":
+            cdecl += """
+    DBTable_%(impl)s_%(class)s(IFMapServer *server, DB *db, const std::string &name, DBGraph *graph);
+""" % {'impl':component, 'class':self.getName()}
+        else:
+            cdecl += """
+    DBTable_%(impl)s_%(class)s(DB *db, const std::string &name, DBGraph *graph);
+""" % {'impl':component, 'class':self.getName()}
+
+        cdecl += """
     IFMapObject *AllocObject();
     virtual const char *Typename() const;
-    static DBTable *CreateTable(DB *db, const std::string &name, DBGraph *graph);
+""" % {'impl':component, 'class':self.getName()}
 
+        if component == "Server":
+            cdecl += """
+    static DBTable *CreateTable(IFMapServer *server, DB *db, const std::string &name, DBGraph *graph);
+""" % {'impl':component, 'class':self.getName()}
+        else:
+            cdecl += """
+    static DBTable *CreateTable(DB *db, const std::string &name, DBGraph *graph);
+""" % {'impl':component, 'class':self.getName()}
+
+        cdecl += """
   private:
     DISALLOW_COPY_AND_ASSIGN(DBTable_%(impl)s_%(class)s);
 };
@@ -38,11 +58,22 @@ class DBTable_%(impl)s_%(class)s : public IFMap%(impl)sTable {
         file.write(cdecl)
 
     def TableClassImpl(self, file, impl):
-        cdecl = """
+        if impl == "Server":
+            cdecl = """
+DBTable_%(impl)s_%(class)s::DBTable_%(impl)s_%(class)s(IFMapServer *server, DB *db, const std::string &name, DBGraph *graph)
+        : IFMap%(impl)sTable(server, db, name, graph) {
+}
+""" % {'impl': impl, 'class': self.getName(),
+        'elementname': self.getElementName()}
+        else:
+            cdecl = """
 DBTable_%(impl)s_%(class)s::DBTable_%(impl)s_%(class)s(DB *db, const std::string &name, DBGraph *graph)
         : IFMap%(impl)sTable(db, name, graph) {
 }
+""" % {'impl': impl, 'class': self.getName(),
+        'elementname': self.getElementName()}
 
+        cdecl += """
 const char *DBTable_%(impl)s_%(class)s::Typename() const {
     return "%(elementname)s";
 }
@@ -50,7 +81,20 @@ const char *DBTable_%(impl)s_%(class)s::Typename() const {
 IFMapObject *DBTable_%(impl)s_%(class)s::AllocObject() {
     return new %(class)s();
 }
+""" % {'impl': impl, 'class': self.getName(),
+        'elementname': self.getElementName()}
 
+        if impl == "Server":
+            cdecl += """
+DBTable *DBTable_%(impl)s_%(class)s::CreateTable(IFMapServer *server, DB *db, const string &name, DBGraph *graph) {
+    DBTable *tbl = new DBTable_%(impl)s_%(class)s(server, db, name, graph);
+    tbl->Init();
+    return tbl;
+}
+""" % {'impl': impl, 'class': self.getName(),
+        'elementname': self.getElementName()}
+        else:
+            cdecl += """
 DBTable *DBTable_%(impl)s_%(class)s::CreateTable(DB *db, const string &name, DBGraph *graph) {
     DBTable *tbl = new DBTable_%(impl)s_%(class)s(db, name, graph);
     tbl->Init();
@@ -531,6 +575,7 @@ class xml_node;
 
 class DB;
 class DBGraph;
+class IFMapServer;
 class IFMapServerParser;
 class IFMapAgentParser;
 
@@ -578,7 +623,7 @@ namespace autogen {
         file.write('};\n')
         file.write('typedef std::vector<%s_GraphFilterInfo> %s_FilterInfo;\n\n' % (module_name, module_name))
 
-        file.write('extern void %s_Server_ModuleInit(DB *, DBGraph *);\n'
+        file.write('extern void %s_Server_ModuleInit(IFMapServer *server, DB *, DBGraph *);\n'
                    % module_name)
         file.write('extern void %s_Server_GenerateGraphFilter(%s_FilterInfo *);\n'
                    % (module_name, module_name))
@@ -695,14 +740,27 @@ namespace autogen {
         self._GenerateGraphFilter(file, hdrname, component, IdentifierDict,
                              MetaDict)
 
-        cdecl = """
+        if component == "Server":
+            cdecl = """
+void %(module)s_%(comp)s_ModuleInit(IFMapServer *server, DB *db, DBGraph *graph) {
+    DBTable *table;
+""" % { 'module': self._module_name, 'comp': component}
+        else:
+            cdecl = """
 void %(module)s_%(comp)s_ModuleInit(DB *db, DBGraph *graph) {
     DBTable *table;
 """ % { 'module': self._module_name, 'comp': component}
         file.write(cdecl)
 
         for tbl in self._DBTableList:
-            cdecl = """
+            if component == "Server":
+                cdecl = """
+    table = autogen::DBTable_%(impl)s_%(class)s::CreateTable(
+        server, db, "__ifmap__.%(tablename)s.0", graph);
+    db->AddTable(table);
+""" % {'impl': component, 'tablename': tbl[0], 'class':tbl[1]}
+            else:
+                cdecl = """
     table = autogen::DBTable_%(impl)s_%(class)s::CreateTable(
         db, "__ifmap__.%(tablename)s.0", graph);
     db->AddTable(table);
