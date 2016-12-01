@@ -808,8 +808,9 @@ if __name__ == '__main__':
                                             'ifmap-backend',
                                             'device-api',
                                             'java-api',
-                                            'golang-api'):
-                    raise RuntimeError('Option --generator-category must be "type", service", "ifmap-frontend", "ifmap-backend", "device-api", "java-api" or "golang-api".')
+                                            'golang-api',
+                                            'json-schema'):
+                    raise RuntimeError('Option --generator-category must be "type", service", "ifmap-frontend", "ifmap-backend", "device-api", "java-api", "golang-api" or "json-schema".')
         if showVersion:
             print 'generateDS.py version %s' % VERSION
             sys.exit(0)
@@ -1082,7 +1083,8 @@ if __name__ == '__main__':
               self.genCategory == 'ifmap-frontend' or
               self.genCategory == 'device-api' or
               self.genCategory == 'java-api' or
-              self.genCategory == 'golang-api'):
+              self.genCategory == 'golang-api' or
+              self.genCategory == 'json-schema'):
             self._Generator = IFMapGenerator(self, self.genCategory)
         self._Generator.setLanguage(self.genLang)
 
