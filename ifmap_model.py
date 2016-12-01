@@ -28,6 +28,11 @@ class IFMapObject(object):
         """ The data structure name (e.g. virtual-network) """
         return self._name
 
+    def getJsonName(self):
+        name = self._name
+        name = name.replace('-', '_')
+        return name
+
     def getCIdentifierName(self):
         """ A valid C identifier name (e.g. virtual_network). """
         if not self._xelement:
