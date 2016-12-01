@@ -526,9 +526,12 @@ namespace pugi {
 class xml_node;
 }  // namespace pugi
 
+#include "rapidjson/document.h"
+
 #include "ifmap/autogen.h"
 #include "ifmap/ifmap_object.h"
 
+class ConfigJsonParser;
 class DB;
 class DBGraph;
 class IFMapServerParser;
@@ -584,8 +587,12 @@ namespace autogen {
                    % (module_name, module_name))
         file.write('extern void %s_Agent_ModuleInit(DB *, DBGraph *);\n'
                    % module_name)
-        file.write('extern void %s_Agent_ParserInit(DB *, IFMapAgentParser *);\n' % module_name)        
-        file.write('extern void %s_ParserInit(IFMapServerParser *);\n' % module_name)
+        file.write('extern void %s_Agent_ParserInit(DB *, IFMapAgentParser *);\n'
+                   % module_name)
+        file.write('extern void %s_ParserInit(IFMapServerParser *);\n'
+                   % module_name)
+        file.write('extern void %s_JsonParserInit(ConfigJsonParser *);\n'
+                   % module_name)
         file.write('#endif  // __SCHEMA__%s_TYPES_H__\n' %
                    module_name.upper())
 
@@ -668,8 +675,10 @@ void %(module)s_%(comp)s_GenerateGraphFilter(%(module)s_FilterInfo *filter_info)
 #include <boost/bind.hpp>
 
 #include "db/db.h"
+#include "ifmap/client/config_json_parser.h"
 #include "ifmap/ifmap_%(comp)s_table.h"
 #include "ifmap/ifmap_%(comp)s_parser.h"
+
 using namespace std;
 
 namespace autogen {
