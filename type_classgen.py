@@ -40,6 +40,9 @@ class TypeClassGenerator(object):
                                  std::auto_ptr<AutogenProperty> *resultp);
     void Encode(pugi::xml_node *node) const;
     void CalculateCrc(boost::crc_32_type *crc) const;
+    bool JsonParse(const rapidjson::Value &node);
+    static bool JsonParseProperty(const rapidjson::Value &node,
+                                  std::auto_ptr<AutogenProperty> *resultp);
 };
 """ % (ctype.getName())
         file.write(tail)
@@ -65,6 +68,8 @@ namespace pugi {
 class xml_node;
 class xml_document;
 }  // namespace pugi
+
+#include "rapidjson/document.h"
 
 #include "ifmap/autogen.h"
 

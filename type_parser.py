@@ -7,6 +7,92 @@ class TypeParserGenerator(object):
         self._cTypeDict = cTypeDict
         pass
 
+    def GenerateJsonTypeParser(self, file, ctype):
+        print "generating parser for %s" %ctype.getName()
+        start = """
+bool %s::JsonParse(const rapidjson::Value &parent) {
+    for (Value::ConstMemberIterator itr = parent.MemberBegin();
+         itr != parent.MemberEnd(); ++itr) {
+""" % ctype.getName()
+        file.write(start)
+        if len(ctype.getDataMembers()) > 0:
+            file.write(
+                '        const rapidjson::Value &value_node = itr->value;\n')
+            file.write('        if (value_node.IsNull()) continue;\n')
+        for member in ctype.getDataMembers():
+            object_name = member.xsd_object.getName()
+            object_name = object_name.replace('-', '_')
+            file.write('        if (strcmp(itr->name.GetString(), "%s") == 0) {\n' %
+                       object_name)
+            indent = ' ' * 12
+            cpptype = member.ctypename
+            if cpptype == 'int':
+                fmt = 'if (!ParseInteger(value_node, &%s)) return false;\n'
+                file.write(indent + fmt % member.membername)
+            elif cpptype == 'uint64_t':
+                fmt = 'if (!ParseUnsignedLong(value_node, &%s)) return false;\n'
+                file.write(indent + fmt % member.membername)
+            elif cpptype == 'bool':
+                fmt = 'if (!ParseBoolean(value_node, &%s)) return false;\n'
+                file.write(indent + fmt % member.membername)
+            elif cpptype == 'std::string':
+                fmt = '%s = value_node.GetString();\n'
+                file.write(indent + fmt % member.membername)
+            elif cpptype == 'time_t':
+                if member.xsd_object.getType() == 'xsd:dateTime':
+                    fmt = 'if (!ParseDateTime(value_node, &%s)) return false;\n'
+                    file.write(indent + fmt % member.membername)
+                elif member.xsd_object.getType() == 'xsd:time':
+                    fmt = 'if (!ParseTime(value_node, &%s)) return false;\n'
+                    file.write(indent + fmt % member.membername)
+            elif member.isSequence:
+                indent1 = ' ' * 16
+                file.write(indent +
+                    'for (size_t i = 0; i < value_node.Size(); ++i) {\n')
+                file.write(indent1 + 'assert(value_node.IsArray());\n')
+                if member.isComplex:
+                    file.write(indent1 + '%s var;\n' % member.sequenceType)
+                    file.write(indent1 + 'var.Clear();\n')
+                    file.write(indent1 +
+                        'if (!var.JsonParse(value_node[i])) return false;\n')
+                    file.write(indent1 + '%s.push_back(var);\n' %
+                                member.membername)
+                elif member.sequenceType == 'std::string':
+                    file.write(indent1 + 'assert(value_node[i].IsString());\n')
+                    file.write(indent1 +
+                               'string var(value_node[i].GetString());\n')
+                    file.write(indent1 + '%s.push_back(var);\n' %
+                               member.membername)
+                elif member.sequenceType == 'int':
+                    file.write(indent1 + 'assert(value_node[i].IsInt());\n')
+                    file.write(indent1 + 'int var;\n')
+                    file.write(indent1 +
+                        'if (!ParseInteger(value_node[i], &var)) return false;\n')
+                    file.write(indent1 + '%s.push_back(var);\n' %
+                               member.membername)
+                else:
+                    file.write(indent + '// TODO: sequence of ' +
+                               member.sequenceType)
+                file.write(indent + '}\n') # end of for loop
+            elif member.isComplex:
+                fmt = 'if (!%s.JsonParse(value_node)) return false;\n'
+                file.write(indent + fmt % member.membername)
+            file.write('        }\n')
+        file.write('    }\n    return true;\n}\n')
+
+        static_fn = """
+bool %s::JsonParseProperty(const rapidjson::Value &parent,
+        auto_ptr<AutogenProperty> *resultp) {
+    %s *ptr = new %s();
+    resultp->reset(ptr);
+    if (!ptr->JsonParse(parent)) {
+        return false;
+    }
+    return true;
+}
+""" % (ctype.getName(), ctype.getName(), ctype.getName())
+        file.write(static_fn)
+
     def GenerateTypeParser(self, file, ctype):
         print "generating parser for %s" %ctype.getName()
         start = """
@@ -264,7 +350,22 @@ void %s::Encode(xml_node *node_p) const {
                 file.write(indent + fmt % (ctype.getName(),member.membername))
         file.write('}\n')
 
+    def GenerateJsonAttributeParser(self, file, ctype):
+        print "generating json parser for attribute %s" %ctype.getName()
+        function_def = """
+bool %s::JsonParse(const rapidjson::Value &parent) {
+    return true;
+}
+""" % ctype.getName()
+        file.write(function_def)
 
+        static_fn = """
+bool %s::JsonParseProperty(const rapidjson::Value &parent,
+        auto_ptr<AutogenProperty> *resultp) {
+    return true;
+}
+""" % ctype.getName()
+        file.write(static_fn)
 
     def Generate(self, file, hdrname):
         header = """
@@ -274,8 +375,11 @@ void %s::Encode(xml_node *node_p) const {
 #include <sstream>
 #include <boost/algorithm/string/trim.hpp>
 #include <pugixml/pugixml.hpp>
+#include "rapidjson/rapidjson.h"
+#include "rapidjson/document.h"
 #include <time.h>
 
+using namespace rapidjson;
 using namespace pugi;
 using namespace std;
 
@@ -365,11 +469,54 @@ static std::string FormatTime(const time_t *valuep) {
     strftime(result, sizeof(result), "%%T", &tm);
     return std::string(result);
 }
+
+// Json Parse routines
+static bool ParseInteger(const rapidjson::Value &node, int *valuep) {
+    *valuep = node.GetInt();
+    return true;
+}
+
+static bool ParseUnsignedLong(const rapidjson::Value &node, uint64_t *valuep) {
+    *valuep = node.GetUint64();
+    return true;
+}
+
+static bool ParseBoolean(const rapidjson::Value &node, bool *valuep) {
+    *valuep = node.GetBool();
+    return true;
+}
+
+static bool ParseDateTime(const rapidjson::Value &node, time_t *valuep) {
+    string value(node.GetString());
+    boost::trim(value);
+    struct tm tm;
+    char *endp;
+    memset(&tm, 0, sizeof(tm));
+    if (value.size() == 0) return true;
+    endp = strptime(value.c_str(), "%%FT%%T", &tm);
+    if (!endp) return false;
+    *valuep = timegm(&tm);
+    return true;
+}
+
+static bool ParseTime(const rapidjson::Value &node, time_t *valuep) {
+    string value(node.GetString());
+    boost::trim(value);
+    struct tm tm;
+    char *endp;
+    endp = strptime(value.c_str(), "%%T", &tm);
+    if (!endp) return false;
+    *valuep = timegm(&tm);
+    return true;
+}
+
 """ % hdrname
         file.write(header)
         for ctype in self._cTypeDict.values():
             if ctype._is_attribute:
                 self.GenerateAttributeParser(file, ctype)
+                self.GenerateJsonAttributeParser(file, ctype)
             else:
                 self.GenerateTypeParser(file, ctype)
+                self.GenerateJsonTypeParser(file, ctype)
         file.write('}  // namespace autogen\n')
