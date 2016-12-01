@@ -2328,6 +2328,7 @@ class PyGenerator(object):
         comps = []
         hash_fields = []
         str_fields = []
+        copy_fields = []
         for child in element.getChildren():
             if child.getType() == self._PGenr.AnyTypeIdentifier:
                 continue
@@ -2337,14 +2338,24 @@ class PyGenerator(object):
                 str_fields.append('"%s = " + str(self.%s)' % (name, name))
                 if child.getMaxOccurs() > 1:
                     hash_fields.append('tuple(self.%s or [])' % name)
+                    if child.isComplex():
+                        copy_field = '[x.copy() for x in self.%s]' % name
+                    else:
+                        copy_field = 'list(self.%s)' % name
                 else:
                     hash_fields.append('self.%s' % name)
+                    if child.isComplex():
+                        copy_field = 'self.%s.copy()' % name
+                    else:
+                        copy_field = 'self.%s' % name
+                copy_fields.append((name, copy_field))
 
         if len(comps) == 0:
             wrt('    def __eq__(self, other): return True\n')
             wrt('    def __ne__(self, other): return False\n')
             wrt('    def __hash__(self): return 0\n')
             wrt('    def __repr__(self): return ''\n')
+            wrt('    def copy(self): return %s()\n' % element.getCleanName())
             return
 
         comp_str = ' and\n                    '.join(comps)
@@ -2366,7 +2377,13 @@ class PyGenerator(object):
         wrt('    def __repr__(self):\n')
         wrt('        return (%s)\n' % str_str)
         wrt('\n')
-
+        wrt('    def copy(self):\n')
+        wrt('        cp = %s()\n' % element.getCleanName())
+        for cp in copy_fields:
+            wrt('        if self.%s is not None:\n' % cp[0])
+            wrt('            cp.%s = %s\n' % (cp[0], cp[1]))
+        wrt('        return cp\n')
+        wrt('\n')
 
 class CppGenerator(object):
     def __init__(self, parser_generator):
