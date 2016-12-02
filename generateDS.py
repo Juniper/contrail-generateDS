@@ -1039,7 +1039,7 @@ if __name__ == '__main__':
             self.PositiveIntegerType : 'int',
         }
         self.SchemaToPythonTypeMap.update(dict((x, 'int') for x in self.IntegerType))
-        self.SchemaToPythonTypeMap.update(dict((x, 'string') for x in self.StringType))
+        self.SchemaToPythonTypeMap.update(dict((x, 'str') for x in self.StringType))
     
         #LG global SchemaToCppTypeMap
         self.SchemaToCppTypeMap = {
