@@ -69,17 +69,8 @@ class JsonSchemaGenerator(object):
             else :
                 subJson = {"type" : propType}
             subJson["required"] = presence
-            restrictions = None
             if simple_type:
-                restrictions = self._parser.SimpleTypeDict[prop.getElement().getSimpleType()].values
-                if (restrictions and len(restrictions) > 0):
-                    if(type(restrictions[0]) is dict):
-                    # If it is a dict we assume it to be min max type
-                        subJson["minimum"] = restrictions[0]["minimum"]
-                        subJson["maximum"] = restrictions[1]["maximum"]
-                    else:
-                    # else they are enum
-                        subJson["enum"] = restrictions
+                 subJson = self.generateRestrictions (simple_type, subJson)
             try:
                 subJson["description"] = prop.getDescription()
             except ValueError as detail:
@@ -88,10 +79,16 @@ class JsonSchemaGenerator(object):
 
 #       Now look for the links and generate respective schema, exclude the children (has relationship) objects
         for link_info in ident.getLinksInfo():
-#             link_type = getLinkInfoType(ident, link_info)
             if ident.isLinkRef(link_info):
                 link_to = ident.getLinkTo(link_info)
-                propertiesJSON[link_to.getCIdentifierName()+"_refs"] = {"type":"array", "url" : "/" + link_to.getName() + "s"}
+                linktype = link_info[0]._xelement.type
+                if  self._json_type_map.get(linktype):
+                    toField = {"type":"array","items":{"type":"string"}}
+                    stringField = {"type":"string"}
+                    refitems = {"type":"object", "properties":{"to":toField, "href":stringField,"uuid":stringField,"attr":{"type":"object","properties":self._json_type_map[linktype]["properties"]}}}
+                    propertiesJSON[link_to.getCIdentifierName()+"_refs"] = {"type":"array", "url" : "/" + link_to.getName() + "s","items":refitems}
+                else :
+                    propertiesJSON[link_to.getCIdentifierName()+"_refs"] = {"type":"array", "url" : "/" + link_to.getName() + "s"}
 #       Then look for back links and create back_ref schema if required
 
         jsonSchema = {"type":"object", "properties":{ ident._name:{ "type": "object", "properties" : propertiesJSON}}}
@@ -127,12 +124,36 @@ class JsonSchemaGenerator(object):
         typeDataMembers = ctype._data_members
         for dataMember in typeDataMembers:
             subJson = self._getSubJS(dataMember.jtypename, dataMember)
+            simple_type = dataMember.xsd_object.simpleType
+            if(simple_type):
+                subJson = self.generateRestrictions (simple_type, subJson)
             if(dataMember.xsd_object.description):
                 subJson['description'] = dataMember.xsd_object.description
             if(dataMember.xsd_object.required):
                 subJson['required'] = dataMember.xsd_object.required 
             self._json_type_map[ctype.getName()]["properties"][dataMember.membername] = subJson
         return self._json_type_map[ctype.getName()]
+
+    def generateRestrictions (self, simple_type, subJson):
+        restrictions = None
+        if(self._parser.SimpleTypeDict.get(simple_type)):
+            restrictions = self._parser.SimpleTypeDict[simple_type].values
+            if (restrictions and len(restrictions) > 0):
+                if(type(restrictions[0]) is dict):
+                # If it is a dict we assume it to be min max type
+                    subJson["minimum"] = restrictions[0]["minimum"]
+                    subJson["maximum"] = restrictions[1]["maximum"]
+                else:
+                    # else they are enum
+                    if(subJson["type"] == "array"):
+                        if(subJson.get("items")):
+                            subJson["items"]["enum"] = restrictions
+                        else:
+                            subJson["items"] = {}
+                            subJson["items"]["enum"] = restrictions
+                    else:
+                        subJson["enum"] = restrictions
+        return subJson
 
     def Generate(self, dirname):
         if not os.path.exists(dirname):
