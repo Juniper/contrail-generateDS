@@ -91,7 +91,7 @@ void %s::Encode(xml_node *node_p) const {
         file.write(export)
 
         for member in ctype.getDataMembers():
-            indent = ' ' * 4 
+            indent = ' ' * 4
             cpptype = member.ctypename
             if cpptype == 'int':
                 file.write(indent + "// Add child node \n");
@@ -141,7 +141,7 @@ void %s::Encode(xml_node *node_p) const {
        'membername': member.membername,
         'elementname': member.elementname }
                 file.write(item)
-            elif member.isSequence and member.sequenceType == 'std::string': 
+            elif member.isSequence and member.sequenceType == 'std::string':
                 item = """
     for (%(type)s::const_iterator iter = %(membername)s.begin();
          iter != %(membername)s.end(); ++iter) {
@@ -183,6 +183,88 @@ void %s::Encode(xml_node *node_p) const {
                 file.write(indent + fmt % (member.membername))
         file.write('}\n')
 
+    def GenerateAttributeParser(self, file, ctype):
+        print "generating parser for attribute %s" %ctype.getName()
+        start = """
+bool %s::XmlParse(const xml_node &parent) {
+    for (xml_attribute attr = parent.first_attribute(); attr;
+         attr = attr.next_attribute()) {
+""" % ctype.getName()
+        file.write(start)
+        for member in ctype.getDataMembers():
+            file.write('        if (strcmp(attr.name(), "%s") == 0) {\n' %
+                       member.xsd_object.getName())
+            indent = ' ' * 12
+            cpptype = member.ctypename
+            if cpptype == 'int':
+                fmt = 'if (!ParseInteger(attr, &%s)) return false;\n'
+                file.write(indent + fmt % member.membername)
+            elif cpptype == 'uint64_t':
+                fmt = 'if (!ParseUnsignedLong(attr, &%s)) return false;\n'
+                file.write(indent + fmt % member.membername)
+            elif cpptype == 'bool':
+                fmt = 'if (!ParseBoolean(attr, &%s)) return false;\n'
+                file.write(indent + fmt % member.membername)
+            elif cpptype == 'std::string':
+                fmt = '%s = attr.value();\n'
+                file.write(indent + fmt % member.membername)
+            file.write('        }\n')
+        file.write('    }\n    return true;\n}\n')
+
+        static_fn = """
+bool %s::XmlParseProperty(const xml_node &parent,
+        auto_ptr<AutogenProperty> *resultp) {
+    %s *ptr = new %s();
+    resultp->reset(ptr);
+    if (!ptr->XmlParse(parent)) {
+        return false;
+    }
+    return true;
+}
+""" % (ctype.getName(), ctype.getName(), ctype.getName())
+        file.write(static_fn)
+
+        export = """
+void %s::Encode(xml_node *node_p) const {
+    pugi::xml_attribute attr;
+
+""" % (ctype.getName())
+        file.write(export)
+
+        for member in ctype.getDataMembers():
+            indent = ' ' * 4
+            cpptype = member.ctypename
+            if cpptype == 'int':
+                file.write(indent + "// Add child node \n");
+                fmt = 'attr = node_p->append_attribute("%s");\n'
+                file.write(indent + fmt % member.elementname)
+                fmt = 'attr.set_value(%s::%s);\n\n'
+                file.write(indent + fmt % (ctype.getName(),member.membername))
+            if cpptype == 'uint64_t':
+                cdecl = """
+    attr = node_p->append_attribute("%(elementname)s");
+    {
+        ostringstream oss;
+        oss << %(membername)s;
+        attr.set_value(oss.str().c_str());
+    }
+""" % {'elementname': member.xsd_object.getName(), 'membername': member.membername}
+                file.write(cdecl)
+            elif cpptype == 'bool':
+                file.write(indent + "// Add child node \n");
+                fmt = 'attr = node_p->append_attribute("%s");\n'
+                file.write(indent + fmt % member.elementname)
+                fmt = 'attr.set_value(%s::%s);\n\n'
+                file.write(indent + fmt % (ctype.getName(),member.membername))
+            elif cpptype == 'std::string':
+                file.write(indent + "// Add child node \n");
+                fmt = 'attr = node_p->append_attribute("%s");\n'
+                file.write(indent + fmt % member.elementname)
+                fmt = 'attr.set_value(%s::%s.c_str());\n\n'
+                file.write(indent + fmt % (ctype.getName(),member.membername))
+        file.write('}\n')
+
+
 
     def Generate(self, file, hdrname):
         header = """
@@ -203,6 +285,28 @@ using namespace std;
 #endif
 
 namespace autogen {
+static bool ParseInteger(const pugi::xml_attribute &attr, int *valuep) {
+    char *endp;
+    *valuep = strtoul(attr.value(), &endp, 10);
+    while (isspace(*endp)) endp++;
+    return endp[0] == '\\0';
+}
+
+static bool ParseUnsignedLong(const pugi::xml_attribute &attr, uint64_t *valuep) {
+    char *endp;
+    *valuep = strtoull(attr.value(), &endp, 10);
+    while (isspace(*endp)) endp++;
+    return endp[0] == '\\0';
+}
+
+static bool ParseBoolean(const pugi::xml_attribute &attr, bool *valuep) {
+    if (strcmp(attr.value(), "true") ==0)
+        *valuep = true;
+    else
+        *valuep = false;
+    return true;
+}
+
 static bool ParseInteger(const pugi::xml_node &node, int *valuep) {
     char *endp;
     *valuep = strtoul(node.child_value(), &endp, 10);
@@ -218,7 +322,7 @@ static bool ParseUnsignedLong(const pugi::xml_node &node, uint64_t *valuep) {
 }
 
 static bool ParseBoolean(const pugi::xml_node &node, bool *valuep) {
-    if (strcmp(node.child_value(), "true") ==0) 
+    if (strcmp(node.child_value(), "true") ==0)
         *valuep = true;
     else
         *valuep = false;
@@ -264,5 +368,8 @@ static std::string FormatTime(const time_t *valuep) {
 """ % hdrname
         file.write(header)
         for ctype in self._cTypeDict.values():
-            self.GenerateTypeParser(file, ctype)
+            if ctype._is_attribute:
+                self.GenerateAttributeParser(file, ctype)
+            else:
+                self.GenerateTypeParser(file, ctype)
         file.write('}  // namespace autogen\n')

@@ -1807,11 +1807,13 @@ class XschemaAttribute:
     def __init__(self, parser_generator, name, data_type='xs:string', use='optional', default=None):
         self._PGenr = parser_generator
         self.name = name
+        self.cleanName = self._PGenr.cleanupName(name)
         self.data_type = data_type
         self.use = use
         self.default = default
         # Enumeration values for the attribute.
         self.values = list()
+    def getCleanName(self): return self.cleanName
     def setName(self, name): self.name = name
     def getName(self): return self.name
     def setData_type(self, data_type): self.data_type = data_type
