@@ -48,7 +48,7 @@ class JsonSchemaGenerator(object):
         parent_types = []
         if parents:
             for parent in parents:
-                (parnt, meta) = parent
+                parnt = parent[0]
                 parent_types.append(parnt.getName())
         propertiesJSON["parent_type"] = {"type":"string","required":"required","enum" : parent_types}
         identProperties = ident.getProperties()
