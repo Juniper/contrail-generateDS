@@ -402,27 +402,42 @@ using namespace std;
 #endif
 
 namespace autogen {
-static bool ParseInteger(const pugi::xml_node &node, int *valuep) {
+static bool ParseInteger(const char *nptr, int *valuep) {
     char *endp;
-    *valuep = strtoul(node.child_value(), &endp, 10);
-    while (isspace(*endp)) endp++;
-    return endp[0] == '\\0';
+    *valuep = strtoul(nptr, &endp, 10);
+    while (isspace(*endp))
+        endp++;
+    return (endp[0] == '\\0');
 }
 
-static bool ParseUnsignedLong(const pugi::xml_node &node, uint64_t *valuep) {
+static bool ParseUnsignedLong(const char *nptr, uint64_t *valuep) {
     char *endp;
-    *valuep = strtoull(node.child_value(), &endp, 10);
-    while (isspace(*endp)) endp++;
-    return endp[0] == '\\0';
+    *valuep = strtoull(nptr, &endp, 10);
+    while (isspace(*endp))
+        endp++;
+    return (endp[0] == '\\0');
 }
 
-static bool ParseBoolean(const pugi::xml_node &node, bool *valuep) {
-    if (strcmp(node.child_value(), "true") ==0) 
+static bool ParseBoolean(const char *bptr, bool *valuep) {
+    if (strcmp(bptr, "true") ==0)
         *valuep = true;
     else
         *valuep = false;
     return true;
 }
+
+static bool ParseInteger(const pugi::xml_node &node, int *valuep) {
+    return ParseInteger(node.child_value(), valuep);
+}
+
+static bool ParseUnsignedLong(const pugi::xml_node &attr, uint64_t *valuep) {
+    return ParseUnsignedLong(attr.value(), valuep);
+}
+
+static bool ParseBoolean(const pugi::xml_node &node, bool *valuep) {
+    return ParseBoolean(node.child_value(), valuep);
+}
+
 static bool ParseDateTime(const pugi::xml_node &node, time_t *valuep) {
     string value(node.child_value());
     boost::trim(value);
@@ -462,16 +477,22 @@ static std::string FormatTime(const time_t *valuep) {
 
 // Json Parse routines
 static bool ParseInteger(const rapidjson::Value &node, int *valuep) {
+    if (node.IsString())
+        return ParseInteger(node.GetString(), valuep);
     *valuep = node.GetInt();
     return true;
 }
 
 static bool ParseUnsignedLong(const rapidjson::Value &node, uint64_t *valuep) {
+    if (node.IsString())
+        return ParseUnsignedLong(node.GetString(), valuep);
     *valuep = node.GetUint64();
     return true;
 }
 
 static bool ParseBoolean(const rapidjson::Value &node, bool *valuep) {
+    if (node.IsString())
+        return ParseBoolean(node.GetString(), valuep);
     *valuep = node.GetBool();
     return true;
 }
