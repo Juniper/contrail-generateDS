@@ -431,7 +431,7 @@ static bool ParseInteger(const pugi::xml_node &node, int *valuep) {
 }
 
 static bool ParseUnsignedLong(const pugi::xml_node &node, uint64_t *valuep) {
-    return ParseUnsignedLong(node.value(), valuep);
+    return ParseUnsignedLong(node.child_value(), valuep);
 }
 
 static bool ParseBoolean(const pugi::xml_node &node, bool *valuep) {
