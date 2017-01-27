@@ -10,6 +10,8 @@ from ifmap_global import getCppType, getJavaType, getGoLangType
 from ifmap_global import IsGeneratedType, CamelCase
 from type_model import ComplexType, ComplexTypeLocate, MemberInfo
 
+class AmbiguousParentType(Exception): pass
+
 def ElementXsdType(xelement):
     if xelement.schema_type:
         typename = xelement.schema_type
@@ -116,7 +118,8 @@ class IFMapIdentifier(IFMapObject):
                 return ['default-%s' %(self._name)]
 
         if not parent_type and len(self._parents) > 1:
-            raise Exception('parent_type should be specified')
+            parent_names = [p['ident'].getName() for p in self._parents]
+            raise AmbiguousParentType('Ambiguous parents %s' %(parent_names))
 
         if parent_type:
             parent_ident = None

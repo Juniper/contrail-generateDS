@@ -3,7 +3,8 @@
 #
 
 from ifmap_global import CamelCase
-from ifmap_model import IFMapIdentifier, IFMapProperty, IFMapLink, IFMapLinkAttr
+from ifmap_model import IFMapIdentifier, IFMapProperty, IFMapLink, \
+    IFMapLinkAttr, AmbiguousParentType
 from TypeGenerator import TypeGenerator
 from collections import OrderedDict
 
@@ -455,12 +456,15 @@ class IFMapApiGenerator(object):
                     (parent_ident, meta, _) = parents[0]
                     if parent_ident.getName() == _BASE_PARENT:
                         write(gen_file, "            self.fq_name = [name]")
-                    else: # parent is not config-root
+                    else: # parent is not config-root, but parent might have >1 parents
                         parent_name = parent_ident.getName()
-                        parent_default_fq_name = parent_ident.getDefaultFQName()
-                        write(gen_file, "            self.parent_type = '%s'" %(parent_name))
-                        write(gen_file, "            self.fq_name = %s" %(parent_default_fq_name))
-                        write(gen_file, "            self.fq_name.append(name)")
+                        try:
+                            parent_default_fq_name = parent_ident.getDefaultFQName()
+                            write(gen_file, "            self.parent_type = '%s'" %(parent_name))
+                            write(gen_file, "            self.fq_name = %s" %(parent_default_fq_name))
+                            write(gen_file, "            self.fq_name.append(name)")
+                        except AmbiguousParentType as e:
+                            write(gen_file, "            raise AmbiguousParentError(\"%s\")" %(e))
                         write(gen_file, "")
                     #end parent is config-root check
                 #end num possible parents check
