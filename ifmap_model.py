@@ -75,7 +75,8 @@ class IFMapIdentifier(IFMapObject):
         return self._cppname
 
     def SetProperty(self, meta):
-        self._properties.append(meta)
+        if meta not in self._properties:
+            self._properties.append(meta)
 
     def getProperties(self):
         return self._properties
