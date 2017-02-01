@@ -19,11 +19,11 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
             file.write(
                 '        const rapidjson::Value &value_node = itr->value;\n')
             file.write('        if (value_node.IsNull()) continue;\n')
+            file.write('        if (!itr->name.IsString()) return false;\n')
         for member in ctype.getDataMembers():
             object_name = member.xsd_object.getName()
             object_name = object_name.replace('-', '_')
-            file.write('        if (strcmp(itr->name.GetString(), "%s") == 0) {\n' %
-                       object_name)
+            file.write('        if (strcmp(itr->name.GetString(), "%s") == 0) {\n' % object_name)
             indent = ' ' * 12
             cpptype = member.ctypename
             if cpptype == 'int':
@@ -36,6 +36,8 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
                 fmt = 'if (!ParseBoolean(value_node, &%s)) return false;\n'
                 file.write(indent + fmt % member.membername)
             elif cpptype == 'std::string':
+                file.write(indent +
+                           'if (!value_node.IsString()) return false;\n')
                 fmt = '%s = value_node.GetString();\n'
                 file.write(indent + fmt % member.membername)
             elif cpptype == 'time_t':
@@ -48,8 +50,9 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
             elif member.isSequence:
                 indent1 = ' ' * 16
                 file.write(indent +
+                           'if (!value_node.IsArray()) return false;\n')
+                file.write(indent +
                     'for (size_t i = 0; i < value_node.Size(); ++i) {\n')
-                file.write(indent1 + 'assert(value_node.IsArray());\n')
                 if member.isComplex:
                     file.write(indent1 + '%s var;\n' % member.sequenceType)
                     file.write(indent1 + 'var.Clear();\n')
@@ -58,16 +61,18 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
                     file.write(indent1 + '%s.push_back(var);\n' %
                                 member.membername)
                 elif member.sequenceType == 'std::string':
-                    file.write(indent1 + 'assert(value_node[i].IsString());\n')
+                    file.write(indent1 +
+                               'if (!value_node[i].IsString()) return false;\n')
                     file.write(indent1 +
                                'string var(value_node[i].GetString());\n')
                     file.write(indent1 + '%s.push_back(var);\n' %
                                member.membername)
                 elif member.sequenceType == 'int':
-                    file.write(indent1 + 'assert(value_node[i].IsInt());\n')
+                    file.write(indent1 +
+                               'if (!value_node[i].IsInt()) return false;\n')
                     file.write(indent1 + 'int var;\n')
                     file.write(indent1 +
-                        'if (!ParseInteger(value_node[i], &var)) return false;\n')
+                      'if (!ParseInteger(value_node[i], &var)) return false;\n')
                     file.write(indent1 + '%s.push_back(var);\n' %
                                member.membername)
                 else:
@@ -479,6 +484,8 @@ static std::string FormatTime(const time_t *valuep) {
 static bool ParseInteger(const rapidjson::Value &node, int *valuep) {
     if (node.IsString())
         return ParseInteger(node.GetString(), valuep);
+    if (!node.IsInt())
+        return false;
     *valuep = node.GetInt();
     return true;
 }
@@ -486,6 +493,8 @@ static bool ParseInteger(const rapidjson::Value &node, int *valuep) {
 static bool ParseUnsignedLong(const rapidjson::Value &node, uint64_t *valuep) {
     if (node.IsString())
         return ParseUnsignedLong(node.GetString(), valuep);
+    if (!node.IsUint64())
+        return false;
     *valuep = node.GetUint64();
     return true;
 }
@@ -493,11 +502,15 @@ static bool ParseUnsignedLong(const rapidjson::Value &node, uint64_t *valuep) {
 static bool ParseBoolean(const rapidjson::Value &node, bool *valuep) {
     if (node.IsString())
         return ParseBoolean(node.GetString(), valuep);
+    if (!node.IsBool())
+        return false;
     *valuep = node.GetBool();
     return true;
 }
 
 static bool ParseDateTime(const rapidjson::Value &node, time_t *valuep) {
+    if (!node.IsString())
+        return false;
     string value(node.GetString());
     boost::trim(value);
     struct tm tm;
@@ -511,6 +524,8 @@ static bool ParseDateTime(const rapidjson::Value &node, time_t *valuep) {
 }
 
 static bool ParseTime(const rapidjson::Value &node, time_t *valuep) {
+    if (!node.IsString())
+        return false;
     string value(node.GetString());
     boost::trim(value);
     struct tm tm;
