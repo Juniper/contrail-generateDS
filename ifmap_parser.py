@@ -259,11 +259,14 @@ class IFMapGenProperty(object):
             file.write("    if (parent.IsNull()) return true;\n")
 
             if info.ctypename == 'std::string':
+                file.write(indent + 'if (!parent.IsString()) return false;\n')
                 file.write(indent + 'data->data = parent.GetString();\n')
             elif info.ctypename == 'int':
+                file.write(indent + 'if (!parent.IsInt()) return false;\n')
                 file.write(indent +
                            'data->data = parent.GetInt();\n')
             elif info.ctypename == 'bool':
+                file.write(indent + 'if (!parent.IsBool()) return false;\n');
                 file.write(indent + 'data->data = parent.GetBool();\n');
             file.write(indent + 'return true;\n')
 
@@ -327,6 +330,7 @@ bool %s::ParseJsonMetadata(const rapidjson::Value &parent,
             file.write(decl)
             xtypename = meta.getCTypename()
             if xtypename == 'std::string':
+                file.write('    if (!parent.IsString()) return false;\n')
                 file.write('    var->data = parent.GetString();\n')
             file.write('    return true;\n')
             file.write('}\n\n')
@@ -479,6 +483,8 @@ static std::string FormatTime(const time_t *valuep) {
 static bool ParseInteger(const rapidjson::Value &node, int *valuep) {
     if (node.IsString())
         return ParseInteger(node.GetString(), valuep);
+    if (!node.IsInt())
+        return false;
     *valuep = node.GetInt();
     return true;
 }
@@ -486,6 +492,8 @@ static bool ParseInteger(const rapidjson::Value &node, int *valuep) {
 static bool ParseUnsignedLong(const rapidjson::Value &node, uint64_t *valuep) {
     if (node.IsString())
         return ParseUnsignedLong(node.GetString(), valuep);
+    if (!node.IsUint64())
+        return false;
     *valuep = node.GetUint64();
     return true;
 }
@@ -493,11 +501,15 @@ static bool ParseUnsignedLong(const rapidjson::Value &node, uint64_t *valuep) {
 static bool ParseBoolean(const rapidjson::Value &node, bool *valuep) {
     if (node.IsString())
         return ParseBoolean(node.GetString(), valuep);
+    if (!node.IsBool())
+        return false;
     *valuep = node.GetBool();
     return true;
 }
 
 static bool ParseDateTime(const rapidjson::Value &node, time_t *valuep) {
+    if (!node.IsString())
+        return false;
     string value(node.GetString());
     boost::trim(value);
     struct tm tm;
@@ -511,6 +523,8 @@ static bool ParseDateTime(const rapidjson::Value &node, time_t *valuep) {
 }
 
 static bool ParseTime(const rapidjson::Value &node, time_t *valuep) {
+    if (!node.IsString())
+        return false;
     string value(node.GetString());
     boost::trim(value);
     struct tm tm;
