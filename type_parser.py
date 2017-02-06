@@ -19,11 +19,12 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
             file.write(
                 '        const rapidjson::Value &value_node = itr->value;\n')
             file.write('        if (value_node.IsNull()) continue;\n')
-            file.write('        if (!itr->name.IsString()) return false;\n')
+            file.write('        std::string var;\n')
+            file.write('        if (!autogen::ParseString(itr->name, &var)) return false;\n')
         for member in ctype.getDataMembers():
             object_name = member.xsd_object.getName()
             object_name = object_name.replace('-', '_')
-            file.write('        if (strcmp(itr->name.GetString(), "%s") == 0) {\n' % object_name)
+            file.write('        if (strcmp(var.c_str(), "%s") == 0) {\n' % object_name)
             indent = ' ' * 12
             cpptype = member.ctypename
             if cpptype == 'int':
@@ -36,9 +37,10 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
                 fmt = 'if (!ParseBoolean(value_node, &%s)) return false;\n'
                 file.write(indent + fmt % member.membername)
             elif cpptype == 'std::string':
+                file.write(indent + 'std::string var;\n')
                 file.write(indent +
-                           'if (!value_node.IsString()) return false;\n')
-                fmt = '%s = value_node.GetString();\n'
+                           'if (!autogen::ParseString(value_node, &var)) return false;\n')
+                fmt = '%s = var.c_str();\n'
                 file.write(indent + fmt % member.membername)
             elif cpptype == 'time_t':
                 if member.xsd_object.getType() == 'xsd:dateTime':
@@ -61,10 +63,9 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
                     file.write(indent1 + '%s.push_back(var);\n' %
                                 member.membername)
                 elif member.sequenceType == 'std::string':
+                    file.write(indent1 + 'std::string var;\n')
                     file.write(indent1 +
-                               'if (!value_node[i].IsString()) return false;\n')
-                    file.write(indent1 +
-                               'string var(value_node[i].GetString());\n')
+                               'if (!autogen::ParseString(value_node[i], &var)) return false;\n')
                     file.write(indent1 + '%s.push_back(var);\n' %
                                member.membername)
                 elif member.sequenceType == 'int':
@@ -394,6 +395,50 @@ using namespace std;
 #endif
 
 namespace autogen {
+
+// Json Parse routines
+
+static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
+    if (node.IsString()) {
+        *s = node.GetString();
+        return true;
+    }
+
+    std::stringstream ss;
+    switch (node.GetType()) {
+    case rapidjson::kNullType:
+        *s = "null";
+        break;
+    case rapidjson::kTrueType:
+        *s = "true";
+        break;
+    case rapidjson::kFalseType:
+        *s = "false";
+        break;
+    case rapidjson::kStringType:
+        *s = node.GetString();
+        break;
+    case rapidjson::kNumberType:
+        if (node.IsUint())
+            ss << node.GetUint();
+        else if (node.IsInt())
+            ss << node.GetInt();
+        else if (node.IsUint64())
+            ss << node.GetUint64();
+        else if (node.IsInt64())
+            ss << node.GetInt64();
+        else if (node.IsDouble())
+            ss << node.GetDouble();
+        *s = ss.str();
+        break;
+    case rapidjson::kObjectType:
+        return false;
+    case rapidjson::kArrayType:
+        return false;
+    }
+    return true;
+}
+
 static bool ParseInteger(const char *nptr, int *valuep) {
     char *endp;
     *valuep = strtoul(nptr, &endp, 10);

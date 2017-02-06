@@ -259,8 +259,9 @@ class IFMapGenProperty(object):
             file.write("    if (parent.IsNull()) return true;\n")
 
             if info.ctypename == 'std::string':
-                file.write(indent + 'if (!parent.IsString()) return false;\n')
-                file.write(indent + 'data->data = parent.GetString();\n')
+                file.write(indent + 'std::string var;\n')
+                file.write(indent + 'if (!autogen::ParseString(parent, &var)) return false;\n')
+                file.write(indent + 'data->data = var.c_str();\n')
             elif info.ctypename == 'int':
                 file.write(indent + 'if (!parent.IsInt()) return false;\n')
                 file.write(indent +
@@ -330,8 +331,9 @@ bool %s::ParseJsonMetadata(const rapidjson::Value &parent,
             file.write(decl)
             xtypename = meta.getCTypename()
             if xtypename == 'std::string':
-                file.write('    if (!parent.IsString()) return false;\n')
-                file.write('    var->data = parent.GetString();\n')
+                file.write('    std::string var;\n')
+                file.write('    if (!autogen::ParseString(parent, &var) return false;\n')
+                file.write('    var->data = var.c_str();\n')
             file.write('    return true;\n')
             file.write('}\n\n')
 
@@ -406,6 +408,50 @@ using namespace std;
 #endif
 
 namespace autogen {
+
+// Json Parse routines
+
+static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
+    if (node.IsString()) {
+        *s = node.GetString();
+        return true;
+    }
+
+    std::stringstream ss;
+    switch (node.GetType()) {
+    case rapidjson::kNullType:
+        *s = "null";
+        break;
+    case rapidjson::kTrueType:
+        *s = "true";
+        break;
+    case rapidjson::kFalseType:
+        *s = "false";
+        break;
+    case rapidjson::kStringType:
+        *s = node.GetString();
+        break;
+    case rapidjson::kNumberType:
+        if (node.IsUint())
+            ss << node.GetUint();
+        else if (node.IsInt())
+            ss << node.GetInt();
+        else if (node.IsUint64())
+            ss << node.GetUint64();
+        else if (node.IsInt64())
+            ss << node.GetInt64();
+        else if (node.IsDouble())
+            ss << node.GetDouble();
+        *s = ss.str();
+        break;
+    case rapidjson::kObjectType:
+        return false;
+    case rapidjson::kArrayType:
+        return false;
+    }
+    return true;
+}
+
 static bool ParseInteger(const char *nptr, int *valuep) {
     char *endp;
     *valuep = strtoul(nptr, &endp, 10);
