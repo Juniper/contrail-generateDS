@@ -260,7 +260,7 @@ class IFMapGenProperty(object):
 
             if info.ctypename == 'std::string':
                 file.write(indent + 'if (!parent.IsString()) return false;\n')
-                file.write(indent + 'data->data = parent.GetString();\n')
+                file.write(indent + 'data->data = autogen::ParseString(parent).c_str();\n')
             elif info.ctypename == 'int':
                 file.write(indent + 'if (!parent.IsInt()) return false;\n')
                 file.write(indent +
@@ -331,7 +331,7 @@ bool %s::ParseJsonMetadata(const rapidjson::Value &parent,
             xtypename = meta.getCTypename()
             if xtypename == 'std::string':
                 file.write('    if (!parent.IsString()) return false;\n')
-                file.write('    var->data = parent.GetString();\n')
+                file.write('    var->data = autogen::ParseString(parent).c_str();\n')
             file.write('    return true;\n')
             file.write('}\n\n')
 
@@ -406,6 +406,43 @@ using namespace std;
 #endif
 
 namespace autogen {
+
+// Json Parse routines
+
+static inline std::string ParseString(const rapidjson::Value &node) {
+    if (node.IsString())
+        return node.GetString();
+
+    std::stringstream ss;
+    switch (node.GetType()) {
+    case rapidjson::kNullType:
+        return "null";
+    case rapidjson::kTrueType:
+        return "true";
+    case rapidjson::kFalseType:
+        return "false";
+    case rapidjson::kStringType:
+        return node.GetString();
+    case rapidjson::kNumberType:
+        if (node.IsUint())
+            ss << node.GetUint();
+        else if (node.IsInt())
+            ss << node.GetInt();
+        else if (node.IsUint64())
+            ss << node.GetUint64();
+        else if (node.IsInt64())
+            ss << node.GetInt64();
+        else if (node.IsDouble())
+            ss << node.GetDouble();
+        return ss.str();
+    case rapidjson::kObjectType:
+        break;
+    case rapidjson::kArrayType:
+        break;
+    }
+    return "";
+}
+
 static bool ParseInteger(const char *nptr, int *valuep) {
     char *endp;
     *valuep = strtoul(nptr, &endp, 10);

@@ -23,7 +23,7 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
         for member in ctype.getDataMembers():
             object_name = member.xsd_object.getName()
             object_name = object_name.replace('-', '_')
-            file.write('        if (strcmp(itr->name.GetString(), "%s") == 0) {\n' % object_name)
+            file.write('        if (strcmp(autogen::ParseString(itr->name).c_str(), "%s") == 0) {\n' % object_name)
             indent = ' ' * 12
             cpptype = member.ctypename
             if cpptype == 'int':
@@ -38,7 +38,7 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
             elif cpptype == 'std::string':
                 file.write(indent +
                            'if (!value_node.IsString()) return false;\n')
-                fmt = '%s = value_node.GetString();\n'
+                fmt = '%s = autogen::ParseString(value_node).c_str();\n'
                 file.write(indent + fmt % member.membername)
             elif cpptype == 'time_t':
                 if member.xsd_object.getType() == 'xsd:dateTime':
@@ -64,7 +64,7 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
                     file.write(indent1 +
                                'if (!value_node[i].IsString()) return false;\n')
                     file.write(indent1 +
-                               'string var(value_node[i].GetString());\n')
+                               'string var(autogen::ParseString(value_node[i]).c_str());\n')
                     file.write(indent1 + '%s.push_back(var);\n' %
                                member.membername)
                 elif member.sequenceType == 'int':
@@ -394,6 +394,43 @@ using namespace std;
 #endif
 
 namespace autogen {
+
+// Json Parse routines
+
+static inline std::string ParseString(const rapidjson::Value &node) {
+    if (node.IsString())
+        return node.GetString();
+
+    std::stringstream ss;
+    switch (node.GetType()) {
+    case rapidjson::kNullType:
+        return "null";
+    case rapidjson::kTrueType:
+        return "true";
+    case rapidjson::kFalseType:
+        return "false";
+    case rapidjson::kStringType:
+        return node.GetString();
+    case rapidjson::kNumberType:
+        if (node.IsUint())
+            ss << node.GetUint();
+        else if (node.IsInt())
+            ss << node.GetInt();
+        else if (node.IsUint64())
+            ss << node.GetUint64();
+        else if (node.IsInt64())
+            ss << node.GetInt64();
+        else if (node.IsDouble())
+            ss << node.GetDouble();
+        return ss.str();
+    case rapidjson::kObjectType:
+        break;
+    case rapidjson::kArrayType:
+        break;
+    }
+    return "";
+}
+
 static bool ParseInteger(const char *nptr, int *valuep) {
     char *endp;
     *valuep = strtoul(nptr, &endp, 10);
