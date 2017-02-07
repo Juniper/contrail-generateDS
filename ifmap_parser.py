@@ -261,7 +261,7 @@ class IFMapGenProperty(object):
             if info.ctypename == 'std::string':
                 file.write(indent + 'std::string var;\n')
                 file.write(indent + 'if (!autogen::ParseString(parent, &var)) return false;\n')
-                file.write(indent + 'data->data = var.c_str();\n')
+                file.write(indent + 'data->data = var;\n')
             elif info.ctypename == 'int':
                 file.write(indent + 'if (!parent.IsInt()) return false;\n')
                 file.write(indent +
@@ -325,15 +325,15 @@ class IFMapGenLinkAttr(object):
             decl = """
 bool %s::ParseJsonMetadata(const rapidjson::Value &parent,
         std::auto_ptr<AutogenProperty> *resultp) {
-    %sData *var = new %sData();
-    resultp->reset(var);
+    %sData *data = new %sData();
+    resultp->reset(data);
 """ % (meta.getCppName(), meta.getCppName(), meta.getCppName())
             file.write(decl)
             xtypename = meta.getCTypename()
             if xtypename == 'std::string':
                 file.write('    std::string var;\n')
                 file.write('    if (!autogen::ParseString(parent, &var) return false;\n')
-                file.write('    var->data = var.c_str();\n')
+                file.write('    data->data = var;\n')
             file.write('    return true;\n')
             file.write('}\n\n')
 
@@ -384,205 +384,11 @@ class IFMapParserGenerator(object):
     def Generate(self, file, hdrname, IdDict, MetaDict):
         header = """
 #include "%s"
-
-#include <stdint.h>
-#include <sstream>
-#include <boost/algorithm/string/trim.hpp>
-#include <pugixml/pugixml.hpp>
-
-#include "ifmap/client/config_json_parser.h"
-#include "ifmap/ifmap_agent_parser.h"
-#include "ifmap/ifmap_server_parser.h"
-#include "ifmap/ifmap_table.h"
-
-#include "rapidjson/document.h"
-#include "rapidjson/rapidjson.h"
-
-using namespace rapidjson;
-using namespace pugi;
-using namespace std;
-
-#include "base/compiler.h"
-#if defined(__GNUC__) && (__GCC_HAS_PRAGMA > 0)
-#pragma GCC diagnostic ignored "-Wunused-function"
-#endif
-
+#include "base/autogen_util.h"
 namespace autogen {
 
-// Json Parse routines
-
-static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
-    if (node.IsString()) {
-        *s = node.GetString();
-        return true;
-    }
-
-    std::stringstream ss;
-    switch (node.GetType()) {
-    case rapidjson::kNullType:
-        *s = "null";
-        break;
-    case rapidjson::kTrueType:
-        *s = "true";
-        break;
-    case rapidjson::kFalseType:
-        *s = "false";
-        break;
-    case rapidjson::kStringType:
-        *s = node.GetString();
-        break;
-    case rapidjson::kNumberType:
-        if (node.IsUint())
-            ss << node.GetUint();
-        else if (node.IsInt())
-            ss << node.GetInt();
-        else if (node.IsUint64())
-            ss << node.GetUint64();
-        else if (node.IsInt64())
-            ss << node.GetInt64();
-        else if (node.IsDouble())
-            ss << node.GetDouble();
-        *s = ss.str();
-        break;
-    case rapidjson::kObjectType:
-        return false;
-    case rapidjson::kArrayType:
-        return false;
-    }
-    return true;
-}
-
-static bool ParseInteger(const char *nptr, int *valuep) {
-    char *endp;
-    *valuep = strtoul(nptr, &endp, 10);
-    while (isspace(*endp))
-        endp++;
-    return (endp[0] == '\\0');
-}
-
-static bool ParseUnsignedLong(const char *nptr, uint64_t *valuep) {
-    char *endp;
-    *valuep = strtoull(nptr, &endp, 10);
-    while (isspace(*endp))
-        endp++;
-    return (endp[0] == '\\0');
-}
-
-static bool ParseBoolean(const char *bptr, bool *valuep) {
-    if (strcmp(bptr, "true") ==0)
-        *valuep = true;
-    else
-        *valuep = false;
-    return true;
-}
-
-static bool ParseInteger(const pugi::xml_node &node, int *valuep) {
-    return ParseInteger(node.child_value(), valuep);
-}
-
-static bool ParseUnsignedLong(const pugi::xml_node &attr, uint64_t *valuep) {
-    return ParseUnsignedLong(attr.child_value(), valuep);
-}
-
-static bool ParseBoolean(const pugi::xml_node &node, bool *valuep) {
-    return ParseBoolean(node.child_value(), valuep);
-}
-
-static bool ParseDateTime(const pugi::xml_node &node, time_t *valuep) {
-    string value(node.child_value());
-    boost::trim(value);
-    struct tm tm;
-    memset(&tm, 0, sizeof(tm));
-    if (value.size() == 0) return true;
-    char *endp;
-    endp = strptime(value.c_str(), "%%FT%%T", &tm);
-    if (!endp) return false;
-    *valuep = timegm(&tm);
-    return true;
-}
-static bool ParseTime(const pugi::xml_node &node, time_t *valuep) {
-    string value(node.child_value());
-    boost::trim(value);
-    struct tm tm;
-    char *endp;
-    endp = strptime(value.c_str(), "%%T", &tm);
-    if (!endp) return false;
-    *valuep = timegm(&tm);
-    return true;
-}
-static std::string FormatDateTime(const time_t *valuep) {
-    struct tm tm;
-    char result[100];
-    gmtime_r(valuep, &tm);
-    strftime(result, sizeof(result), "%%FT%%T", &tm);
-    return std::string(result);
-}
-static std::string FormatTime(const time_t *valuep) {
-    struct tm tm;
-    char result[100];
-    gmtime_r(valuep, &tm);
-    strftime(result, sizeof(result), "%%T", &tm);
-    return std::string(result);
-}
-
-// Json Parse routines
-static bool ParseInteger(const rapidjson::Value &node, int *valuep) {
-    if (node.IsString())
-        return ParseInteger(node.GetString(), valuep);
-    if (!node.IsInt())
-        return false;
-    *valuep = node.GetInt();
-    return true;
-}
-
-static bool ParseUnsignedLong(const rapidjson::Value &node, uint64_t *valuep) {
-    if (node.IsString())
-        return ParseUnsignedLong(node.GetString(), valuep);
-    if (!node.IsUint64())
-        return false;
-    *valuep = node.GetUint64();
-    return true;
-}
-
-static bool ParseBoolean(const rapidjson::Value &node, bool *valuep) {
-    if (node.IsString())
-        return ParseBoolean(node.GetString(), valuep);
-    if (!node.IsBool())
-        return false;
-    *valuep = node.GetBool();
-    return true;
-}
-
-static bool ParseDateTime(const rapidjson::Value &node, time_t *valuep) {
-    if (!node.IsString())
-        return false;
-    string value(node.GetString());
-    boost::trim(value);
-    struct tm tm;
-    char *endp;
-    memset(&tm, 0, sizeof(tm));
-    if (value.size() == 0) return true;
-    endp = strptime(value.c_str(), "%%FT%%T", &tm);
-    if (!endp) return false;
-    *valuep = timegm(&tm);
-    return true;
-}
-
-static bool ParseTime(const rapidjson::Value &node, time_t *valuep) {
-    if (!node.IsString())
-        return false;
-    string value(node.GetString());
-    boost::trim(value);
-    struct tm tm;
-    char *endp;
-    endp = strptime(value.c_str(), "%%T", &tm);
-    if (!endp) return false;
-    *valuep = timegm(&tm);
-    return true;
-}
 """ % hdrname
         file.write(header)
-
         for ctype in self._cTypesDict.values():
             self._TypeParserGenerator.GenerateTypeParser(file, ctype)
             self._TypeParserGenerator.GenerateJsonTypeParser(file, ctype)
