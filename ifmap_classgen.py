@@ -699,6 +699,7 @@ void %(module)s_%(comp)s_GenerateWrapperPropertyInfo(%(module)s_WrapperPropertyI
 #include <boost/bind.hpp>
 #include <sstream>
 
+#include "base/autogen_util.h"
 #include "db/db.h"
 #include "ifmap/client/config_json_parser.h"
 #include "ifmap/ifmap_%(comp)s_table.h"
@@ -707,48 +708,6 @@ void %(module)s_%(comp)s_GenerateWrapperPropertyInfo(%(module)s_WrapperPropertyI
 using namespace std;
 
 namespace autogen {
-// Json Parse routines
-
-static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
-    if (node.IsString()) {
-        *s = node.GetString();
-        return true;
-    }
-
-    std::stringstream ss;
-    switch (node.GetType()) {
-    case rapidjson::kNullType:
-        *s = "null";
-        break;
-    case rapidjson::kTrueType:
-        *s = "true";
-        break;
-    case rapidjson::kFalseType:
-        *s = "false";
-        break;
-    case rapidjson::kStringType:
-        *s = node.GetString();
-        break;
-    case rapidjson::kNumberType:
-        if (node.IsUint())
-            ss << node.GetUint();
-        else if (node.IsInt())
-            ss << node.GetInt();
-        else if (node.IsUint64())
-            ss << node.GetUint64();
-        else if (node.IsInt64())
-            ss << node.GetInt64();
-        else if (node.IsDouble())
-            ss << node.GetDouble();
-        *s = ss.str();
-        break;
-    case rapidjson::kObjectType:
-        return false;
-    case rapidjson::kArrayType:
-        return false;
-    }
-    return true;
-}
 
 """ % {'hdrname': hdrname, 'comp': component.lower()}
         file.write(header)
