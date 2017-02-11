@@ -529,6 +529,7 @@ class xml_node;
 
 #include "rapidjson/document.h"
 
+namespace contrail_rapidjson = rapidjson;
 #include "ifmap/autogen.h"
 #include "ifmap/ifmap_object.h"
 
@@ -709,7 +710,7 @@ using namespace std;
 namespace autogen {
 // Json Parse routines
 
-static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
+static inline bool ParseString(const contrail_rapidjson::Value &node, std::string *s) {
     if (node.IsString()) {
         *s = node.GetString();
         return true;
@@ -717,19 +718,19 @@ static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
 
     std::stringstream ss;
     switch (node.GetType()) {
-    case rapidjson::kNullType:
+    case contrail_rapidjson::kNullType:
         *s = "null";
         break;
-    case rapidjson::kTrueType:
+    case contrail_rapidjson::kTrueType:
         *s = "true";
         break;
-    case rapidjson::kFalseType:
+    case contrail_rapidjson::kFalseType:
         *s = "false";
         break;
-    case rapidjson::kStringType:
+    case contrail_rapidjson::kStringType:
         *s = node.GetString();
         break;
-    case rapidjson::kNumberType:
+    case contrail_rapidjson::kNumberType:
         if (node.IsUint())
             ss << node.GetUint();
         else if (node.IsInt())
@@ -742,9 +743,9 @@ static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
             ss << node.GetDouble();
         *s = ss.str();
         break;
-    case rapidjson::kObjectType:
+    case contrail_rapidjson::kObjectType:
         return false;
-    case rapidjson::kArrayType:
+    case contrail_rapidjson::kArrayType:
         return false;
     }
     return true;
