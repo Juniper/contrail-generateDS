@@ -237,7 +237,7 @@ class IFMapGenProperty(object):
         meta = self._meta
         fnname = '%s_ParseJsonMetadata' % meta.getCppName()
         file.write('bool %s(\n' % fnname)
-        file.write('        const rapidjson::Value &parent,\n')
+        file.write('        const RAPIDJSON_NAMESPACE::Value &parent,\n')
         file.write('        std::auto_ptr<AutogenProperty > *resultp) {\n')
 
         if meta.getCType():
@@ -323,7 +323,7 @@ class IFMapGenLinkAttr(object):
 
         if not meta.getCType():
             decl = """
-bool %s::ParseJsonMetadata(const rapidjson::Value &parent,
+bool %s::ParseJsonMetadata(const RAPIDJSON_NAMESPACE::Value &parent,
         std::auto_ptr<AutogenProperty> *resultp) {
     %sData *var = new %sData();
     resultp->reset(var);
@@ -398,7 +398,7 @@ class IFMapParserGenerator(object):
 #include "rapidjson/document.h"
 #include "rapidjson/rapidjson.h"
 
-using namespace rapidjson;
+using namespace RAPIDJSON_NAMESPACE;
 using namespace pugi;
 using namespace std;
 
@@ -411,7 +411,7 @@ namespace autogen {
 
 // Json Parse routines
 
-static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
+static inline bool ParseString(const RAPIDJSON_NAMESPACE::Value &node, std::string *s) {
     if (node.IsString()) {
         *s = node.GetString();
         return true;
@@ -419,19 +419,19 @@ static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
 
     std::stringstream ss;
     switch (node.GetType()) {
-    case rapidjson::kNullType:
+    case RAPIDJSON_NAMESPACE::kNullType:
         *s = "null";
         break;
-    case rapidjson::kTrueType:
+    case RAPIDJSON_NAMESPACE::kTrueType:
         *s = "true";
         break;
-    case rapidjson::kFalseType:
+    case RAPIDJSON_NAMESPACE::kFalseType:
         *s = "false";
         break;
-    case rapidjson::kStringType:
+    case RAPIDJSON_NAMESPACE::kStringType:
         *s = node.GetString();
         break;
-    case rapidjson::kNumberType:
+    case RAPIDJSON_NAMESPACE::kNumberType:
         if (node.IsUint())
             ss << node.GetUint();
         else if (node.IsInt())
@@ -444,9 +444,9 @@ static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
             ss << node.GetDouble();
         *s = ss.str();
         break;
-    case rapidjson::kObjectType:
+    case RAPIDJSON_NAMESPACE::kObjectType:
         return false;
-    case rapidjson::kArrayType:
+    case RAPIDJSON_NAMESPACE::kArrayType:
         return false;
     }
     return true;
@@ -526,7 +526,7 @@ static std::string FormatTime(const time_t *valuep) {
 }
 
 // Json Parse routines
-static bool ParseInteger(const rapidjson::Value &node, int *valuep) {
+static bool ParseInteger(const RAPIDJSON_NAMESPACE::Value &node, int *valuep) {
     if (node.IsString())
         return ParseInteger(node.GetString(), valuep);
     if (!node.IsInt())
@@ -535,7 +535,7 @@ static bool ParseInteger(const rapidjson::Value &node, int *valuep) {
     return true;
 }
 
-static bool ParseUnsignedLong(const rapidjson::Value &node, uint64_t *valuep) {
+static bool ParseUnsignedLong(const RAPIDJSON_NAMESPACE::Value &node, uint64_t *valuep) {
     if (node.IsString())
         return ParseUnsignedLong(node.GetString(), valuep);
     if (!node.IsUint64())
@@ -544,7 +544,7 @@ static bool ParseUnsignedLong(const rapidjson::Value &node, uint64_t *valuep) {
     return true;
 }
 
-static bool ParseBoolean(const rapidjson::Value &node, bool *valuep) {
+static bool ParseBoolean(const RAPIDJSON_NAMESPACE::Value &node, bool *valuep) {
     if (node.IsString())
         return ParseBoolean(node.GetString(), valuep);
     if (!node.IsBool())
@@ -553,7 +553,7 @@ static bool ParseBoolean(const rapidjson::Value &node, bool *valuep) {
     return true;
 }
 
-static bool ParseDateTime(const rapidjson::Value &node, time_t *valuep) {
+static bool ParseDateTime(const RAPIDJSON_NAMESPACE::Value &node, time_t *valuep) {
     if (!node.IsString())
         return false;
     string value(node.GetString());
@@ -568,7 +568,7 @@ static bool ParseDateTime(const rapidjson::Value &node, time_t *valuep) {
     return true;
 }
 
-static bool ParseTime(const rapidjson::Value &node, time_t *valuep) {
+static bool ParseTime(const RAPIDJSON_NAMESPACE::Value &node, time_t *valuep) {
     if (!node.IsString())
         return false;
     string value(node.GetString());
@@ -637,7 +637,7 @@ namespace autogen {
     return true;
 }
 
-static bool ParseJsonLinkMetadata(const rapidjson::Value &parent,
+static bool ParseJsonLinkMetadata(const RAPIDJSON_NAMESPACE::Value &parent,
     std::auto_ptr<AutogenProperty> *resultp) {
     return true;
 }

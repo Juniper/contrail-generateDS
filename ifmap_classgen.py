@@ -709,7 +709,7 @@ using namespace std;
 namespace autogen {
 // Json Parse routines
 
-static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
+static inline bool ParseString(const RAPIDJSON_NAMESPACE::Value &node, std::string *s) {
     if (node.IsString()) {
         *s = node.GetString();
         return true;
@@ -717,19 +717,19 @@ static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
 
     std::stringstream ss;
     switch (node.GetType()) {
-    case rapidjson::kNullType:
+    case RAPIDJSON_NAMESPACE::kNullType:
         *s = "null";
         break;
-    case rapidjson::kTrueType:
+    case RAPIDJSON_NAMESPACE::kTrueType:
         *s = "true";
         break;
-    case rapidjson::kFalseType:
+    case RAPIDJSON_NAMESPACE::kFalseType:
         *s = "false";
         break;
-    case rapidjson::kStringType:
+    case RAPIDJSON_NAMESPACE::kStringType:
         *s = node.GetString();
         break;
-    case rapidjson::kNumberType:
+    case RAPIDJSON_NAMESPACE::kNumberType:
         if (node.IsUint())
             ss << node.GetUint();
         else if (node.IsInt())
@@ -742,9 +742,9 @@ static inline bool ParseString(const rapidjson::Value &node, std::string *s) {
             ss << node.GetDouble();
         *s = ss.str();
         break;
-    case rapidjson::kObjectType:
+    case RAPIDJSON_NAMESPACE::kObjectType:
         return false;
-    case rapidjson::kArrayType:
+    case RAPIDJSON_NAMESPACE::kArrayType:
         return false;
     }
     return true;
