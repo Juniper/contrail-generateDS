@@ -40,8 +40,8 @@ class TypeClassGenerator(object):
                                  std::auto_ptr<AutogenProperty> *resultp);
     void Encode(pugi::xml_node *node) const;
     void CalculateCrc(boost::crc_32_type *crc) const;
-    bool JsonParse(const rapidjson::Value &node);
-    static bool JsonParseProperty(const rapidjson::Value &node,
+    bool JsonParse(const contrail_rapidjson::Value &node);
+    static bool JsonParseProperty(const contrail_rapidjson::Value &node,
                                   std::auto_ptr<AutogenProperty> *resultp);
 };
 """ % (ctype.getName())

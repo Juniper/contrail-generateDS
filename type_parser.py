@@ -10,14 +10,14 @@ class TypeParserGenerator(object):
     def GenerateJsonTypeParser(self, file, ctype):
         print "generating parser for %s" %ctype.getName()
         start = """
-bool %s::JsonParse(const rapidjson::Value &parent) {
+bool %s::JsonParse(const contrail_rapidjson::Value &parent) {
     for (Value::ConstMemberIterator itr = parent.MemberBegin();
          itr != parent.MemberEnd(); ++itr) {
 """ % ctype.getName()
         file.write(start)
         if len(ctype.getDataMembers()) > 0:
             file.write(
-                '        const rapidjson::Value &value_node = itr->value;\n')
+                '        const contrail_rapidjson::Value &value_node = itr->value;\n')
             file.write('        if (value_node.IsNull()) continue;\n')
             file.write('        std::string var;\n')
             file.write('        if (!autogen::ParseString(itr->name, &var)) return false;\n')
@@ -87,7 +87,7 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
         file.write('    }\n    return true;\n}\n')
 
         static_fn = """
-bool %s::JsonParseProperty(const rapidjson::Value &parent,
+bool %s::JsonParseProperty(const contrail_rapidjson::Value &parent,
         auto_ptr<AutogenProperty> *resultp) {
     %s *ptr = new %s();
     resultp->reset(ptr);
@@ -359,14 +359,14 @@ void %s::Encode(xml_node *node_p) const {
     def GenerateJsonAttributeParser(self, file, ctype):
         print "generating json parser for attribute %s" %ctype.getName()
         function_def = """
-bool %s::JsonParse(const rapidjson::Value &parent) {
+bool %s::JsonParse(const contrail_rapidjson::Value &parent) {
     return true;
 }
 """ % ctype.getName()
         file.write(function_def)
 
         static_fn = """
-bool %s::JsonParseProperty(const rapidjson::Value &parent,
+bool %s::JsonParseProperty(const contrail_rapidjson::Value &parent,
         auto_ptr<AutogenProperty> *resultp) {
     return true;
 }

@@ -237,7 +237,7 @@ class IFMapGenProperty(object):
         meta = self._meta
         fnname = '%s_ParseJsonMetadata' % meta.getCppName()
         file.write('bool %s(\n' % fnname)
-        file.write('        const rapidjson::Value &parent,\n')
+        file.write('        const contrail_rapidjson::Value &parent,\n')
         file.write('        std::auto_ptr<AutogenProperty > *resultp) {\n')
 
         if meta.getCType():
@@ -323,7 +323,7 @@ class IFMapGenLinkAttr(object):
 
         if not meta.getCType():
             decl = """
-bool %s::ParseJsonMetadata(const rapidjson::Value &parent,
+bool %s::ParseJsonMetadata(const contrail_rapidjson::Value &parent,
         std::auto_ptr<AutogenProperty> *resultp) {
     %sData *data = new %sData();
     resultp->reset(data);
@@ -443,7 +443,7 @@ namespace autogen {
     return true;
 }
 
-static bool ParseJsonLinkMetadata(const rapidjson::Value &parent,
+static bool ParseJsonLinkMetadata(const contrail_rapidjson::Value &parent,
     std::auto_ptr<AutogenProperty> *resultp) {
     return true;
 }
