@@ -69,8 +69,6 @@ bool %s::JsonParse(const rapidjson::Value &parent) {
                     file.write(indent1 + '%s.push_back(var);\n' %
                                member.membername)
                 elif member.sequenceType == 'int':
-                    file.write(indent1 +
-                               'if (!value_node[i].IsInt()) return false;\n')
                     file.write(indent1 + 'int var;\n')
                     file.write(indent1 +
                       'if (!ParseInteger(value_node[i], &var)) return false;\n')

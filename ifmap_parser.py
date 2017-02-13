@@ -259,16 +259,11 @@ class IFMapGenProperty(object):
             file.write("    if (parent.IsNull()) return true;\n")
 
             if info.ctypename == 'std::string':
-                file.write(indent + 'std::string var;\n')
-                file.write(indent + 'if (!autogen::ParseString(parent, &var)) return false;\n')
-                file.write(indent + 'data->data = var;\n')
+                file.write(indent + 'if (!autogen::ParseString(parent, &data->data)) return false;\n')
             elif info.ctypename == 'int':
-                file.write(indent + 'if (!parent.IsInt()) return false;\n')
-                file.write(indent +
-                           'data->data = parent.GetInt();\n')
+                file.write(indent + 'if (!autogen::ParseInteger(parent, &data->data)) return false;\n')
             elif info.ctypename == 'bool':
-                file.write(indent + 'if (!parent.IsBool()) return false;\n');
-                file.write(indent + 'data->data = parent.GetBool();\n');
+                file.write(indent + 'if (!autogen::ParseBoolean(parent, &data->data)) return false;\n')
             file.write(indent + 'return true;\n')
 
         file.write('}\n\n')
