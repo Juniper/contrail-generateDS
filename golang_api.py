@@ -283,7 +283,7 @@ type %(camel)s struct {
         parent_type = ""
         parents = ident.getParents()
         if parents:
-            (parent, meta) = parents[0]
+            (parent, meta, _) = parents[0]
             quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
             parent_fqn = ', '.join(quoted_list)
             parent_type = parent.getName()
