@@ -519,6 +519,7 @@ class %(class)s {
 #ifndef __SCHEMA__%(modname)s_TYPES_H__
 #define __SCHEMA__%(modname)s_TYPES_H__
 #include <map>
+#include <set>
 #include <vector>
 
 #include <boost/dynamic_bitset.hpp>
@@ -592,6 +593,8 @@ namespace autogen {
                    % (module_name, module_name))
         file.write('extern void %s_Server_GenerateWrapperPropertyInfo(%s_WrapperPropertyInfo *);\n'
                    % (module_name, module_name))
+        file.write('extern void %s_Server_GenerateObjectTypeList(std::set<std::string> *);\n'
+                   % (module_name))
         file.write('extern void %s_Agent_ModuleInit(DB *, DBGraph *);\n'
                    % module_name)
         file.write('extern void %s_Agent_ParserInit(DB *, IFMapAgentParser *);\n'
@@ -690,6 +693,21 @@ void %(module)s_%(comp)s_GenerateWrapperPropertyInfo(%(module)s_WrapperPropertyI
         file.write('}\n')
         # end
 
+    def _GenerateObjectTypeList(self, file, hdrname, component, IdentifierDict):
+        cdecl = """
+void %(module)s_%(comp)s_GenerateObjectTypeList(std::set<std::string> *object_type_list) {
+""" % { 'module': self._module_name, 'comp': component}
+        file.write(cdecl)
+
+        for idn in IdentifierDict.values():
+            fmt = '    object_type_list->insert("%s");\n'
+            file.write(fmt % (idn.getName().replace('-', '_')))
+
+        file.write('}\n')
+        # end
+
+
+
     def _GenerateComponent(self, file, hdrname, component,
                            IdentifierDict, MetaDict):
         header = """
@@ -731,6 +749,8 @@ namespace autogen {
         self._GenerateGraphFilter(file, hdrname, component, IdentifierDict,
                              MetaDict)
         self._GenerateWrapperPropertyDetails(file, hdrname, component, IdentifierDict)
+
+        self._GenerateObjectTypeList(file, hdrname, component, IdentifierDict)
 
         cdecl = """
 void %(module)s_%(comp)s_ModuleInit(DB *db, DBGraph *graph) {
