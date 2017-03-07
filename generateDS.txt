@@ -247,7 +247,7 @@ Here is the usage message displayed by ``generateDS.py``::
         --namespacedef='xmlns:abc="http://www.abc.com"'
                                  Namespace definition to be passed in as the
                                  value for the namespacedef_ parameter of
-                                 the export() method by the generated 
+                                 the export_xml() method by the generated 
                                  parse() and parseString() functions.
                                  Default=''.
         --external-encoding=<encoding>
@@ -394,7 +394,7 @@ silence
 
 namespacedef="<http://...>"
     Namespace definition to be passed in as the value for the
-    ``namespacedef_`` parameter of the export() method by the generated
+    ``namespacedef_`` parameter of the export_xml() method by the generated
     parse() and parseString() functions.  If this parameter is
     specified, then the export function will insert a namespace
     prefix definition attribute in the top-most (outer-most)
@@ -1417,7 +1417,7 @@ Each generated export method takes an optional argument
 inserted in the exported element.  So, for example, the following
 call::
 
-    people.export(sys.stdout, 0,
+    people.export_xml(sys.stdout, 0,
         namespacedef_='xmlns:abc="http://www.abc.com/namespace"')
 
 might produce::
@@ -1540,7 +1540,7 @@ following strategies:
            # Enable Python to collect the space used by the DOM.
            doc = None
            sys.stdout.write('<?xml version="1.0" ?>\n')
-           rootObj.export(sys.stdout, 0, name_="type1", 
+           rootObj.export_xml(sys.stdout, 0, name_="type1", 
                namespacedef_='')
            return rootObj
 
@@ -1554,7 +1554,7 @@ following strategies:
            # Enable Python to collect the space used by the DOM.
            doc = None
            sys.stdout.write('<?xml version="1.0" ?>\n')
-           rootObj.export(sys.stdout, 0, name_="type2", 
+           rootObj.export_xml(sys.stdout, 0, name_="type2", 
                namespacedef_='')
            return rootObj
 
@@ -1598,7 +1598,7 @@ following strategies:
            # Enable Python to collect the space used by the DOM.
            doc = None
            sys.stdout.write('<?xml version="1.0" ?>\n')
-           rootObj.export(sys.stdout, 0, name_=rootTag,
+           rootObj.export_xml(sys.stdout, 0, name_=rootTag,
                namespacedef_='')
            doc = None
            return rootObj

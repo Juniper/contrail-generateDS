@@ -1286,7 +1286,7 @@ class PyGenerator(object):
         childCount = self._PGenr.countChildren(element, 0)
         name = element.getName()
         base = element.getBase()
-        wrt("    def export(self, outfile, level=1, namespace_='%s', name_='%s', namespacedef_='', pretty_print=True):\n" % \
+        wrt("    def export_xml(self, outfile, level=1, namespace_='%s', name_='%s', namespacedef_='', pretty_print=True):\n" % \
             (namespace, name, ))
         wrt('        if pretty_print:\n')
         wrt("            eol_ = '\\n'\n")
@@ -1481,7 +1481,7 @@ class PyGenerator(object):
             if element.isMixed():
                 wrt('%sif not fromsubclass_:\n' % (fill, ))
                 wrt("%s    for item_ in self.content_:\n" % (fill, ))
-                wrt("%s        item_.export(outfile, level, item_.name, namespace_, pretty_print=pretty_print)\n" % (
+                wrt("%s        item_.export_xml(outfile, level, item_.name, namespace_, pretty_print=pretty_print)\n" % (
                     fill, ))
             else:
                 wrt('%sif pretty_print:\n' % (fill, ))
@@ -1506,11 +1506,11 @@ class PyGenerator(object):
                         if abstract_child and child.getMaxOccurs() > 1:
                             wrt("%sfor %s_ in self.get%s():\n" % (fill,
                                 name, self._PGenr.make_gs_name(name),))
-                            wrt("%s    %s_.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % (
+                            wrt("%s    %s_.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % (
                                 fill, name, name, ))
                         elif abstract_child:
                             wrt("%sif self.%s is not None:\n" % (fill, name, ))
-                            wrt("%s    self.%s.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % (
+                            wrt("%s    self.%s.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % (
                                 fill, name, name, ))
                         elif child.getMaxOccurs() > 1:
                             self._generateExportFn_2(wrt, child, unmappedName, namespace, '    ')
@@ -1522,10 +1522,10 @@ class PyGenerator(object):
                 if any_type_child is not None:
                     if any_type_child.getMaxOccurs() > 1:
                         wrt('        for obj_ in self.anytypeobjs_:\n')
-                        wrt("            obj_.export(outfile, level, namespace_, pretty_print=pretty_print)\n")
+                        wrt("            obj_.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n")
                     else:
                         wrt('        if self.anytypeobjs_ is not None:\n')
-                        wrt("            self.anytypeobjs_.export(outfile, level, namespace_, pretty_print=pretty_print)\n")
+                        wrt("            self.anytypeobjs_.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n")
         return hasChildren
 
     def _generateExportFn_1(self, wrt, child, name, namespace, fill):
@@ -1597,10 +1597,10 @@ class PyGenerator(object):
             wrt("%s        if self.%s is not None:\n" % (fill, mappedName))
             # name_type_problem
             if False:        # name == child.getType():
-                s1 = "%s            self.%s.export(outfile, level, namespace_, pretty_print=pretty_print)\n" % \
+                s1 = "%s            self.%s.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n" % \
                     (fill, mappedName)
             else:
-                s1 = "%s            self.%s.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
+                s1 = "%s            self.%s.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
                     (fill, mappedName, name)
             wrt(s1)
     # end _generateExportFn_1
@@ -1664,11 +1664,11 @@ class PyGenerator(object):
         else:
             # name_type_problem
             if False:        # name == child.getType():
-                s1 = "%s        %s_.export(outfile, level, namespace_, pretty_print=pretty_print)\n" % (fill, cleanName)
+                s1 = "%s        %s_.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n" % (fill, cleanName)
             else:
                 wrt("%s        if isinstance(%s_, dict):\n" %(fill, cleanName))
                 wrt("%s            %s_ = %s(**%s_)\n" %(fill, cleanName, child_type, cleanName))
-                s1 = "%s        %s_.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
+                s1 = "%s        %s_.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
                     (fill, cleanName, name)
             wrt(s1)
     # end generateExportFn_2
@@ -1743,10 +1743,10 @@ class PyGenerator(object):
             wrt("%s        if self.%s is not None:\n" % (fill, mappedName))
             # name_type_problem
             if False:        # name == child.getType():
-                s1 = "%s            self.%s.export(outfile, level, namespace_, pretty_print=pretty_print)\n" % \
+                s1 = "%s            self.%s.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n" % \
                     (fill, mappedName)
             else:
-                s1 = "%s            self.%s.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
+                s1 = "%s            self.%s.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
                     (fill, mappedName, name)
             wrt(s1)
     # end generateExportFn_3
