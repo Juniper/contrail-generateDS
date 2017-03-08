@@ -49,7 +49,7 @@ Options:
     --namespacedef='xmlns:abc="http://www.abc.com"'
                              Namespace definition to be passed in as the
                              value for the namespacedef_ parameter of
-                             the export() method by the generated 
+                             the export_xml() method by the generated
                              parse() and parseString() functions.
                              Default=''.
     --external-encoding=<encoding>
@@ -174,7 +174,8 @@ class XsdParserGenerator(object):
             'float': 'float_',
             'build': 'build_',
             }
-        for kw in keyword.kwlist:
+        extras = ['self']
+        for kw in keyword.kwlist + extras:
             self.NameTable[kw] = '%sxx' % kw
 
 
@@ -497,7 +498,7 @@ class MixedContainer:
         return self.value
     def getName(self):
         return self.name
-    def export(self, outfile, level, name, namespace, pretty_print=True):
+    def export_xml(self, outfile, level, name, namespace, pretty_print=True):
         if self.category == MixedContainer.CategoryText:
             # Prevent exporting empty content as empty lines.
             if self.value.strip(): 
@@ -505,7 +506,7 @@ class MixedContainer:
         elif self.category == MixedContainer.CategorySimple:
             self.exportSimple(outfile, level, name)
         else:    # category == MixedContainer.CategoryComplex
-            self.value.export(outfile, level, namespace, name, pretty_print)
+            self.value.export_xml(outfile, level, namespace, name, pretty_print)
     def exportSimple(self, outfile, level, name):
         if self.content_type == MixedContainer.TypeString:
             outfile.write('<%%s>%%s</%%s>' %% (self.name, self.value, self.name))
@@ -593,7 +594,7 @@ def parse(inFileName):
     # Enable Python to collect the space used by the DOM.
     doc = None
 #silence#    sys.stdout.write('<?xml version="1.0" ?>\\n')
-#silence#    rootObj.export(sys.stdout, 0, name_=rootTag,
+#silence#    rootObj.export_xml(sys.stdout, 0, name_=rootTag,
 #silence#        namespacedef_='%(namespacedef)s',
 #silence#        pretty_print=True)
     return rootObj
@@ -612,7 +613,7 @@ def parseString(inString):
     # Enable Python to collect the space used by the DOM.
     doc = None
 #silence#    sys.stdout.write('<?xml version="1.0" ?>\\n')
-#silence#    rootObj.export(sys.stdout, 0, name_="%(name)s",
+#silence#    rootObj.export_xml(sys.stdout, 0, name_="%(name)s",
 #silence#        namespacedef_='%(namespacedef)s')
     return rootObj
 
@@ -2415,10 +2416,10 @@ class XschemaHandler(handler.ContentHandler):
 #LG         wrt("%s        if self.%s is not None:\n" % (fill, mappedName))
 #LG         # name_type_problem
 #LG         if False:        # name == child.getType():
-#LG             s1 = "%s            self.%s.export(outfile, level, namespace_, pretty_print=pretty_print)\n" % \
+#LG             s1 = "%s            self.%s.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n" % \
 #LG                 (fill, mappedName)
 #LG         else:
-#LG             s1 = "%s            self.%s.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
+#LG             s1 = "%s            self.%s.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
 #LG                 (fill, mappedName, name)
 #LG         wrt(s1)
 #LG # end generateExportFn_1
@@ -2482,9 +2483,9 @@ class XschemaHandler(handler.ContentHandler):
 #LG     else:
 #LG         # name_type_problem
 #LG         if False:        # name == child.getType():
-#LG             s1 = "%s        %s_.export(outfile, level, namespace_, pretty_print=pretty_print)\n" % (fill, cleanName)
+#LG             s1 = "%s        %s_.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n" % (fill, cleanName)
 #LG         else:
-#LG             s1 = "%s        %s_.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
+#LG             s1 = "%s        %s_.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
 #LG                 (fill, cleanName, name)
 #LG         wrt(s1)
 #LG # end generateExportFn_2
@@ -2560,10 +2561,10 @@ class XschemaHandler(handler.ContentHandler):
 #LG         wrt("%s        if self.%s is not None:\n" % (fill, mappedName))
 #LG         # name_type_problem
 #LG         if False:        # name == child.getType():
-#LG             s1 = "%s            self.%s.export(outfile, level, namespace_, pretty_print=pretty_print)\n" % \
+#LG             s1 = "%s            self.%s.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n" % \
 #LG                 (fill, mappedName)
 #LG         else:
-#LG             s1 = "%s            self.%s.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
+#LG             s1 = "%s            self.%s.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % \
 #LG                 (fill, mappedName, name)
 #LG         wrt(s1)
 #LG # end generateExportFn_3
@@ -2630,7 +2631,7 @@ class XschemaHandler(handler.ContentHandler):
 #LG         if element.isMixed():
 #LG             wrt('%sif not fromsubclass_:\n' % (fill, ))
 #LG             wrt("%s    for item_ in self.content_:\n" % (fill, ))
-#LG             wrt("%s        item_.export(outfile, level, item_.name, namespace_, pretty_print=pretty_print)\n" % (
+#LG             wrt("%s        item_.export_xml(outfile, level, item_.name, namespace_, pretty_print=pretty_print)\n" % (
 #LG                 fill, ))
 #LG         else:
 #LG             wrt('%sif pretty_print:\n' % (fill, ))
@@ -2655,11 +2656,11 @@ class XschemaHandler(handler.ContentHandler):
 #LG                     if abstract_child and child.getMaxOccurs() > 1:
 #LG                         wrt("%sfor %s_ in self.get%s():\n" % (fill,
 #LG                             name, make_gs_name(name),))
-#LG                         wrt("%s    %s_.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % (
+#LG                         wrt("%s    %s_.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % (
 #LG                             fill, name, name, ))
 #LG                     elif abstract_child:
 #LG                         wrt("%sif self.%s is not None:\n" % (fill, name, ))
-#LG                         wrt("%s    self.%s.export(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % (
+#LG                         wrt("%s    self.%s.export_xml(outfile, level, namespace_, name_='%s', pretty_print=pretty_print)\n" % (
 #LG                             fill, name, name, ))
 #LG                     elif child.getMaxOccurs() > 1:
 #LG                         generateExportFn_2(wrt, child, unmappedName, namespace, '    ')
@@ -2671,10 +2672,10 @@ class XschemaHandler(handler.ContentHandler):
 #LG             if any_type_child is not None:
 #LG                 if any_type_child.getMaxOccurs() > 1:
 #LG                     wrt('        for obj_ in self.anytypeobjs_:\n')
-#LG                     wrt("            obj_.export(outfile, level, namespace_, pretty_print=pretty_print)\n")
+#LG                     wrt("            obj_.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n")
 #LG                 else:
 #LG                     wrt('        if self.anytypeobjs_ is not None:\n')
-#LG                     wrt("            self.anytypeobjs_.export(outfile, level, namespace_, pretty_print=pretty_print)\n")
+#LG                     wrt("            self.anytypeobjs_.export_xml(outfile, level, namespace_, pretty_print=pretty_print)\n")
 #LG     return hasChildren
 #LG # end generateExportChildren
 
@@ -2706,7 +2707,7 @@ class XschemaHandler(handler.ContentHandler):
 #LG     name = element.getName()
 #LG     base = element.getBase()
 #LG     LangGenr.generateExport(wrt, namespace, element)
-#LG     #LG wrt("    def export(self, outfile, level, namespace_='%s', name_='%s', namespacedef_='', pretty_print=True):\n" % \
+#LG     #LG wrt("    def export_xml(self, outfile, level, namespace_='%s', name_='%s', namespacedef_='', pretty_print=True):\n" % \
 #LG     #LG     (namespace, name, ))
 #LG     #LG wrt('        if pretty_print:\n')
 #LG     #LG wrt("            eol_ = '\\n'\n")
@@ -4528,7 +4529,7 @@ MixedCtorInitializers = '''\
 #LG         return self.value
 #LG     def getName(self):
 #LG         return self.name
-#LG     def export(self, outfile, level, name, namespace, pretty_print=True):
+#LG     def export_xml(self, outfile, level, name, namespace, pretty_print=True):
 #LG         if self.category == MixedContainer.CategoryText:
 #LG             # Prevent exporting empty content as empty lines.
 #LG             if self.value.strip(): 
@@ -4536,7 +4537,7 @@ MixedCtorInitializers = '''\
 #LG         elif self.category == MixedContainer.CategorySimple:
 #LG             self.exportSimple(outfile, level, name)
 #LG         else:    # category == MixedContainer.CategoryComplex
-#LG             self.value.export(outfile, level, namespace, name, pretty_print)
+#LG             self.value.export_xml(outfile, level, namespace, name, pretty_print)
 #LG     def exportSimple(self, outfile, level, name):
 #LG         if self.content_type == MixedContainer.TypeString:
 #LG             outfile.write('<%%s>%%s</%%s>' %% (self.name, self.value, self.name))
@@ -4640,7 +4641,7 @@ MixedCtorInitializers = '''\
 #LG     # Enable Python to collect the space used by the DOM.
 #LG     doc = None
 #LG #silence#    sys.stdout.write('<?xml version="1.0" ?>\\n')
-#LG #silence#    rootObj.export(sys.stdout, 0, name_=rootTag,
+#LG #silence#    rootObj.export_xml(sys.stdout, 0, name_=rootTag,
 #LG #silence#        namespacedef_='%(namespacedef)s',
 #LG #silence#        pretty_print=True)
 #LG     return rootObj
@@ -4659,7 +4660,7 @@ MixedCtorInitializers = '''\
 #LG     # Enable Python to collect the space used by the DOM.
 #LG     doc = None
 #LG #silence#    sys.stdout.write('<?xml version="1.0" ?>\\n')
-#LG #silence#    rootObj.export(sys.stdout, 0, name_="%(name)s",
+#LG #silence#    rootObj.export_xml(sys.stdout, 0, name_="%(name)s",
 #LG #silence#        namespacedef_='%(namespacedef)s')
 #LG     return rootObj
 #LG 
@@ -5013,7 +5014,7 @@ def parse(inFilename):
     # Enable Python to collect the space used by the DOM.
     doc = None
 #silence#    sys.stdout.write('<?xml version="1.0" ?>\\n')
-#silence#    rootObj.export(sys.stdout, 0, name_=rootTag,
+#silence#    rootObj.export_xml(sys.stdout, 0, name_=rootTag,
 #silence#        namespacedef_='%(namespacedef)s',
 #silence#        pretty_print=True)
     doc = None
@@ -5033,7 +5034,7 @@ def parseString(inString):
     # Enable Python to collect the space used by the DOM.
     doc = None
 #silence#    sys.stdout.write('<?xml version="1.0" ?>\\n')
-#silence#    rootObj.export(sys.stdout, 0, name_=rootTag,
+#silence#    rootObj.export_xml(sys.stdout, 0, name_=rootTag,
 #silence#        namespacedef_='%(namespacedef)s')
     return rootObj
 

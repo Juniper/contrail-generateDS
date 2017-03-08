@@ -770,9 +770,9 @@ Version 1.16d (3/25/2009)
   * Fixes to generation of the exportLiteral functions.  We
     can now do exportLiteral, then import the resulting file 
     in Python.  See generated parseLiteral() for an example.
-  * Added an additional parameter to the export() methods.
-    Now, you can call export() as follows:
-        rootObj.export(outfile, 0,
+  * Added an additional parameter to the export_xml() methods.
+    Now, you can call export_xml() as follows:
+        rootObj.export_xml(outfile, 0,
             namespacedef_='xmlns:abc="http://www.abc.com/namespacelo"')
     which will insert the namespace prefix definition in the
     exported root element.
