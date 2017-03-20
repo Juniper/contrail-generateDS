@@ -100,6 +100,11 @@ class IFMapApiGenerator(object):
         write(gen_file, "This module defines the classes for every configuration element managed by the system")
         write(gen_file, '"""')
         write(gen_file, "")
+        write(gen_file, "try:")
+        write(gen_file, "    from cfgm_common.exceptions import AmbiguousParentError")
+        write(gen_file, "except ImportError:")
+        write(gen_file, "    pass")
+        write(gen_file, "")
 
         for ident in self._non_exclude_idents():
             class_name = CamelCase(ident.getName())
