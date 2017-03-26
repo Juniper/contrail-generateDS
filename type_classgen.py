@@ -25,8 +25,11 @@ class TypeClassGenerator(object):
             member = members[0]
             cdecl = """
     typedef %(vectype)s::const_iterator const_iterator;
+    typedef %(vectype)s::size_type size_type;
     const_iterator begin() const { return %(membername)s.begin(); }
     const_iterator end() const { return %(membername)s.end(); }
+    size_type size() const { return %(membername)s.size(); }
+    bool empty() const { return %(membername)s.empty(); }
 """  % {'vectype': member.ctypename, 'membername': member.membername}
             file.write(cdecl)
         
