@@ -78,6 +78,10 @@ class IDLParser(object):
     def IsLink(self, annotation):
         return isinstance(annotation[0], IDLParser.Link)
 
+    def IsAllLink(self, annotation):
+        return (isinstance(annotation[0], IDLParser.Link) and
+                annotation[1] == 'all')
+
     def GetLinkInfo(self, link_name):
         if link_name in self._ElementDict:
             idl_link, from_name, to_name, attrs = self._ElementDict[link_name]
