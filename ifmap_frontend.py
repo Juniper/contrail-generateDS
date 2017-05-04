@@ -451,7 +451,7 @@ class IFMapApiGenerator(object):
                 if len(parents) > 1:
                     # use config-root if it is one of the possible parents
                     if 'config-root' in [parent_ident.getName() for (parent_ident, meta, _) in parents]:
-                        write(gen_file, "            fq_name = [name]")
+                        write(gen_file, "            self.fq_name = [name]")
                     else:
                         write(gen_file, "            # if obj constructed from within server, ignore if parent not specified")
                         write(gen_file, "            if not kwargs['parent_type']:")
