@@ -44,6 +44,15 @@ class IFMapGenerator(object):
                 meta.setParent('all')
                 for identifier in self._Identifiers.values():
                     identifier.SetProperty(meta)
+            elif self._idl_parser.IsAllLink(annotation):
+                meta = self._MetadataLocate(element, annotation)
+                meta.SetSchemaElement(element)
+                (from_name, to_name, attrs) = \
+                    self._idl_parser.GetLinkInfo(element.getName())
+                to_ident = self._IdentifierLocate(to_name)
+                for from_ident in self._Identifiers.values():
+                    from_ident.addLinkInfo(meta, to_ident, attrs)
+                    to_ident.addBackLinkInfo(meta, from_ident, attrs)
             
         for idn in self._Identifiers.values():
             idn.Resolve(self._Parser.ElementDict, self._cTypesDict)
@@ -74,6 +83,10 @@ class IFMapGenerator(object):
         if self._idl_parser.IsAllProperty(annotation):
             self._DeferredElements.append((element, annotation))
             return
+        elif self._idl_parser.IsAllLink(annotation):
+            self._DeferredElements.append((element, annotation))
+            return
+
         meta = self._MetadataLocate(element, annotation)
         meta.SetSchemaElement(element)
         if self._idl_parser.IsProperty(annotation):
