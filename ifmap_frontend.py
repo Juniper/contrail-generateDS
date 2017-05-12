@@ -3760,6 +3760,9 @@ class IFMapApiGenerator(object):
         user_obj_types = set([])
         system_obj_types = set([])
         for res_type, dmo in openapi_dict['x-datamodel']['objects'].items():
+            if not dmo.get('parents'):
+                user_obj_types.add(res_type)
+                continue
             for parent_link in dmo['parents'].values():
                 if parent_link['is_derived']:
                     system_obj_types.add(res_type)
