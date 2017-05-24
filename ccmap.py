@@ -11,6 +11,7 @@ from java_api import JavaApiGenerator
 from device_api import DeviceApiGenerator
 from golang_api import GoLangApiGenerator
 from json_schemagen import JsonSchemaGenerator
+from copy import deepcopy
 
 class IFMapGenerator(object):
     """ IFMap generator
@@ -45,12 +46,14 @@ class IFMapGenerator(object):
                 for identifier in self._Identifiers.values():
                     identifier.SetProperty(meta)
             elif self._idl_parser.IsAllLink(annotation):
-                meta = self._MetadataLocate(element, annotation)
-                meta.SetSchemaElement(element)
                 (from_name, to_name, attrs) = \
                     self._idl_parser.GetLinkInfo(element.getName())
                 to_ident = self._IdentifierLocate(to_name)
                 for from_ident in self._Identifiers.values():
+                    ann_copy = deepcopy(annotation)
+                    ann_copy[0].name = '%s-%s' % (from_ident.getName(), to_ident.getName())
+                    meta = self.MetadataLocate(ann_copy[0].name, None, ann_copy)
+                    meta.SetSchemaElement(element)
                     from_ident.addLinkInfo(meta, to_ident, attrs)
                     to_ident.addBackLinkInfo(meta, from_ident, attrs)
             
@@ -114,7 +117,11 @@ class IFMapGenerator(object):
         if name in self._Metadata:
             return self._Metadata[name]
         typename = ElementXsdType(element)
+        return self.MetadataLocate(name, typename, annotation)
 
+    def MetadataLocate(self, name, typename, annotation):
+        if name in self._Metadata:
+            return self._Metadata[name]
         # generate a link in case this is an empty complex type.
         if typename and typename in self._Parser.ElementDict:
             xtype = self._Parser.ElementDict[typename]
