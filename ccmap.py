@@ -11,6 +11,8 @@ from java_api import JavaApiGenerator
 from device_api import DeviceApiGenerator
 from golang_api import GoLangApiGenerator
 from json_schemagen import JsonSchemaGenerator
+from copy import deepcopy
+
 
 class IFMapGenerator(object):
     """ IFMap generator
@@ -32,7 +34,6 @@ class IFMapGenerator(object):
     def _BuildDataModel(self, children):
         for child in children:
             if not child.complexType:
-                #print 'element: ' + child.getCleanName()
                 self._ProcessElement(child)
 
         # Handle 'all' and any other deferred metadata
@@ -45,21 +46,22 @@ class IFMapGenerator(object):
                 for identifier in self._Identifiers.values():
                     identifier.SetProperty(meta)
             elif self._idl_parser.IsAllLink(annotation):
-                meta = self._MetadataLocate(element, annotation)
-                meta.SetSchemaElement(element)
                 (from_name, to_name, attrs) = \
                     self._idl_parser.GetLinkInfo(element.getName())
                 to_ident = self._IdentifierLocate(to_name)
                 for from_ident in self._Identifiers.values():
+                    ann_copy = deepcopy(annotation)
+                    ann_copy[0].name = '%s-%s' % (from_ident.getName(), to_ident.getName())
+                    meta = self.MetadataLocate(ann_copy[0].name, None, ann_copy)
+                    meta.SetSchemaElement(element)
                     from_ident.addLinkInfo(meta, to_ident, attrs)
                     to_ident.addBackLinkInfo(meta, from_ident, attrs)
-            
+
         for idn in self._Identifiers.values():
             idn.Resolve(self._Parser.ElementDict, self._cTypesDict)
 
         for meta in self._Metadata.values():
             meta.Resolve(self._Parser.ElementDict, self._cTypesDict)
-
 
     def _ProcessElement(self, element):
         """ Process an element from the schema. This can be either an
@@ -77,8 +79,8 @@ class IFMapGenerator(object):
 
     def _ProcessMetadata(self, element, annotation):
         if not annotation:
-           print "WARNING: no annotation for element " + str(element)
-           return
+            print "WARNING: no annotation for element " + str(element)
+            return
 
         if self._idl_parser.IsAllProperty(annotation):
             self._DeferredElements.append((element, annotation))
@@ -114,7 +116,11 @@ class IFMapGenerator(object):
         if name in self._Metadata:
             return self._Metadata[name]
         typename = ElementXsdType(element)
+        return self.MetadataLocate(name, typename, annotation)
 
+    def MetadataLocate(self, name, typename, annotation):
+        if name in self._Metadata:
+            return self._Metadata[name]
         # generate a link in case this is an empty complex type.
         if typename and typename in self._Parser.ElementDict:
             xtype = self._Parser.ElementDict[typename]
@@ -152,7 +158,6 @@ class IFMapGenerator(object):
         classgen.GenerateAgent(clntfile, hfilename,
                                 self._Identifiers, self._Metadata)
 
-
     def _GenerateBackendParsers(self):
         hfilename = self._Parser.outFilename + '_types.h'
         cfilename = self._Parser.outFilename + '_parser.cc'
@@ -165,7 +170,7 @@ class IFMapGenerator(object):
         sfilename = self._Parser.outFilename + '_agent.cc'
         sfile = open(sfilename, 'a')
         parsergen.GenerateAgent(sfile, self._Identifiers, self._Metadata)
-        
+
     def _GenerateFrontendClassDefinitions(self, xsd_root):
         apigen = IFMapApiGenerator(self._Parser, xsd_root,
                                    self._Identifiers, self._Metadata)
@@ -190,7 +195,6 @@ class IFMapGenerator(object):
         apigen = JsonSchemaGenerator(self._Parser, self._cTypesDict,
                                   self._Identifiers, self._Metadata)
         apigen.Generate(self._Parser.outFilename)
-
 
     def setLanguage(self, lang):
         pass
