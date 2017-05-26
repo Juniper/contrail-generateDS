@@ -138,7 +138,7 @@ bool %(class)s::Decode(const xml_node &parent, std::string *id_name,
                     elif info.sequenceType == 'int':
                         cdecl = """
                 int var;
-                bool success = autogen::ParseInteger(node, &var);
+                bool success = autogen::ParseInteger(item, &var);
                 if (!success) {
                     return false;
                 }
