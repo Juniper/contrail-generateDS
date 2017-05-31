@@ -21,7 +21,7 @@ _BASE_PARENT_IMID = 'contrail:config-root:root'
 
 def write(gen_file, gen_str):
     gen_file.write("%s\n" %(gen_str))
-#end write
+# end write
 
 class IFMapApiGenerator(object):
     def __init__(self, xsd_parser, xsd_root, ident_dict, metadata_dict):
@@ -31,7 +31,7 @@ class IFMapApiGenerator(object):
         self._metadata_dict = metadata_dict
         # [<tenant>,...]")
         self._FQ_NAME_TENANT_IDX = 0
-    #end __init__
+    # end __init__
 
     def Generate(self, gen_filepath_pfx):
         xsd_openapi_dict = OrderedDict([])
@@ -71,7 +71,7 @@ class IFMapApiGenerator(object):
         # asciidoctor build/debug/api-lib/vnc_api/gen/contrail_openapi.adoc \
         #             --backend html5 --doctype book -a toc=left -a toclevels=3 \
         #             -a numbered= -a sectlinks=  -a sectanchors= -a hardbreaks=
-    #end Generate
+    # end Generate
 
     def _non_exclude_idents(self):
         _ret_idents = []
@@ -83,11 +83,11 @@ class IFMapApiGenerator(object):
             _ret_idents.append(ident)
 
         return _ret_idents
-    #end _non_exclude_idents
+    # end _non_exclude_idents
 
     def _generate_package(self, gendir):
         gen_file = self._xsd_parser.makeFile(gendir + "__init__.py")
-    #end _generate_package
+    # end _generate_package
 
     def _generate_common_classes(self, gen_filepath_pfx):
         # XSD types to python classes
@@ -471,11 +471,11 @@ class IFMapApiGenerator(object):
                         except AmbiguousParentType as e:
                             write(gen_file, "            raise AmbiguousParentError(\"%s\")" %(e))
                         write(gen_file, "")
-                    #end parent is config-root check
-                #end num possible parents check
+                    # end parent is config-root check
+                # end num possible parents check
             else: # no parent in schema
                 write(gen_file, "        self.fq_name = [name]")
-            #end parents exist in schema check
+            # end parents exist in schema check
 
             write(gen_file, "")
 
@@ -485,30 +485,30 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        if %s is not None:" %(prop_name))
                 write(gen_file, "            self._%s = %s" %(prop_name, prop_name))
 
-            write(gen_file, "    #end __init__")
+            write(gen_file, "    # end __init__")
             write(gen_file, "")
 
             # Getters for type independent fields
             write(gen_file, "    def get_type(self):")
             write(gen_file, '        """Return object type (%s)."""' %(ident_name))
             write(gen_file, "        return self._type")
-            write(gen_file, "    #end get_type")
+            write(gen_file, "    # end get_type")
             write(gen_file, "")
             write(gen_file, "    def get_fq_name(self):")
             write(gen_file, '        """Return FQN of %s in list form."""' %(ident_name))
             write(gen_file, "        return self.fq_name")
-            write(gen_file, "    #end get_fq_name")
+            write(gen_file, "    # end get_fq_name")
             write(gen_file, "")
             write(gen_file, "    def get_fq_name_str(self):")
             write(gen_file, '        """Return FQN of %s as colon delimited string."""' %(ident_name))
             write(gen_file, "        return ':'.join(self.fq_name)")
-            write(gen_file, "    #end get_fq_name_str")
+            write(gen_file, "    # end get_fq_name_str")
             write(gen_file, "")
             if parents:
                 write(gen_file, "    @property")
                 write(gen_file, "    def parent_name(self):")
                 write(gen_file, "        return self.fq_name[:-1][-1]")
-                write(gen_file, "    #end parent_name")
+                write(gen_file, "    # end parent_name")
                 write(gen_file, "")
                 write(gen_file, "    def get_parent_fq_name(self):")
                 write(gen_file, '        """Return FQN of %s\'s parent in list form."""' %(ident_name))
@@ -517,7 +517,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            return None")
                 write(gen_file, "")
                 write(gen_file, "        return self.fq_name[:-1]")
-                write(gen_file, "    #end get_parent_fq_name")
+                write(gen_file, "    # end get_parent_fq_name")
                 write(gen_file, "")
                 write(gen_file, "    def get_parent_fq_name_str(self):")
                 write(gen_file, '        """Return FQN of %s\'s parent as colon delimted string."""' %(ident_name))
@@ -526,27 +526,27 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            return None")
                 write(gen_file, "")
                 write(gen_file, "        return ':'.join(self.fq_name[:-1])")
-                write(gen_file, "    #end get_parent_fq_name_str")
+                write(gen_file, "    # end get_parent_fq_name_str")
                 write(gen_file, "")
 
             # Getters and Setters for common fields
             write(gen_file, "    @property")
             write(gen_file, "    def uuid(self):")
             write(gen_file, "        return getattr(self, '_uuid', None)")
-            write(gen_file, "    #end uuid")
+            write(gen_file, "    # end uuid")
             write(gen_file, "")
             write(gen_file, "    @uuid.setter")
             write(gen_file, "    def uuid(self, uuid_val):")
             write(gen_file, "        self._uuid = uuid_val")
-            write(gen_file, "    #end uuid")
+            write(gen_file, "    # end uuid")
             write(gen_file, "")
             write(gen_file, "    def set_uuid(self, uuid_val):")
             write(gen_file, "        self.uuid = uuid_val")
-            write(gen_file, "    #end set_uuid")
+            write(gen_file, "    # end set_uuid")
             write(gen_file, "")
             write(gen_file, "    def get_uuid(self):")
             write(gen_file, "        return self.uuid")
-            write(gen_file, "    #end get_uuid")
+            write(gen_file, "    # end get_uuid")
             write(gen_file, "")
 
             # Getters and Setters for properties
@@ -561,7 +561,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, '        ')
                 write(gen_file, '        """')
                 write(gen_file, "        return getattr(self, '_%s', None)" %(prop_name))
-                write(gen_file, "    #end %s" %(prop_name))
+                write(gen_file, "    # end %s" %(prop_name))
                 write(gen_file, "")
                 write(gen_file, "    @%s.setter" %(prop_name))
                 write(gen_file, "    def %s(self, %s):" %(prop_name, prop_name))
@@ -571,15 +571,15 @@ class IFMapApiGenerator(object):
                 write(gen_file, '        ')
                 write(gen_file, '        """')
                 write(gen_file, "        self._%s = %s" %(prop_name, prop_name))
-                write(gen_file, "    #end %s" %(prop_name))
+                write(gen_file, "    # end %s" %(prop_name))
                 write(gen_file, "")
                 write(gen_file, "    def set_%s(self, value):" %(prop_name))
                 write(gen_file, "        self.%s = value" %(prop_name))
-                write(gen_file, "    #end set_%s" %(prop_name))
+                write(gen_file, "    # end set_%s" %(prop_name))
                 write(gen_file, "")
                 write(gen_file, "    def get_%s(self):" %(prop_name))
                 write(gen_file, "        return self.%s" %(prop_name))
-                write(gen_file, "    #end get_%s" %(prop_name))
+                write(gen_file, "    # end get_%s" %(prop_name))
                 write(gen_file, "")
 
             write(gen_file, "    def _serialize_field_to_json(self, serialized, fields_to_serialize, field_name):")
@@ -587,7 +587,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            serialized[field_name] = getattr(self, field_name)")
             write(gen_file, "        elif field_name in fields_to_serialize:")
             write(gen_file, "            serialized[field_name] = getattr(self, field_name)")
-            write(gen_file, "    #end _serialize_field_to_json")
+            write(gen_file, "    # end _serialize_field_to_json")
             write(gen_file, "")
             write(gen_file, "    def serialize_to_json(self, field_names = None):")
             write(gen_file, "        serialized = {}")
@@ -618,7 +618,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            self._serialize_field_to_json(serialized, field_names, '%s_refs')" %(to_name))
 
             write(gen_file, "        return serialized")
-            write(gen_file, "    #end serialize_to_json")
+            write(gen_file, "    # end serialize_to_json")
 
             write(gen_file, "")
 
@@ -634,7 +634,7 @@ class IFMapApiGenerator(object):
                 # only getter from parent to children
                 write(gen_file, "    def get_%ss(self):" %(child_name))
                 write(gen_file, "        return getattr(self, '%ss', None)" %(child_name))
-                write(gen_file, "    #end get_%ss" %(child_name))
+                write(gen_file, "    # end get_%ss" %(child_name))
                 write(gen_file, "")
 
             for link_info in ident.getLinksInfo():
@@ -673,7 +673,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        if ref_obj.uuid:")
                 write(gen_file, "            self.%s_refs[0]['uuid'] = ref_obj.uuid" %(to_name))
                 write(gen_file, "")
-                write(gen_file, "    #end set_%s" %(to_name))
+                write(gen_file, "    # end set_%s" %(to_name))
                 write(gen_file, "")
                 write(gen_file, "    def add_%s(%s):" %(to_name, add_one_args))
                 write(gen_file, '        """Add %s to %s.' %(to_ident.getName(), ident_name))
@@ -702,7 +702,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            ref_info['uuid'] = ref_obj.uuid")
                 write(gen_file, "")
                 write(gen_file, "        self.%s_refs.append(ref_info)" %(to_name))
-                write(gen_file, "    #end add_%s" %(to_name))
+                write(gen_file, "    # end add_%s" %(to_name))
                 write(gen_file, "")
                 write(gen_file, "    def del_%s(%s):" %(to_name, del_one_args))
                 write(gen_file, "        refs = self.get_%s_refs()" %(to_name))
@@ -713,7 +713,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            if ref['to'] == ref_obj.get_fq_name():")
                 write(gen_file, "                self.%s_refs.remove(ref)" %(to_name))
                 write(gen_file, "                return")
-                write(gen_file, "    #end del_%s" %(to_name))
+                write(gen_file, "    # end del_%s" %(to_name))
                 write(gen_file, "")
                 write(gen_file, "    def set_%s_list(%s):" %(to_name, set_list_args))
                 write(gen_file, '        """Set %s list for %s.' %(to_ident.getName(), ident_name))
@@ -724,7 +724,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, '        ')
                 write(gen_file, '        """')
                 write(gen_file, "        self.%s_refs = %s" %(to_name, set_list_val))
-                write(gen_file, "    #end set_%s_list" %(to_name))
+                write(gen_file, "    # end set_%s_list" %(to_name))
                 write(gen_file, "")
                 write(gen_file, "    def get_%s_refs(self):" %(to_name))
                 write(gen_file, '        """Return %s list for %s.' %(to_ident.getName(), ident_name))
@@ -737,7 +737,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, '        ')
                 write(gen_file, '        """')
                 write(gen_file, "        return getattr(self, '%s_refs', None)" %(to_name))
-                write(gen_file, "    #end get_%s_refs" %(to_name))
+                write(gen_file, "    # end get_%s_refs" %(to_name))
                 write(gen_file, "")
 
             # Getters for back reference links
@@ -747,7 +747,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "    def get_%s_back_refs(self):" %(from_name))
                 write(gen_file, '        """Return list of all %ss using this %s"""' % (from_ident.getName(),ident_name))
                 write(gen_file, "        return getattr(self, '%s_back_refs', None)" %(from_name))
-                write(gen_file, "    #end get_%s_back_refs" %(from_name))
+                write(gen_file, "    # end get_%s_back_refs" %(from_name))
                 write(gen_file, "")
 
             # dump method
@@ -776,13 +776,13 @@ class IFMapApiGenerator(object):
                 from_ident = ident.getBackLinkFrom(back_link_info)
                 from_ident_name = from_ident.getName().replace('-', '_')
                 write(gen_file, "        print 'BCK %s = ', self.get_%s_back_refs()" %(from_ident_name, from_ident_name))
-            write(gen_file, "    #end dump")
+            write(gen_file, "    # end dump")
             write(gen_file, "")
 
-            write(gen_file, "#end class %s" %(class_name))
+            write(gen_file, "# end class %s" %(class_name))
             write(gen_file, "")
 
-    #end _generate_common_classes
+    # end _generate_common_classes
 
     def _generate_client_classes(self, gen_filepath_pfx, gen_filename_pfx):
         gen_file = self._xsd_parser.makeFile(gen_filepath_pfx + "_client.py")
@@ -793,6 +793,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "import copy")
         write(gen_file, "import vnc_api.gen.%s_common" %(gen_filename_pfx))
         write(gen_file, "import vnc_api.gen.%s_xsd" %(gen_filename_pfx))
+        write(gen_file, "from cfgm_common.exceptions import NoIdError")
         write(gen_file, "")
 
         write(gen_file, "")
@@ -842,26 +843,26 @@ class IFMapApiGenerator(object):
             write(gen_file, "        self._pending_ref_updates = set([])")
             write(gen_file, "")
             write(gen_file, "        super(%s, self).__init__(%s, *args, **kwargs)" %(class_name, super_args))
-            write(gen_file, "    #end __init__")
+            write(gen_file, "    # end __init__")
             write(gen_file, "")
             write(gen_file, "    def get_pending_updates(self):")
             write(gen_file, "        return self._pending_field_updates")
-            write(gen_file, "    #end get_pending_updates")
+            write(gen_file, "    # end get_pending_updates")
             write(gen_file, "")
             write(gen_file, "    def get_ref_updates(self):")
             write(gen_file, "        return self._pending_ref_updates")
-            write(gen_file, "    #end get_ref_updates")
+            write(gen_file, "    # end get_ref_updates")
             write(gen_file, "")
             write(gen_file, "    def clear_pending_updates(self):")
             write(gen_file, "        self._pending_field_updates = set([])")
             write(gen_file, "        self._pending_field_list_updates = {}")
             write(gen_file, "        self._pending_field_map_updates = {}")
             write(gen_file, "        self._pending_ref_updates = set([])")
-            write(gen_file, "    #end clear_pending_updates")
+            write(gen_file, "    # end clear_pending_updates")
             write(gen_file, "")
             write(gen_file, "    def set_server_conn(self, vnc_api_handle):")
             write(gen_file, "        self._server_conn = vnc_api_handle")
-            write(gen_file, "    #end set_server_conn")
+            write(gen_file, "    # end set_server_conn")
             write(gen_file, "")
             write(gen_file, "    @classmethod")
             write(gen_file, "    def from_dict(cls, **kwargs):")
@@ -949,7 +950,7 @@ class IFMapApiGenerator(object):
 
             write(gen_file, "")
             write(gen_file, "        return obj")
-            write(gen_file, "    #end from_dict")
+            write(gen_file, "    # end from_dict")
             write(gen_file, "")
 
             # Setters for common fields
@@ -958,11 +959,11 @@ class IFMapApiGenerator(object):
             write(gen_file, "        self._uuid = uuid_val")
             write(gen_file, "        if 'uuid' not in self._pending_field_updates:")
             write(gen_file, "            self._pending_field_updates.add('uuid')")
-            write(gen_file, "    #end uuid")
+            write(gen_file, "    # end uuid")
             write(gen_file, "")
             write(gen_file, "    def set_uuid(self, uuid_val):")
             write(gen_file, "        self.uuid = uuid_val")
-            write(gen_file, "    #end set_uuid")
+            write(gen_file, "    # end set_uuid")
             write(gen_file, "")
 
             # Setters for properties
@@ -990,11 +991,11 @@ class IFMapApiGenerator(object):
                     write(gen_file, "            del self._pending_field_map_updates['%s']" %(prop_name))
                     write(gen_file, "")
                 write(gen_file, "        self._%s = %s" %(prop_name, prop_name))
-                write(gen_file, "    #end %s" %(prop_name))
+                write(gen_file, "    # end %s" %(prop_name))
                 write(gen_file, "")
                 write(gen_file, "    def set_%s(self, value):" %(prop_name))
                 write(gen_file, "        self.%s = value" %(prop_name))
-                write(gen_file, "    #end set_%s" %(prop_name))
+                write(gen_file, "    # end set_%s" %(prop_name))
                 write(gen_file, "")
 
             # Atomic Setters for properties that are lists
@@ -1015,7 +1016,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        else:")
                 write(gen_file, "            self._pending_field_list_updates['%s'].append(" %(prop_name))
                 write(gen_file, "                ('add', elem_value, elem_position))")
-                write(gen_file, "    #end add_%s" %(prop_name))
+                write(gen_file, "    # end add_%s" %(prop_name))
                 write(gen_file, "")
                 write(gen_file, "    def del_%s(self, elem_position):" %(prop_name))
                 write(gen_file, '        """Delete element from %s for %s.' %(prop.getName(), ident.getName()))
@@ -1029,7 +1030,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        else:")
                 write(gen_file, "            self._pending_field_list_updates['%s'].append(" %(prop_name))
                 write(gen_file, "                ('delete', None, elem_position))")
-                write(gen_file, "    #end del_%s" %(prop_name))
+                write(gen_file, "    # end del_%s" %(prop_name))
 
             # Atomic Setters for properties that are maps
             for prop in ident.getProperties():
@@ -1049,7 +1050,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        else:")
                 write(gen_file, "            self._pending_field_map_updates['%s'].append(" %(prop_name))
                 write(gen_file, "                ('set', elem, elem_position))")
-                write(gen_file, "    #end set_%s" %(prop_name))
+                write(gen_file, "    # end set_%s" %(prop_name))
                 write(gen_file, "")
                 write(gen_file, "    def del_%s(self, elem_position):" %(prop_name))
                 write(gen_file, '        """Delete element from %s for %s.' %(prop.getName(), ident.getName()))
@@ -1063,7 +1064,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        else:")
                 write(gen_file, "            self._pending_field_map_updates['%s'].append(" %(prop_name))
                 write(gen_file, "                ('delete', None, elem_position))")
-                write(gen_file, "    #end del_%s" %(prop_name))
+                write(gen_file, "    # end del_%s" %(prop_name))
 
             # Setters for references
             for link_info in ident.getLinksInfo():
@@ -1085,7 +1086,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        self._pending_ref_updates.discard('%s_refs')" %(to_name))
                 write(gen_file, "        super(%s, self).set_%s(*args, **kwargs)" %(class_name, to_name))
                 write(gen_file, "")
-                write(gen_file, "    #end set_%s" %(to_name))
+                write(gen_file, "    # end set_%s" %(to_name))
                 write(gen_file, "")
                 write(gen_file, "    def add_%s(self, *args, **kwargs):" %(to_name))
                 write(gen_file, '        """Add %s to %s.' %(to_ident.getName(), ident.getName()))
@@ -1099,14 +1100,14 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            self._pending_ref_updates.add('%s_refs')" %(to_name))
                 write(gen_file, "            self._original_%s_refs = copy.deepcopy(self.get_%s_refs() or [])" %(to_name, to_name))
                 write(gen_file, "        super(%s, self).add_%s(*args, **kwargs)" %(class_name, to_name))
-                write(gen_file, "    #end add_%s" %(to_name))
+                write(gen_file, "    # end add_%s" %(to_name))
                 write(gen_file, "")
                 write(gen_file, "    def del_%s(self, *args, **kwargs):" %(to_name))
                 write(gen_file, "        if '%s_refs' not in self._pending_ref_updates:" %(to_name))
                 write(gen_file, "            self._pending_ref_updates.add('%s_refs')" %(to_name))
                 write(gen_file, "            self._original_%s_refs = (self.get_%s_refs() or [])[:]" %(to_name, to_name))
                 write(gen_file, "        super(%s, self).del_%s(*args, **kwargs)" %(class_name, to_name))
-                write(gen_file, "    #end del_%s" %(to_name))
+                write(gen_file, "    # end del_%s" %(to_name))
                 write(gen_file, "")
                 write(gen_file, "    def set_%s_list(self, *args, **kwargs):" %(to_name))
                 write(gen_file, '        """Set %s list for %s.' %(to_ident.getName(), ident.getName()))
@@ -1119,7 +1120,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        self._pending_field_updates.add('%s_refs')" %(to_name))
                 write(gen_file, "        self._pending_ref_updates.discard('%s_refs')" %(to_name))
                 write(gen_file, "        super(%s, self).set_%s_list(*args, **kwargs)" %(class_name, to_name))
-                write(gen_file, "    #end set_%s_list" %(to_name))
+                write(gen_file, "    # end set_%s_list" %(to_name))
                 write(gen_file, "")
 
             # Getters for children links
@@ -1134,12 +1135,15 @@ class IFMapApiGenerator(object):
                 write(gen_file, "            if not svr_conn:")
                 write(gen_file, "                return None")
                 write(gen_file, "")
-                write(gen_file, "            obj = svr_conn.%s_read(id = self.uuid, fields = ['%ss'])" %(method_name, child_method_name))
+                write(gen_file, "            try:")
+                write(gen_file, "                obj = svr_conn.%s_read(id = self.uuid, fields = ['%ss'])" %(method_name, child_method_name))
+                write(gen_file, "            except NoIdError:")
+                write(gen_file, "                return None")
                 write(gen_file, "            children = getattr(obj, '%ss', None)" %(child_method_name))
                 write(gen_file, "            self.%ss = children" %(child_method_name))
                 write(gen_file, "")
                 write(gen_file, "        return children")
-                write(gen_file, "    #end get_%ss" %(child_method_name))
+                write(gen_file, "    # end get_%ss" %(child_method_name))
                 write(gen_file, "")
             write(gen_file, "")
 
@@ -1159,17 +1163,20 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        if not svr_conn:")
                 write(gen_file, "            return None")
                 write(gen_file, "")
-                write(gen_file, "        obj = svr_conn.%s_read(id = self.uuid, fields = ['%s_back_refs'])" %(method_name, from_name))
+                write(gen_file, "        try:")
+                write(gen_file, "            obj = svr_conn.%s_read(id = self.uuid, fields = ['%s_back_refs'])" %(method_name, from_name))
+                write(gen_file, "        except NoIdError:")
+                write(gen_file, "            return None")
                 write(gen_file, "        back_refs = getattr(obj, '%s_back_refs', None)" %(from_name))
                 write(gen_file, "        self.%s_back_refs = back_refs" %(from_name))
                 write(gen_file, "")
                 write(gen_file, "        return back_refs")
-                write(gen_file, "    #end get_%s_back_refs" %(from_name))
+                write(gen_file, "    # end get_%s_back_refs" %(from_name))
                 write(gen_file, "")
 
-            write(gen_file, "#end class %s" %(class_name))
+            write(gen_file, "# end class %s" %(class_name))
             write(gen_file, "")
-    #end _generate_client_classes
+    # end _generate_client_classes
 
     def _create_heat_template_params(self, prop_list):
         # print parameters
@@ -1199,7 +1206,7 @@ class IFMapApiGenerator(object):
                     write(self.gen_file_templ, "    # required: optional")
                 continue
             self._create_heat_template_params(val['prop_list'])
-    #end _create_heat_template_params
+    # end _create_heat_template_params
 
     def _create_heat_template_resources(self, prop_list, tabs, comma):
         # print resources
@@ -1236,7 +1243,7 @@ class IFMapApiGenerator(object):
                 write(self.gen_file_templ, "%s}]%s" %(" "*tabs, tcomma))
                 tabs = tabs-2
                 comma = ""
-    #end _create_heat_template_resources
+    # end _create_heat_template_resources
 
     def _create_heat_env_params(self, prop_list):
         # print env parameters
@@ -1258,7 +1265,7 @@ class IFMapApiGenerator(object):
                 elif prop_type == 'STRING':
                     write(self.gen_file_env, "  %s: '%s'" %(prop_long_name, val['prop_restr'][0]))
             self._create_heat_env_params(val['prop_list'])
-    #end _create_heat_env_params
+    # end _create_heat_env_params
 
     def _get_heat_prop_type(self, typename, is_array):
         if typename.lower().endswith(
@@ -1277,7 +1284,7 @@ class IFMapApiGenerator(object):
             type = "LIST:" + type
 
         return type
-    #end _get_heat_prop_type
+    # end _get_heat_prop_type
 
     def _convert_heat_template_type(self, prop_type):
         if prop_type == "INTEGER" or prop_type == "LIST:INTEGER":
@@ -1309,7 +1316,7 @@ class IFMapApiGenerator(object):
             'prop_is_list': is_list,
         })
         return prop_list[-1]
-    #end _make_heat_prop_list
+    # end _make_heat_prop_list
 
     def _process_heat_complex_property(self, cls, prop_list, prop_name,
                                        prop_type, is_simple, is_array,
@@ -1343,7 +1350,7 @@ class IFMapApiGenerator(object):
             self._process_heat_complex_property(new_cls, new_list, attr_name,
                 attr_type, (not attr_is_complex), attr_is_array,
                 attr_description, attr_reqd, opers, new_prop_get_list)
-    #end _process_heat_complex_property
+    # end _process_heat_complex_property
 
     def _make_heat_property_schema(self, val, tabs):
         prop_long_name = self._get_prop_long_name(val)
@@ -1382,7 +1389,7 @@ class IFMapApiGenerator(object):
                 write(self.gen_file, "%s)" %(tabs*" "))
         tabs = tabs-4
         write(self.gen_file, "%s)," %(tabs*" "))
-    #end _make_heat_property_schema
+    # end _make_heat_property_schema
 
     def _make_heat_properties(self, prop_list, prop_names_list,
                               prop_names_uc_list):
@@ -1393,7 +1400,7 @@ class IFMapApiGenerator(object):
             if val['prop_list']:
                 self._make_heat_properties(val['prop_list'], prop_names_list,
                                            prop_names_uc_list)
-    #end _make_heat_properties
+    # end _make_heat_properties
 
     def _get_prop_hierarchy(self, prop, print_index):
         if self.heat_handling == 0:
@@ -1414,7 +1421,7 @@ class IFMapApiGenerator(object):
         prop_long_name = self._get_prop_long_name(prop)
         prop_get_str += ".get(self.%s)%s" %(prop_long_name.upper(), idx_str)
         return prop_get_str
-    #end _get_prop_hierarchy
+    # end _get_prop_hierarchy
 
     def _get_prop_long_name(self, prop):
         prop_get_str = ""
@@ -1424,7 +1431,7 @@ class IFMapApiGenerator(object):
             prop_get_str += "%s_" %(value['prop_name'])
         prop_get_str += "%s" %(prop['prop_name'])
         return prop_get_str
-    #end _get_prop_long_name
+    # end _get_prop_long_name
 
     def _set_heat_properties_value(self, prop, tabs, obj_index, skip, is_ref_update):
         if prop['prop_name'].endswith("_refs"):
@@ -1457,7 +1464,7 @@ class IFMapApiGenerator(object):
 
         if is_ref_update:
             write(self.gen_file, "%sref_data_list.append(obj_%s)" %(" "*tabs, obj_index+1))
-    #end _set_heat_properties_value
+    # end _set_heat_properties_value
 
     def _get_heat_properties_value(self, prop, p_prop_name):
         if not prop['prop_list']:
@@ -1468,7 +1475,7 @@ class IFMapApiGenerator(object):
         for key,val in enumerate(prop['prop_list']):
             self._get_heat_properties_value(
                 val, p_prop_name+".get_"+val['prop_name']+"()")
-    #end _get_heat_properties_value
+    # end _get_heat_properties_value
 
     def _gen_heat_common_resource_hdr(self):
         write(self.gen_file, "")
@@ -1496,7 +1503,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "")
         write(self.gen_file, "class Contrail%s(contrail.ContrailResource):" \
               %(self.resource_dict['class']))
-    #end _gen_heat_common_resource_hdr
+    # end _gen_heat_common_resource_hdr
 
     def _build_heat_properties(self):
         for prop_name in self.cls.prop_fields:
@@ -1522,7 +1529,7 @@ class IFMapApiGenerator(object):
             self._process_heat_complex_property(cls, self.prop_list,
                 prop_name, prop_type, prop_is_simple, False,
                 prop_desc, prop_reqd, prop_opers, [])
-     #end _build_heat_properties
+     # end _build_heat_properties
 
     def _build_heat_refs(self):
         for ref_name in self.cls.ref_fields:
@@ -1543,14 +1550,14 @@ class IFMapApiGenerator(object):
             self._process_heat_complex_property(cls, self.ref_list,
                 ref_name, ref_type, False, True,
                 ref_desc, None, None, [])
-     #end _build_heat_refs
+     # end _build_heat_refs
 
     def _build_heat_parents(self):
         for parent_name in self.cls.parent_types:
             pname = parent_name.replace('-', '_')
             self._make_heat_prop_list(self.parent_list, pname, 'string',
                 None, None, None, None, False, [], False)
-     #end _build_heat_parents
+     # end _build_heat_parents
 
     def _gen_heat_properties(self, prop_names_list, prop_names_uc_list):
         write(self.gen_file, "    PROPERTIES = (")
@@ -1559,7 +1566,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "        %s" %(", ".join(prop_names_list)))
         write(self.gen_file, "    )")
         write(self.gen_file, "")
-    #end _gen_heat_properties
+    # end _gen_heat_properties
 
     def _gen_heat_templ_params(self):
         write(self.gen_file_templ, "heat_template_version: 2015-04-30")
@@ -1573,7 +1580,7 @@ class IFMapApiGenerator(object):
         self._create_heat_template_params(self.ref_list)
         self._create_heat_template_params(self.parent_list)
         write(self.gen_file_templ, "")
-    #end _gen_heat_templ_params
+    # end _gen_heat_templ_params
 
     def _gen_heat_env_params(self):
         write(self.gen_file_env, "parameters:")
@@ -1581,7 +1588,7 @@ class IFMapApiGenerator(object):
         self._create_heat_env_params(self.ref_list)
         self._create_heat_env_params(self.parent_list)
         write(self.gen_file_env, "")
-    #end _gen_heat_env_params
+    # end _gen_heat_env_params
 
     def _gen_heat_properties_schema(self):
         tabs = 4
@@ -1632,7 +1639,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "%supdate_allowed_keys = ('Properties',)" %(" "*tabs))
         write(self.gen_file, "")
 
-    #end _gen_heat_properties_schema
+    # end _gen_heat_properties_schema
 
     def _ref_create_handling(self):
         tabs = 8
@@ -1858,7 +1865,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "")
         write(self.gen_file, "%sself.resource_id_set(obj_uuid)" %(" "*tabs))
         write(self.gen_file, "")
-    #end _gen_heat_handle_create
+    # end _gen_heat_handle_create
 
     def _gen_heat_handle_update(self):
         tabs = 4
@@ -1900,7 +1907,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "%sraise Exception(_('%%s') %% str(e))" %(" "*tabs))
         write(self.gen_file, "")
 
-    #end _gen_heat_handle_update
+    # end _gen_heat_handle_update
 
     def _gen_heat_handle_delete(self):
         write(self.gen_file, "    @contrail.set_auth_token")
@@ -1916,7 +1923,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "            LOG.warn(_('%s %%s already deleted.') %% self.name)"
             %(self.resource_dict['method']))
         write(self.gen_file, "")
-    #end _gen_heat_handle_delete
+    # end _gen_heat_handle_delete
 
     def _gen_heat_show_resource(self):
         write(self.gen_file, "    @contrail.set_auth_token")
@@ -1927,7 +1934,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "        return obj_dict")
         write(self.gen_file, "")
         write(self.gen_file, "")
-    #end _gen_heat_show_resource
+    # end _gen_heat_show_resource
 
     def _gen_heat_resource_mapping(self):
         class_name = self.resource_dict['class']
@@ -1935,7 +1942,7 @@ class IFMapApiGenerator(object):
         write(self.gen_file, "    return {")
         write(self.gen_file, "        'OS::ContrailV2::%s': Contrail%s," %(class_name, class_name))
         write(self.gen_file, "    }")
-    #end _gen_heat_resource_mapping
+    # end _gen_heat_resource_mapping
 
     def _gen_heat_templ_resource_section(self):
         # generate template resource section
@@ -1949,7 +1956,7 @@ class IFMapApiGenerator(object):
         self._create_heat_template_resources(self.ref_list, 6, "")
         self._create_heat_template_resources(self.parent_list, 6, "")
         write(self.gen_file_templ, "")
-    #end _gen_heat_templ_resource_section
+    # end _gen_heat_templ_resource_section
 
     def _uncamelize(self, name):
         s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
@@ -2091,7 +2098,7 @@ class IFMapApiGenerator(object):
 
             # generate template parameters section
             self._gen_heat_env_params()
-    #end _generate_heat_resources
+    # end _generate_heat_resources
 
     def _generate_test_classes(self, gen_filepath_pfx, gen_filename_pfx):
         gen_file = self._xsd_parser.makeFile(gen_filepath_pfx + "_test.py")
@@ -2194,7 +2201,7 @@ class IFMapApiGenerator(object):
                 prop_name = prop.getName().replace('-', '_')
                 write(gen_file, "        self.%s = %s" % (prop_name, prop_name))
 
-            write(gen_file, "    #end __init__")
+            write(gen_file, "    # end __init__")
             write(gen_file, "")
             write(gen_file, "    def _update_links (self, update_server):")
             for link_info in ident.getLinksInfo():
@@ -2208,7 +2215,7 @@ class IFMapApiGenerator(object):
                         write(gen_file, "            self.add_%s (ln.fixture (), update_server = update_server, add_link = False)" \
                                                                % (ident.getLinkTo(link_info).getName().replace ('-', '_')))
             write(gen_file, "        return None")
-            write(gen_file, "    #end _update_links")
+            write(gen_file, "    # end _update_links")
             write(gen_file, "")
             for link_info in ident.getLinksInfo():
                 if ident.isLinkRef(link_info):
@@ -2257,12 +2264,12 @@ class IFMapApiGenerator(object):
                                         ident.getName().replace ('-', '_'),
                                         ident.getLinkTo(link_info).getName().replace('-', '_'),
                                         str (link_info[2])))
-                    write(gen_file, "    #end add_%s_link" % (ident.getLinkTo(link_info).getName().replace ('-', '_')))
+                    write(gen_file, "    # end add_%s_link" % (ident.getLinkTo(link_info).getName().replace ('-', '_')))
                     write(gen_file, "")
                     write(gen_file, "    def get_%ss (self):" % (ident.getLinkTo(link_info).getName().replace ('-', '_')))
                     write(gen_file, "        return self.get_links ('%s')" % (
                                     ident.getLinkTo(link_info).getName().replace ('-', '_')))
-                    write(gen_file, "    #end get_%ss" % (ident.getLinkTo(link_info).getName().replace ('-', '_')))
+                    write(gen_file, "    # end get_%ss" % (ident.getLinkTo(link_info).getName().replace ('-', '_')))
             write(gen_file, "")
             write(gen_file, "    def populate (self):")
             for prop in ident.getProperties():
@@ -2278,7 +2285,7 @@ class IFMapApiGenerator(object):
                         popstr = 'vnc_api.gen.%s_xsd.%s.populate()' % (gen_filename_pfx, ctype)
                 write(gen_file, "        self._obj.set_%s(self.%s or %s)" % (
                             prop_name, prop_name, popstr))
-            write(gen_file, "    #end populate")
+            write(gen_file, "    # end populate")
             write(gen_file, "")
             write(gen_file, "    def setUp(self):")
             write(gen_file, "        super(%sTestFixtureGen, self).setUp()" %(class_name))
@@ -2319,7 +2326,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "            self._conn_drv.%s_create(self._obj)" %(method_name))
             write(gen_file, "            # read back for server allocated values")
             write(gen_file, "            self._obj = self._conn_drv.%s_read(id = self._obj.uuid)" %(method_name))
-            write(gen_file, "    #end setUp")
+            write(gen_file, "    # end setUp")
             write(gen_file, "")
             write(gen_file, "    def cleanUp(self):")
             write(gen_file, "        try:")
@@ -2341,15 +2348,15 @@ class IFMapApiGenerator(object):
                 write(gen_file, "                    parent_obj.%ss.remove(child_obj)" %(method_name))
                 write(gen_file, "                    break")
                 write(gen_file, "")
-            write(gen_file, "    #end cleanUp")
+            write(gen_file, "    # end cleanUp")
             write(gen_file, "")
             write(gen_file, "    def getObj(self):")
             write(gen_file, "        return self._obj")
-            write(gen_file, "    #end getObj")
+            write(gen_file, "    # end getObj")
             write(gen_file, "")
-            write(gen_file, "#end class %sTestFixtureGen" %(class_name))
+            write(gen_file, "# end class %sTestFixtureGen" %(class_name))
             write(gen_file, "")
-    #end _generate_test_classes
+    # end _generate_test_classes
 
     def _generate_conn_drv_impl(self, gen_fname, gen_type_pfx):
         gen_file = self._xsd_parser.makeFile(gen_fname)
@@ -2371,7 +2378,7 @@ class IFMapApiGenerator(object):
         write(gen_file, "    @abc.abstractmethod")
         write(gen_file, "    def __init__(self):")
         write(gen_file, "        pass")
-        write(gen_file, "    #end __init__")
+        write(gen_file, "    # end __init__")
 
         for ident in self._non_exclude_idents():
             ident_name = ident.getName()
@@ -2386,7 +2393,7 @@ class IFMapApiGenerator(object):
             write(gen_file, '        ')
             write(gen_file, '        """')
             write(gen_file, "        raise NotImplementedError, '%s_create is %%s\\'s responsibility' %% (str(type (self)))" % method_name)
-            write(gen_file, "    #end %s_create" %(method_name))
+            write(gen_file, "    # end %s_create" %(method_name))
             write(gen_file, "")
 
             write(gen_file, "    def %s_read(self, fq_name = None, fq_name_str = None, id = None, ifmap_id = None):" \
@@ -2401,7 +2408,7 @@ class IFMapApiGenerator(object):
             write(gen_file, '        ')
             write(gen_file, '        """')
             write(gen_file, "        raise NotImplementedError, '%s_read is %%s\\'s responsibility' %% (str(type (self)))" % method_name)
-            write(gen_file, "    #end %s_read" %(method_name))
+            write(gen_file, "    # end %s_read" %(method_name))
             write(gen_file, "")
 
             write(gen_file, "    def %s_update(self, obj):" %(method_name))
@@ -2411,7 +2418,7 @@ class IFMapApiGenerator(object):
             write(gen_file, '        ')
             write(gen_file, '        """')
             write(gen_file, "        raise NotImplementedError, '%s_update is %%s\\'s responsibility' %% (str(type (self)))" % method_name)
-            write(gen_file, "    #end %s_update" %(method_name))
+            write(gen_file, "    # end %s_update" %(method_name))
             write(gen_file, "")
 
             list_args = "self"
@@ -2434,7 +2441,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, '        """List all %ss."""' % (ident_name))
             write(gen_file, "        raise NotImplementedError, '%ss_list is %%s\\'s responsibility' %% (str(type (self)))" % method_name)
 
-            write(gen_file, "    #end %ss_list" %(method_name))
+            write(gen_file, "    # end %ss_list" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def %s_delete(self, fq_name = None, id = None, ifmap_id = None):" \
                                      %(method_name))
@@ -2446,18 +2453,18 @@ class IFMapApiGenerator(object):
             write(gen_file, '        ')
             write(gen_file, '        """')
             write(gen_file, "        raise NotImplementedError, '%s_delete is %%s\\'s responsibility' %% (str(type (self)))" % method_name)
-            write(gen_file, "    #end %s_delete" %(method_name))
+            write(gen_file, "    # end %s_delete" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def get_default_%s_id(self):" %(method_name))
             write(gen_file, '        """Return UUID of default %s."""' %(ident_name))
             write(gen_file, "        raise NotImplementedError, 'get_default_%s_delete is %%s\\'s responsibility' %% (str(type (self)))" % method_name)
-            write(gen_file, "    #end get_default_%s_delete" %(method_name))
+            write(gen_file, "    # end get_default_%s_delete" %(method_name))
             write(gen_file, "")
 
-        write(gen_file, "#end class ConnectionDriverBase")
+        write(gen_file, "# end class ConnectionDriverBase")
         write(gen_file, "")
 
-    #end _generate_conn_drv_impl
+    # end _generate_conn_drv_impl
 
 
     def _generate_client_impl(self, gen_fname, gen_type_pfx):
@@ -2478,7 +2485,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "    ('%s', '%s')," %
                   (ident_name.replace('-', '_'), ident_name))
         write(gen_file, "])")
-    #end _generate_client_impl
+    # end _generate_client_impl
 
     def _generate_extension_impl(self, gen_fname, gen_type_pfx):
         gen_file = self._xsd_parser.makeFile(gen_fname)
@@ -2495,28 +2502,28 @@ class IFMapApiGenerator(object):
             write(gen_file, "        Method called before %s is created" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
-            write(gen_file, "    #end pre_%s_create" %(method_name))
+            write(gen_file, "    # end pre_%s_create" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def post_%s_create(self, resource_dict, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called after %s is created" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
-            write(gen_file, "    #end post_%s_create" %(method_name))
+            write(gen_file, "    # end post_%s_create" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def pre_%s_read(self, resource_id, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called before %s is read" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
-            write(gen_file, "    #end pre_%s_read" %(method_name))
+            write(gen_file, "    # end pre_%s_read" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def post_%s_read(self, resource_id, resource_dict, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called after %s is read" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
-            write(gen_file, "    #end post_%s_read" %(method_name))
+            write(gen_file, "    # end post_%s_read" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def pre_%s_update(self, resource_id, resource_dict," %(method_name))
             write(gen_file, "            prop_collection_updates=None, ref_update=None, **kwargs):")
@@ -2524,7 +2531,7 @@ class IFMapApiGenerator(object):
             write(gen_file, "        Method called before %s is updated" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
-            write(gen_file, "    #end pre_%s_update" %(method_name))
+            write(gen_file, "    # end pre_%s_update" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def post_%s_update(self, resource_id, resource_dict, old_dict," %(method_name))
             write(gen_file, "            prop_collection_updates=None, ref_update=None, **kwargs):")
@@ -2532,24 +2539,24 @@ class IFMapApiGenerator(object):
             write(gen_file, "        Method called after %s is updated" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
-            write(gen_file, "    #end post_%s_update" %(method_name))
+            write(gen_file, "    # end post_%s_update" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def pre_%s_delete(self, resource_id, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called before %s is deleted" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
-            write(gen_file, "    #end pre_%s_delete" %(method_name))
+            write(gen_file, "    # end pre_%s_delete" %(method_name))
             write(gen_file, "")
             write(gen_file, "    def post_%s_delete(self, resource_id, resource_dict, **kwargs):" %(method_name))
             write(gen_file, '        """')
             write(gen_file, "        Method called after %s is deleted" %(ident_name))
             write(gen_file, '        """')
             write(gen_file, "        pass")
-            write(gen_file, "    #end post_%s_delete" %(method_name))
+            write(gen_file, "    # end post_%s_delete" %(method_name))
             write(gen_file, "")
-        write(gen_file, "#end class ResourceApiGen")
-    #end _generate_extension_impl
+        write(gen_file, "# end class ResourceApiGen")
+    # end _generate_extension_impl
 
     def _generate_test_impl(self, gen_fname, gen_type_pfx):
         gen_file = self._xsd_parser.makeFile(gen_fname)
@@ -2573,11 +2580,11 @@ class IFMapApiGenerator(object):
             method_name = ident_name.replace('-', '_')
             write(gen_file, "    def test_%s_crud(self):" %(method_name))
             write(gen_file, "        self.useFixture(%sTestFixtureGen(self._vnc_lib))" %(camel_name))
-            write(gen_file, "    #end test_%s_crud" %(method_name))
+            write(gen_file, "    # end test_%s_crud" %(method_name))
             write(gen_file, "")
 
-        write(gen_file, "#end class %s" %(class_name))
-    #end _generate_test_impl
+        write(gen_file, "# end class %s" %(class_name))
+    # end _generate_test_impl
 
     def _generate_docs_schema(self, gen_fname, gen_type_pfx):
         gen_file = self._xsd_parser.makeFile(gen_fname)
@@ -2621,13 +2628,13 @@ class IFMapApiGenerator(object):
 
         write(gen_file, "")
         write(gen_file, "    return graph")
-        write(gen_file, "#end generate_schema_graph")
+        write(gen_file, "# end generate_schema_graph")
         write(gen_file, "")
         write(gen_file, "def write_schema_graph(graph, filename):")
         write(gen_file, "    graph.write_xdot(filename)")
-        write(gen_file, "#end write_schema_graph")
+        write(gen_file, "# end write_schema_graph")
         write(gen_file, "")
-    #end _generate_docs_schema
+    # end _generate_docs_schema
 
     def _generate_docs_openapi(self, gen_fname, gen_type_pfx, xsd_openapi_dict):
         gen_file = self._xsd_parser.makeFile(gen_fname)
@@ -4093,4 +4100,4 @@ class IFMapApiGenerator(object):
         # end for all definitions
         write(gen_file, "")
     # end _generate_docs_sphinx
-#end class IFMapApiGenerator
+# end class IFMapApiGenerator
