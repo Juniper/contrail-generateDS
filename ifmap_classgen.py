@@ -574,11 +574,12 @@ namespace autogen {
 
         file.write('\nstruct %s_GraphFilterInfo {\n' % module_name)
         file.write('    %s_GraphFilterInfo(std::string left, std::string right,\n' % module_name) 
-        file.write('                            std::string meta, bool linkattr) :\n')
-        file.write('        left_(left), right_(right), metadata_(meta), linkattr_(linkattr) { }\n')
+        file.write('                            std::string meta, bool is_ref, bool linkattr) :\n')
+        file.write('        left_(left), right_(right), metadata_(meta), is_ref_(is_ref), linkattr_(linkattr) { }\n')
         file.write('    std::string left_;\n')
         file.write('    std::string right_;\n')
         file.write('    std::string metadata_;\n')
+        file.write('    bool is_ref_;\n')
         file.write('    bool linkattr_;\n')
         file.write('};\n')
         file.write('typedef std::vector<%s_GraphFilterInfo> %s_FilterInfo;\n\n' % (module_name, module_name))
@@ -664,14 +665,19 @@ void %(module)s_%(comp)s_GenerateGraphFilter(%(module)s_FilterInfo *filter_info)
             for link_info in links:
                 to_ident = idn.getLinkTo(link_info)
                 link_meta = idn.getLink(link_info)
+                if idn.isLinkRef(link_info):
+                    is_ref = "true"
+                else:
+                    is_ref = "false"
+
                 if link_meta.getXsdType():
                     linkattr = "true"
                 else:
                     linkattr = "false"
-                fmt = '    filter_info->push_back(%s_GraphFilterInfo("%s", "%s", "%s", %s));\n'
+                fmt = '    filter_info->push_back(%s_GraphFilterInfo("%s", "%s", "%s", %s, %s));\n'
                 file.write(fmt % (self._module_name, idn.getName().replace('-', '_'),
                                   to_ident.getName().replace('-', '_'), link_meta.getName(),
-                                  linkattr))
+                                  is_ref, linkattr))
 
         file.write('}\n')
         # end
