@@ -816,9 +816,8 @@ class IFMapApiGenerator(object):
             for prop in ident.getProperties():
                 prop_name = prop.getName().replace('-', '_')
                 prop_type = prop.getElement().getType()
-                default = prop.getElement().getDefault()
-                mapped_default = self._type_genr._LangGenr.getMappedDefault(prop_type, default)
-                init_args = init_args + ", %s=%s" %(prop_name, mapped_default)
+                # client dont need to set default values, let it be None
+                init_args = init_args + ", %s=None" %(prop_name)
                 super_args = super_args + ", %s" %(prop_name)
 
             write(gen_file, "    def __init__(%s, *args, **kwargs):" %(init_args))
