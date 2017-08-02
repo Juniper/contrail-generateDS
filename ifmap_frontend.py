@@ -297,7 +297,8 @@ class IFMapApiGenerator(object):
                 name = prop.getName().replace('-', '_')
                 is_complex = prop.getCType() is not None
                 simple_type = prop.getElement().getSimpleType()
-                xsd_type = prop.getElement().getType().replace('xsd:', '')
+                prop_type = prop.getElement().getType()
+                xsd_type = prop_type.replace('xsd:', '')
                 restrictions = None
                 restriction_type = None
                 if simple_type:
@@ -312,6 +313,8 @@ class IFMapApiGenerator(object):
                 description = prop.getDescription(width=100)
                 presence = prop.getPresence()
                 operations = prop.getOperations()
+                default = prop.getElement().getDefault()
+                mapped_default = self._type_genr._LangGenr.getMappedDefault(prop_type, default)
                 prop_field_types.append("'%s': %s" %(name,
                                         {'is_complex': is_complex,
                                          'restrictions': restrictions,
@@ -320,7 +323,8 @@ class IFMapApiGenerator(object):
                                          'required': presence,
                                          'operations': operations,
                                          'simple_type': simple_type,
-                                         'xsd_type': xsd_type}))
+                                         'xsd_type': xsd_type,
+                                         'default' : eval(mapped_default)}))
             write(gen_file, '    prop_field_types = {\n        %s\n    }\n' %(
                   ',\n        '.join(prop_field_types)))
             write(gen_file, "")
@@ -807,19 +811,11 @@ class IFMapApiGenerator(object):
             write(gen_file, "    resource_uri_base = {}")
 
             # init args are name, parent_obj(if there is one), props
-            init_args = "self, name = None"
+            init_args = "self, name=None"
             super_args = "name"
             if parents:
-                init_args = init_args + ", parent_obj = None"
+                init_args = init_args + ", parent_obj=None"
                 super_args = super_args + ", parent_obj"
-
-            for prop in ident.getProperties():
-                prop_name = prop.getName().replace('-', '_')
-                prop_type = prop.getElement().getType()
-                default = prop.getElement().getDefault()
-                mapped_default = self._type_genr._LangGenr.getMappedDefault(prop_type, default)
-                init_args = init_args + ", %s=%s" %(prop_name, mapped_default)
-                super_args = super_args + ", %s" %(prop_name)
 
             write(gen_file, "    def __init__(%s, *args, **kwargs):" %(init_args))
             if parents:
@@ -829,9 +825,12 @@ class IFMapApiGenerator(object):
             write(gen_file, "")
             write(gen_file, "        self._server_conn = None")
             write(gen_file, "")
-            for prop in ident.getProperties():
+            for prop_index, prop in enumerate(ident.getProperties()):
                 prop_name = prop.getName().replace('-', '_')
-                write(gen_file, "        if %s is not None:" %(prop_name))
+                prop_type = prop.getElement().getType()
+                default = prop.getElement().getDefault()
+                mapped_default = self._type_genr._LangGenr.getMappedDefault(prop_type, default)
+                write(gen_file, "        if len(args) > %d or '%s' in kwargs:" % (prop_index, prop_name))
                 write(gen_file, "            pending_fields.append('%s')" %(prop_name))
 
             write(gen_file, "")
