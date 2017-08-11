@@ -2,6 +2,8 @@
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
 
+import os
+
 CppTypeMap = {
     'string': 'std::string',
     'xsd:string': 'std::string',
@@ -64,8 +66,7 @@ def CamelCase(input):
     return name
 
 def GetModuleName(file, suffix):
-    path_arr = file.name.split('/')
-    filename = path_arr[len(path_arr) - 1]
+    filename = os.path.basename(file.name)
     mod_name = filename[:filename.find(suffix)]
     mod_name = mod_name.replace('-', '_')
     mod_name = mod_name.replace('.', '_')
