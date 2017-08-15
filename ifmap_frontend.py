@@ -1809,7 +1809,7 @@ class IFMapApiGenerator(object):
                 tabs = tabs+4
                 write(self.gen_file, "%stry:" %(" "*tabs))
                 tabs = tabs+4
-                write(self.gen_file, "%sparent_obj = self.vnc_lib().%s_read(id=self.properties.get(self.%s))"
+                write(self.gen_file, "%sparent_obj = self.vnc_lib().%s_read(id=str(uuid.UUID(self.properties.get(self.%s))))"
                     %(" "*tabs, self._uncamelize(val['prop_name']), val['prop_name'].upper()))
                 tabs = tabs-4
                 write(self.gen_file, "%sexcept vnc_api.NoIdError:" %(" "*tabs))
