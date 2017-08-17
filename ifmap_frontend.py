@@ -103,7 +103,10 @@ class IFMapApiGenerator(object):
         write(gen_file, "try:")
         write(gen_file, "    from cfgm_common.exceptions import AmbiguousParentError")
         write(gen_file, "except ImportError:")
-        write(gen_file, "    pass")
+        write(gen_file, "    try:")
+        write(gen_file, "        from vnc_api.exceptions import AmbiguousParentError")
+        write(gen_file, "    except ImportError:")
+        write(gen_file, "        pass")
         write(gen_file, "")
 
         for ident in self._non_exclude_idents():
@@ -797,7 +800,10 @@ class IFMapApiGenerator(object):
         write(gen_file, "import copy")
         write(gen_file, "import vnc_api.gen.%s_common" %(gen_filename_pfx))
         write(gen_file, "import vnc_api.gen.%s_xsd" %(gen_filename_pfx))
-        write(gen_file, "from cfgm_common.exceptions import NoIdError")
+        write(gen_file, "try:")
+        write(gen_file, "    from cfgm_common.exceptions import NoIdError")
+        write(gen_file, "except ImportError:")
+        write(gen_file, "    from vnc_api.exceptions import NoIdError")
         write(gen_file, "")
 
         write(gen_file, "")
@@ -2110,7 +2116,10 @@ class IFMapApiGenerator(object):
         write(gen_file, "")
         write(gen_file, "import cfixture")
         write(gen_file, "from vnc_api import vnc_api")
-        write(gen_file, "from cfgm_common.exceptions import *")
+        write(gen_file, "try:")
+        write(gen_file, "    from cfgm_common.exceptions import *")
+        write(gen_file, "except ImportError:")
+        write(gen_file, "    from vnc_api.exceptions import *")
         write(gen_file, "")
         write(gen_file, "from generatedssuper import GeneratedsSuper")
         write(gen_file, "")
@@ -4100,3 +4109,4 @@ class IFMapApiGenerator(object):
         write(gen_file, "")
     # end _generate_docs_sphinx
 # end class IFMapApiGenerator
+
