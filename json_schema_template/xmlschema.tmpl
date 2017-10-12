@@ -1,0 +1,126 @@
+<!--
+ Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
+ -->
+<xsd:schema
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:ifmap="http://www.trustedcomputinggroup.org/2010/IFMAP/2"
+xmlns:meta="http://www.trustedcomputinggroup.org/2010/IFMAP-METADATA/2"
+targetNamespace="http://www.contrailsystems.com/2012/VNC-CONFIG/0">
+
+<xsd:element name="id-perms" type="IdPermsType"/>
+<!--#IFMAP-SEMANTICS-IDL Property('id-perms', 'all', 'system-only', 'R',
+                                  'System maintained identity, time  and permissions data.') -->
+
+<xsd:element name="perms2" type="PermType2"/>
+<!--#IFMAP-SEMANTICS-IDL Property('perms2', 'all', 'system-only', 'R',
+                                  'Permissions data for role based access.') -->
+
+<xsd:element name="annotations" type="KeyValuePairs"/>
+<!--#IFMAP-SEMANTICS-IDL
+     MapProperty('annotations',
+                 'all', 'key', 'optional', 'CRUD',
+                 'Dictionary of arbitrary (key, value) on a resource.') -->
+
+<xsd:element name="display-name" type="xsd:string"/>
+<!--#IFMAP-SEMANTICS-IDL Property('display-name', 'all', 'optional', 'CRUD',
+                                  'Display name user configured string(name) that can be updated any time. Used as openstack name.') -->
+
+
+<!-- Types -->
+{% set exists = {} %}
+
+{% for type, schema in definitions.items() %}
+{% if schema.type == "object" %}
+<xsd:complexType name="{{ type }}">
+    <xsd:all>
+        {% for propertyID, property in schema.properties.items() -%}
+        <xsd:element name="{{ propertyID | replace("_", "-")}}" type="{{ property.xmlType }}" 
+            description="{{ property.description }}" {% if property.type == "array" %}maxOccurs="unbounded"{% endif %}/>
+        {% endfor %}
+
+    </xsd:all>
+</xsd:complexType>
+{% else %}
+
+{%- if schema.enum %}
+<xsd:simpleType name="{{ type }}">
+    <xsd:restriction base="xsd:string">
+        {% for element in schema.enum %}
+        <xsd:enumeration value="{{ element | e }}"/>
+        {% endfor %}
+    </xsd:restriction>
+</xsd:simpleType>
+{% endif -%}
+
+{%- if schema.minimum or schema.maximum %}
+<xsd:simpleType name="{{ type }}">
+    <xsd:restriction base="xsd:integer">
+    {% if schema.minimum != None -%}
+    <xsd:minInclusive value="{{ schema.minimum }}"/>
+    {%- endif %}
+    {%- if schema.maximum != None %}
+    <xsd:maxInclusive value="{{ schema.maximum }}"/>
+    {% endif -%}
+    </xsd:restriction>
+</xsd:simpleType>
+{% endif -%}
+
+{% endif%}
+
+{% endfor %}
+
+{% for schema in schemas %}
+<xsd:element name="{{ schema.id  | replace("_", "-") }}" type="ifmap:IdentityType"/>
+
+{% for propertyID, property in schema.schema.properties.items() -%}
+{% if property.relation %}
+<xsd:element name="{{ schema.id  | replace("_", "-") }}-{{ property.relation | replace("_", "-") }}" {% if property.xmlType %} type="{{ property.xmlType }}" {% endif %} />
+<!--#IFMAP-SEMANTICS-IDL
+     Link('{{ schema.id  | replace("_", "-") }}-{{ property.relation | replace("_", "-") }}', 
+             '{{ schema.id  | replace("_", "-") }}',
+             '{{ property.relation | replace("_", "-") }}',
+             [{% for link in property.linkAttr %}'{{ link }}'{% if not loop.last %},{% endif %}{% endfor %}],
+             '{{ property.presense }}',
+             '{{ property.operation }}',
+             '{{ property.description | replace('\'', '\\\'') }}') -->
+
+{% else %}
+{%- if not exists.get(propertyID) -%}
+<xsd:element name="{{ propertyID | replace("_", "-") }}" type="{{ property.xmlType }}"/>
+<!--#IFMAP-SEMANTICS-IDL
+     Property('{{ propertyID | replace("_", "-")}}', '{{ schema.id }}', '{{ property.presense }}', '{{ property.operations }}',
+              '{{ property.description | replace('\'', '\\\'')}}') -->
+
+{% set _dummy = exists.update({propertyID: true}) -%}
+{%- if property.enum and not exists.get(property.xmlType) %}
+<xsd:simpleType name="{{ property.xmlType }}">
+    <xsd:restriction base="xsd:string">
+        {% for element in property.enum %}
+        <xsd:enumeration value="{{ element | e }}"/>
+        {% endfor %}
+
+    </xsd:restriction>
+</xsd:simpleType>
+{%- set _dummy = exists.update({property.xmlType: true}) -%}
+{% endif -%}
+
+{%- if (property.minimum or property.maximum ) and not exists.get(property.xmlType) %}
+<xsd:simpleType name="{{ property.xmlType }}">
+    <xsd:restriction base="xsd:integer">
+    {% if property.minimum -%}
+    <xsd:minInclusive value="{{ property.minimum }}"/>
+    {%- endif %}
+    {%- if property.maximum %}
+    <xsd:maxInclusive value="{{ property.maximum }}"/>
+    {% endif -%}
+    </xsd:restriction>
+</xsd:simpleType>
+{%- set _dummy = exists.update({property.xmlType: true}) -%}
+{% endif -%}
+
+{%- endif -%}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+</xsd:schema>
