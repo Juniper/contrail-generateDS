@@ -1,0 +1,80 @@
+<!--
+ Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
+ -->
+<xsd:schema
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:ifmap="http://www.trustedcomputinggroup.org/2010/IFMAP/2"
+xmlns:meta="http://www.trustedcomputinggroup.org/2010/IFMAP-METADATA/2"
+targetNamespace="http://www.contrailsystems.com/2012/VNC-CONFIG/0">
+
+<!-- Types -->
+{% set exists = {} %}
+
+{% for type, schema in definitions.items() %}
+<xsd:complexType name="{{ type }}">
+    <xsd:all>
+        {% for propertyID, property in schema.properties.items() -%}
+        <xsd:element name="{{ propertyID | replace("_", "-")}}" type="{{ property.xmlType }}" 
+            description="{{ property.description }}" {% if property.type == "array" %}maxOccurs="unbounded"{% endif %}/>
+        {% endfor %}
+
+    </xsd:all>
+</xsd:complexType>
+
+{% endfor %}
+
+{% for schema in schemas %}
+<xsd:element name="{{ schema.id  | replace("_", "-") }}" type="ifmap:IdentityType"/>
+
+{% for propertyID, property in schema.schema.properties.items() -%}
+{% if property.relation %}
+<xsd:element name="{{ schema.id  | replace("_", "-") }}-{{ property.relation | replace("_", "-") }}" {% if property.ifmapLinkType %} type="{{ property.ifmapLinkType }}" {% endif %} />
+<!--#IFMAP-SEMANTICS-IDL
+     Link('{{ schema.id  | replace("_", "-") }}-{{ property.relation | replace("_", "-") }}', 
+             '{{ schema.id  | replace("_", "-") }}',
+             '{{ property.relation | replace("_", "-") }}',
+             [{% for link in property.ifmapLinkAttr %}'{{ link }}'{% if not loop.last %},{% endif %}{% endfor %}],
+             '{{ property.ifmapPresense }}',
+             '{{ property.ifmapOperation }}',
+             '{{ property.description | replace('\'', '\\\'') }}') -->
+
+{% else %}
+{%- if not exists.get(propertyID) -%}
+<xsd:element name="{{ propertyID | replace("_", "-") }}" type="{{ property.xmlType }}"/>
+<!--#IFMAP-SEMANTICS-IDL
+     Property('{{ propertyID | replace("_", "-")}}', '{{ schema.id }}', '{{ property.ifmapPresense }}', '{{ property.ifmapOperations }}',
+              '{{ property.description | replace('\'', '\\\'')}}') -->
+
+{% set _dummy = exists.update({propertyID: true}) -%}
+{%- if property.enum and not exists.get(property.xmlType) %}
+<xsd:simpleType name="{{ property.xmlType }}">
+    <xsd:restriction base="xsd:string">
+        {% for element in property.enum %}
+        <xsd:enumeration value="{{ element | e }}"/>
+        {% endfor %}
+
+    </xsd:restriction>
+</xsd:simpleType>
+{%- set _dummy = exists.update({property.xmlType: true}) -%}
+{% endif -%}
+
+{%- if (property.minimum or property.maximum ) and not exists.get(property.xmlType) %}
+<xsd:simpleType name="{{ property.xmlType }}">
+    <xsd:restriction base="xsd:integer">
+    {% if property.minimum -%}
+    <xsd:minInclusive value="{{ property.minimum }}"/>
+    {%- endif %}
+    {%- if property.maximum %}
+    <xsd:maxInclusive value="{{ property.maximum }}"/>
+    {% endif -%}
+    </xsd:restriction>
+</xsd:simpleType>
+{%- set _dummy = exists.update({property.xmlType: true}) -%}
+{% endif -%}
+
+{%- endif -%}
+{% endif %}
+{% endfor %}
+{% endfor %}
+
+</xsd:schema>
