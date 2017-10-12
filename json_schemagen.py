@@ -63,14 +63,15 @@ class JsonSchemaGenerator(object):
             if propType == "object" :
                 if  self._json_type_map.get(xelementType):
                     propSchema = self._json_type_map[xelementType]
-                    subJson = propSchema
+                    # subJson = propSchema
+                    subJson = {"$ref": "#/definitions/" + xelementType}
                 else :
                     subJson = {"type" : propType}
             else :
                 subJson = {"type" : propType}
             subJson["required"] = presence
-            if simple_type:
-                 subJson = self.generateRestrictions (simple_type, subJson)
+            # if simple_type:
+            #     subJson = self.generateRestrictions (simple_type, subJson)
             try:
                 subJson["description"] = prop.getDescription()
             except ValueError as detail:
@@ -85,10 +86,17 @@ class JsonSchemaGenerator(object):
                 if  self._json_type_map.get(linktype):
                     toField = {"type":"array","items":{"type":"string"}}
                     stringField = {"type":"string"}
-                    refitems = {"type":"object", "properties":{"to":toField, "href":stringField,"uuid":stringField,"attr":{"type":"object","properties":self._json_type_map[linktype]["properties"]}}}
-                    propertiesJSON[link_to.getCIdentifierName()+"_refs"] = {"type":"array", "url" : "/" + link_to.getName() + "s","items":refitems}
+                    refitems = {"type":"object", "properties":{"to":toField, "href":stringField,"uuid":stringField,"attr":{"$ref": "#/definitions/" + linktype }}}
+                    propertiesJSON[link_to.getCIdentifierName()+"_refs"] = {
+                        "type":"array",
+                        "url" : "/" + link_to.getName() + "s",
+                        "relation": link_to.getName(),
+                        "items":refitems}
                 else :
-                    propertiesJSON[link_to.getCIdentifierName()+"_refs"] = {"type":"array", "url" : "/" + link_to.getName() + "s"}
+                    propertiesJSON[link_to.getCIdentifierName()+"_refs"] = {
+                        "type":"array",
+                        "relation": link_to.getCIdentifierName(),
+                        "url" : "/" + link_to.getName() + "s"}
 #       Then look for back links and create back_ref schema if required
 
         jsonSchema = {"type":"object", "properties":{ ident._name:{ "type": "object", "properties" : propertiesJSON}}}
@@ -130,7 +138,7 @@ class JsonSchemaGenerator(object):
             if(dataMember.xsd_object.description):
                 subJson['description'] = dataMember.xsd_object.description
             if(dataMember.xsd_object.required):
-                subJson['required'] = dataMember.xsd_object.required 
+                subJson['required'] = dataMember.xsd_object.required
             self._json_type_map[ctype.getName()]["properties"][dataMember.membername] = subJson
         return self._json_type_map[ctype.getName()]
 
@@ -167,11 +175,18 @@ class JsonSchemaGenerator(object):
             self._objectsList.append(ident._name)
             filename = os.path.join(dirname, ident._name + "-schema.json")
             self._GenerateJavascriptSchema(ident, filename)
+
         #Generate the file containing the list of all identfiers/objects
         objFileName = os.path.join(dirname, "objectList.json")
         objFile = self._parser.makeFile(objFileName)
         objJson = {"objects":self._objectsList}
         objFile.write(json.dumps(objJson,indent=4))
+
+        typeFileName = os.path.join(dirname, "types.json")
+        typeFile = self._parser.makeFile(typeFileName)
+        typeJson = {"definitions":self._json_type_map}
+        typeFile.write(json.dumps(typeJson,indent=4))
+
         print "Done!"
         print "Schemas generated under directory: " + dirname
 
