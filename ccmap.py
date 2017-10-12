@@ -11,6 +11,7 @@ from java_api import JavaApiGenerator
 from device_api import DeviceApiGenerator
 from golang_api import GoLangApiGenerator
 from json_schemagen import JsonSchemaGenerator
+from contrail_json_schemagen import ContrailJsonSchemaGenerator
 from copy import deepcopy
 
 
@@ -21,6 +22,7 @@ class IFMapGenerator(object):
         Step 3. Generate C++ decoder
         Step 4. Generate xsd corresponding to data structures.
     """
+
     def __init__(self, parser, genCategory):
         self._Parser = parser
         self._idl_parser = None
@@ -51,8 +53,10 @@ class IFMapGenerator(object):
                 to_ident = self._IdentifierLocate(to_name)
                 for from_ident in self._Identifiers.values():
                     ann_copy = deepcopy(annotation)
-                    ann_copy[0].name = '%s-%s' % (from_ident.getName(), to_ident.getName())
-                    meta = self.MetadataLocate(ann_copy[0].name, None, ann_copy)
+                    ann_copy[0].name = '%s-%s' % (from_ident.getName(),
+                                                  to_ident.getName())
+                    meta = self.MetadataLocate(
+                        ann_copy[0].name, None, ann_copy)
                     meta.SetSchemaElement(element)
                     from_ident.addLinkInfo(meta, to_ident, attrs)
                     to_ident.addBackLinkInfo(meta, from_ident, attrs)
@@ -98,7 +102,7 @@ class IFMapGenerator(object):
                 identifier.SetProperty(meta)
         else:
             (from_name, to_name, attrs) = \
-                        self._idl_parser.GetLinkInfo(element.getName())
+                self._idl_parser.GetLinkInfo(element.getName())
             from_ident = self._IdentifierLocate(from_name)
             to_ident = self._IdentifierLocate(to_name)
             from_ident.addLinkInfo(meta, to_ident, attrs)
@@ -128,8 +132,8 @@ class IFMapGenerator(object):
                 typename = None
 
         meta = IFMapMetadata.Create(name,
-                self._idl_parser.IsProperty(annotation),
-                annotation, typename)
+                                    self._idl_parser.IsProperty(annotation),
+                                    annotation, typename)
         self._Metadata[name] = meta
         return meta
 
@@ -156,7 +160,7 @@ class IFMapGenerator(object):
         filename = self._Parser.outFilename + '_agent.cc'
         clntfile = self._Parser.makeFile(filename)
         classgen.GenerateAgent(clntfile, hfilename,
-                                self._Identifiers, self._Metadata)
+                               self._Identifiers, self._Metadata)
 
     def _GenerateBackendParsers(self):
         hfilename = self._Parser.outFilename + '_types.h'
@@ -183,7 +187,7 @@ class IFMapGenerator(object):
 
     def _GenerateDeviceApi(self, xsd_root):
         apigen = DeviceApiGenerator(self._Parser, xsd_root,
-                                  self._Identifiers, self._Metadata)
+                                    self._Identifiers, self._Metadata)
         apigen.Generate(self._Parser.outFilename)
 
     def _GenerateGoLangApi(self, xsd_root):
@@ -193,7 +197,12 @@ class IFMapGenerator(object):
 
     def _GenerateJsonSchema(self, xsd_root):
         apigen = JsonSchemaGenerator(self._Parser, self._cTypesDict,
-                                  self._Identifiers, self._Metadata)
+                                     self._Identifiers, self._Metadata)
+        apigen.Generate(self._Parser.outFilename)
+
+    def _GenerateContrailJsonSchema(self, xsd_root):
+        apigen = ContrailJsonSchemaGenerator(self._Parser, self._cTypesDict,
+                                             self._Identifiers, self._Metadata)
         apigen.Generate(self._Parser.outFilename)
 
     def setLanguage(self, lang):
@@ -216,5 +225,7 @@ class IFMapGenerator(object):
             self._GenerateDeviceApi(root)
         elif self._genCategory == 'golang-api':
             self._GenerateGoLangApi(root)
+        elif self._genCategory == 'contrail-json-schema':
+            self._GenerateContrailJsonSchema(root)
         elif self._genCategory == 'json-schema':
             self._GenerateJsonSchema(root)
