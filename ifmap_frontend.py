@@ -1400,7 +1400,7 @@ class IFMapApiGenerator(object):
                               prop_names_uc_list):
         for key,val in enumerate(prop_list):
             prop_long_name = self._get_prop_long_name(val)
-            prop_names_list.append("'"+prop_long_name.lower()+"'")
+            prop_names_list.append("'"+prop_long_name+"'")
             prop_names_uc_list.append(prop_long_name.upper())
             if val['prop_list']:
                 self._make_heat_properties(val['prop_list'], prop_names_list,
@@ -1965,7 +1965,7 @@ class IFMapApiGenerator(object):
 
     def _uncamelize(self, name):
         s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+        return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1)
 
     def _generate_heat_resources(self, gen_filepath_pfx, gen_filename_pfx):
         # heat uses the generated code to build its resources
