@@ -224,8 +224,10 @@ func (obj *%(typecamel)s) Add%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
         for field in fields:
             file.write("\n\t%s_%s" % (ident.getCIdentifierName(), field))
             if first:
-                file.write(" uint64 = 1 << iota")
+                file.write(" = iota")
                 first = False
+
+        file.write("\n\t%s_max_" % ident.getCIdentifierName())
         file.write("\n)\n")
     # end _GenerateConstFlags
 
@@ -268,11 +270,11 @@ type %(camel)s struct {
                    link_from.getCIdentifierName()
             file.write(decl)
 
-        decl = """        valid uint64
-        modified uint64
+        decl = """        valid [%(typeid)s_max_] bool
+        modified [%(typeid)s_max_] bool
         baseMap map[string]contrail.ReferenceList
 }
-"""
+""" % {'typeid': ident.getCIdentifierName()}
         file.write(decl)
     # end _GenerateObjectStruct
 
@@ -329,7 +331,7 @@ func (obj *%(camel)s) hasReferenceBase(name string) bool {
 }
 
 func (obj *%(camel)s) UpdateDone() {
-        obj.modified = 0
+        for i := range obj.modified { obj.modified[i] = false }
         obj.baseMap = nil
 }
 
@@ -351,7 +353,7 @@ func (obj *%(typecamel)s) Get%(fieldcamel)s() %(fieldtype)s {
 
 func (obj *%(typecamel)s) Set%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
         obj.%(fieldid)s = %(ptr)svalue
-        obj.modified |= %(typeid)s_%(fieldid)s
+        obj.modified[%(typeid)s_%(fieldid)s] = true
 }
 """ \
             % {'typecamel': ident.getCppName(),
@@ -401,7 +403,7 @@ func (obj *%(typecamel)s) Set%(fieldcamel)s(value %(ptr)s%(fieldtype)s) {
         decl = """
 func (obj *%(typecamel)s) read%(fieldcamel)s%(methodsuffix)s() error {
         if !obj.IsTransient() &&
-                (obj.valid & %(typeid)s_%(fieldid)s%(suffix)s == 0) {
+                !obj.valid[%(typeid)s_%(fieldid)s%(suffix)s] {
                 err := obj.GetField(obj, "%(fieldid)s%(suffix)s")
                 if err != nil {
                         return err
@@ -463,14 +465,14 @@ func (obj *%(typecamel)s) Add%(fieldcamel)s(
                 return err
         }
 
-        if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
+        if !obj.modified[%(typeid)s_%(fieldid)s_refs] {
                 obj.storeReferenceBase("%(fieldname)s", obj.%(fieldid)s_refs)
         }
 
         ref := contrail.Reference {
                 rhs.GetFQName(), rhs.GetUuid(), rhs.GetHref(), %(data)s}
         obj.%(fieldid)s_refs = append(obj.%(fieldid)s_refs, ref)
-        obj.modified |= %(typeid)s_%(fieldid)s_refs
+        obj.modified[%(typeid)s_%(fieldid)s_refs] = true
         return nil
 }
 
@@ -480,7 +482,7 @@ func (obj *%(typecamel)s) Delete%(fieldcamel)s(uuid string) error {
                 return err
         }
 
-        if obj.modified & %(typeid)s_%(fieldid)s_refs == 0 {
+        if !obj.modified[%(typeid)s_%(fieldid)s_refs] {
                 obj.storeReferenceBase("%(fieldname)s", obj.%(fieldid)s_refs)
         }
 
@@ -492,18 +494,18 @@ func (obj *%(typecamel)s) Delete%(fieldcamel)s(uuid string) error {
                         break
                 }
         }
-        obj.modified |= %(typeid)s_%(fieldid)s_refs
+        obj.modified[%(typeid)s_%(fieldid)s_refs] = true
         return nil
 }
 
 func (obj *%(typecamel)s) Clear%(fieldcamel)s() {
-        if (obj.valid & %(typeid)s_%(fieldid)s_refs != 0) &&
-           (obj.modified & %(typeid)s_%(fieldid)s_refs == 0) {
+        if obj.valid[%(typeid)s_%(fieldid)s_refs] &&
+           !obj.modified[%(typeid)s_%(fieldid)s_refs] {
                 obj.storeReferenceBase("%(fieldname)s", obj.%(fieldid)s_refs)
         }
         obj.%(fieldid)s_refs = make([]contrail.Reference, 0)
-        obj.valid |= %(typeid)s_%(fieldid)s_refs
-        obj.modified |= %(typeid)s_%(fieldid)s_refs
+        obj.valid[%(typeid)s_%(fieldid)s_refs] = true
+        obj.modified[%(typeid)s_%(fieldid)s_refs] = true
 }
 
 func (obj *%(typecamel)s) Set%(fieldcamel)sList(
@@ -546,7 +548,7 @@ func (obj *%(camel)s) MarshalJSON() ([]byte, error) {
 
         for prop in ident.getProperties():
             decl = """
-        if obj.modified & %(typeid)s_%(fieldid)s != 0 {
+        if obj.modified[%(typeid)s_%(fieldid)s] {
                 var value json.RawMessage
                 value, err := json.Marshal(&obj.%(fieldid)s)
                 if err != nil {
@@ -630,7 +632,7 @@ func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
                 case "%(field)s":
                         err = json.Unmarshal(value, &obj.%(field)s)
                         if err == nil {
-                                obj.valid |= %(typeid)s_%(field)s
+                                obj.valid[%(typeid)s_%(field)s] = true
                         }
                         break""" % {'typeid': ident.getCIdentifierName(),
                                     'field': field}
@@ -650,7 +652,7 @@ func (obj *%(camel)s) UnmarshalJSON(body []byte) error {
                         if err != nil {
                             break
                         }
-                        obj.valid |= %(typeid)s_%(field)s
+                        obj.valid[%(typeid)s_%(field)s] = true
                         obj.%(field)s = make(contrail.ReferenceList, 0)
                         for _, element := range array {
                                 ref := contrail.Reference {
@@ -694,7 +696,7 @@ func (obj *%(camel)s) UpdateObject() ([]byte, error) {
 
         for prop in ident.getProperties():
             decl = """
-        if obj.modified & %(typeid)s_%(fieldid)s != 0 {
+        if obj.modified[%(typeid)s_%(fieldid)s] {
                 var value json.RawMessage
                 value, err := json.Marshal(&obj.%(fieldid)s)
                 if err != nil {
@@ -712,7 +714,7 @@ func (obj *%(camel)s) UpdateObject() ([]byte, error) {
                 continue
             link_to = ident.getLinkTo(link_info)
             decl = """
-        if obj.modified & %(typeid)s_%(fieldid)s_refs != 0 {
+        if obj.modified[%(typeid)s_%(fieldid)s_refs] {
                 if len(obj.%(fieldid)s_refs) == 0 {
                         var value json.RawMessage
                         value, err := json.Marshal(
@@ -760,7 +762,7 @@ func (obj *%(camel)s) UpdateReferences() error {
                 continue
             link_to = ident.getLinkTo(link_info)
             decl = """
-        if (obj.modified & %(typeid)s_%(fieldid)s_refs != 0) &&
+        if obj.modified[%(typeid)s_%(fieldid)s_refs] &&
            len(obj.%(fieldid)s_refs) > 0 &&
            obj.hasReferenceBase("%(fieldname)s") {
                 err := obj.UpdateReference(
