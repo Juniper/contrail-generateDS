@@ -1811,7 +1811,7 @@ class IFMapApiGenerator(object):
             for key,val in enumerate(self.parent_list):
                 if val['prop_name'].upper() == "PROJECT":
                     parent_is_project = True
-                write(self.gen_file, "%sif parent_obj is None and self.properties.get(self.%s):" %(" "*tabs, val['prop_name'].upper()))
+                write(self.gen_file, "%sif parent_obj is None and self.properties.get(self.%s) and self.properties.get(self.%s) != 'config-root':" %(" "*tabs, val['prop_name'].upper(), val['prop_name'].upper()))
                 tabs = tabs+4
                 write(self.gen_file, "%stry:" %(" "*tabs))
                 tabs = tabs+4
@@ -1831,13 +1831,13 @@ class IFMapApiGenerator(object):
             write(self.gen_file, "")
             tabs = 8
             if parent_is_project:
-                write(self.gen_file, "%sif parent_obj is None:" %(" "*tabs))
+                write(self.gen_file, "%sif parent_obj is None and self.properties.get(self.%s) != 'config-root':" %(" "*tabs, val['prop_name'].upper()))
                 tabs = tabs+4
                 write(self.gen_file, "%stenant_id = self.stack.context.tenant_id" %(" "*tabs))
                 write(self.gen_file, "%sparent_obj = self.vnc_lib().project_read(id=str(uuid.UUID(tenant_id)))" %(" "*tabs))
                 tabs = tabs-4
                 write(self.gen_file, "")
-            write(self.gen_file, "%sif parent_obj is None:" %(" "*tabs))
+            write(self.gen_file, "%sif parent_obj is None and self.properties.get(self.%s) != 'config-root':" %(" "*tabs, val['prop_name'].upper()))
             write(self.gen_file, "%s    raise Exception('Error: parent is not specified in template!')" %(" "*tabs))
             write(self.gen_file, "")
             write(self.gen_file, "        obj_0 = vnc_api.%s(name=self.properties[self.NAME],"
