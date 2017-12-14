@@ -1039,6 +1039,9 @@ if __name__ == '__main__':
             self.NonNegativeIntegerType : 'int',
             self.NonPositiveIntegerType : 'int',
             self.PositiveIntegerType : 'int',
+            self.DateTimeType.lower() : 'str',
+            self.TimeType.lower() : 'str',
+            self.DateType.lower() : 'str'
         }
         self.SchemaToPythonTypeMap.update(dict((x, 'int') for x in self.IntegerType))
         self.SchemaToPythonTypeMap.update(dict((x.lower(), 'int') for x in self.IntegerType))
