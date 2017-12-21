@@ -446,12 +446,20 @@ public void set%(caml)s(%(type)s %(field)s) {
         %(field)s_refs = new ArrayList<ObjectReference<ApiPropertyBase>>();
         %(field)s_refs.add(new ObjectReference<ApiPropertyBase>(obj.getQualifiedName(), null));
     }
+    
     public void add%(caml)s(%(linktype)s obj) {
         if (%(field)s_refs == null) {
             %(field)s_refs = new ArrayList<ObjectReference<ApiPropertyBase>>();
         }
         %(field)s_refs.add(new ObjectReference<ApiPropertyBase>(obj.getQualifiedName(), null));
     }
+    
+    public void remove%(caml)s(%(linktype)s obj) {
+        if (%(field)s_refs != null) {
+            %(field)s_refs.remove(new ObjectReference<ApiPropertyBase>(obj.getQualifiedName(), null));
+        }
+    }
+
     public void clear%(caml)s() {
         if (%(field)s_refs != null) {
             %(field)s_refs.clear();
