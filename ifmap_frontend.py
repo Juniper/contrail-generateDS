@@ -462,8 +462,8 @@ class IFMapApiGenerator(object):
                     else:
                         write(gen_file, "            # if obj constructed from within server, ignore if parent not specified")
                         write(gen_file, "            if not kwargs['parent_type']:")
-                        parent_fq_names = [parent_ident.getDefaultFQName() for (parent_ident, meta, _) in parents]
-                        write(gen_file, "                raise AmbiguousParentError(\"%s\")" %(parent_fq_names))
+                        parent_types = [parent_ident.getName() for parent_ident, _, _ in parents]
+                        write(gen_file, "                raise AmbiguousParentError(\"%s\")" % parent_types)
                 else: # only one possible parent
                     (parent_ident, meta, _) = parents[0]
                     if parent_ident.getName() == _BASE_PARENT:
@@ -2304,9 +2304,9 @@ class IFMapApiGenerator(object):
                     write(gen_file, "        self._obj = vnc_api.%s(self._name)" %(class_name))
                 else:
                     if len(parents) > 1:
-                        parent_fq_names = [parent_ident.getDefaultFQName() for (parent_ident, meta, _) in parents]
+                        parent_types = [parent_ident.getName() for parent_ident, _, _ in parents]
                         write(gen_file, "        if not self._parent_fixt:")
-                        write(gen_file, "            raise AmbiguousParentError(\"%s\")" %(parent_fq_names))
+                        write(gen_file, "            raise AmbiguousParentError(\"%s\")" % parent_types)
                     else: # single parent in schema
                         (parent_ident, meta, _) = parents[0]
                         parent_name = parent_ident.getName()
