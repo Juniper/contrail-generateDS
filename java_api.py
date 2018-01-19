@@ -17,12 +17,8 @@ class JavaApiGenerator(object):
     def __init__(self, parser, type_map, identifiers, metadata):
         self._parser = parser
         self._type_map = type_map
-        self._top_level_map = {
-            'SubnetType': self._type_map['SubnetType']
-            }
         self._identifier_map = identifiers
         self._metadata_map = metadata
-        self._type_count = {}
 
     def _FileWrite(self, file, multiline, indent_level):
         lines = multiline.split('\n')
@@ -47,37 +43,11 @@ import net.juniper.contrail.api.ApiPropertyBase;
 
 """
         file.write(header)
-        self._GenerateType(ctype, file, 0, {})
+        self._GenerateType(ctype, file)
 
-    def _GenerateType(self, ctype, file, indent_level, inner_map):
-
-        if inner_map.get(ctype.getName()):
-            return
-        inner_map[ctype.getName()] = ctype
-
-        if indent_level and self._top_level_map.get(ctype.getName()):
-            return
-
-        count = self._type_count.get(ctype)
-        if count:
-            self._type_count[ctype] = count + 1
-        else:
-            self._type_count[ctype] = 1
-
-        if indent_level:
-            file.write(' ' * indent_level)
-
-        file.write('public ')
-        if indent_level:
-            file.write('static ')
-        file.write('class %s ' % ctype.getName())
-        if indent_level == 0:
-            file.write('extends ApiPropertyBase ')
-        file.write('{\n')
-        indent_level += 4
-
-        for dep in ctype.getDependentTypes():
-            self._GenerateType(dep, file, indent_level, inner_map)
+    def _GenerateType(self, ctype, file):
+        file.write('public class %s extends ApiPropertyBase {\n' % ctype.getName())
+        indent_level = 4
 
         for member in ctype.getDataMembers():
             file.write(' ' * indent_level)
@@ -161,33 +131,16 @@ import net.juniper.contrail.api.ApiPropertyBase;
 
             indent_level -= 4
             file.write(' ' * indent_level)
-            file.write(' }\n')
+            file.write('}\n')
 
-
-        self._GenerateTypePropertyAccessors(file, ctype, indent_level);
+        self._GenerateTypePropertyAccessors(file, ctype, indent_level)
         self._GenerateTypePropertyConvinience(file, ctype, indent_level)
 
-        indent_level -= 4
-        if indent_level > 0:
-            file.write(' ' * indent_level)
         file.write('}\n')
     # _GenerateType
 
-    def _InnerPropertyArgument(self, inner, member):
-        decl = ''
-        if member.isComplex and not self._top_level_map.get(member.jtypename):
-            if member.jtypename.startswith('List'):
-                decl = 'List<'
-                decl += inner.getName() + '.'
-                decl += member.sequenceType + '>'
-                decl += ' ' + member.membername
-                return decl
-            else:
-                decl = inner.getName() + '.'
-
-        decl += member.jtypename
-        decl += ' ' + member.membername
-        return decl
+    def _InnerPropertyArgument(self, member):
+        return member.jtypename + ' ' + member.membername
 
     def _GenerateTypePropertyAccessors(self, file, ctype, indent_level):
         for prop in ctype.getDataMembers():
@@ -254,7 +207,7 @@ public void add%(caml)s(%(argdecl)s) {
 }
 """ % {'caml': methodname, 'typename': innertype, 'field': member.membername,
        'argdecl': ', '.join(
-                        map(lambda x: self._InnerPropertyArgument(inner, x),
+                        map(lambda x: self._InnerPropertyArgument(x),
                             inner.getDataMembers())),
        'arglist': ', '.join(
                         map(lambda x: x.membername, inner.getDataMembers()))
@@ -287,10 +240,6 @@ public class %(cls)s extends ApiObjectBase {
         for prop in ident.getProperties():
             decl = '    private %s %s;\n' % (prop.getJavaTypename(), prop.getCIdentifierName())
             file.write(decl)
-            ctype = prop.getCType()
-            if ctype:
-                ctypename = ctype.getName()
-                self._top_level_map[ctypename] = self._type_map[ctypename]
 
         for link_info in ident.getLinksInfo():
             link_type = getLinkInfoType(ident, link_info)
@@ -408,7 +357,6 @@ public void set%(caml)s(%(type)s %(field)s) {
         xlink = ident.getLink(link_info)
         if xlink.getXsdType():
             attrtype = xlink.getCType().getName()
-            self._top_level_map[attrtype] = self._type_map[attrtype]
 
             setters = """
     public void set%(caml)s(%(linktype)s obj, %(datatype)s data) {
@@ -495,6 +443,11 @@ public void set%(caml)s(%(type)s %(field)s) {
 
     # _GenerateBackRefAccessors
 
+    def _PopulatePropertyTypes(self, ctype, type_set):
+        type_set.add(ctype)
+        for dep in ctype.getDependentTypes():
+            self._PopulatePropertyTypes(dep, type_set)
+
     def Generate(self, dirname):
         if not os.path.exists(dirname):
             os.makedirs(dirname)
@@ -506,10 +459,10 @@ public void set%(caml)s(%(type)s %(field)s) {
             filename = os.path.join(dirname, ident.getCppName() + ".java")
             self._GenerateClass(ident, filename)
 
-        for ctype in self._top_level_map.values():
+        property_types = set([])
+        for ctype in self._type_map.values():
+            self._PopulatePropertyTypes(ctype, property_types)
+
+        for ctype in property_types:
             filename = os.path.join(dirname, ctype.getName() + ".java")
             self._GenerateTypeClass(ctype, filename)
-
-        for cname, count in self._type_count.items():
-            if count > 1:
-                print 'type %s count: %d' % (cname.getName(), count)
