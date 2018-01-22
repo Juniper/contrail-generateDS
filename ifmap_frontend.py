@@ -1110,7 +1110,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "    def del_%s(self, *args, **kwargs):" %(to_name))
                 write(gen_file, "        if '%s_refs' not in self._pending_ref_updates:" %(to_name))
                 write(gen_file, "            self._pending_ref_updates.add('%s_refs')" %(to_name))
-                write(gen_file, "            self._original_%s_refs = (self.get_%s_refs() or [])[:]" %(to_name, to_name))
+                write(gen_file, "            self._original_%s_refs = copy.deepcopy(self.get_%s_refs() or [])" %(to_name, to_name))
                 write(gen_file, "        super(%s, self).del_%s(*args, **kwargs)" %(class_name, to_name))
                 write(gen_file, "    # end del_%s" %(to_name))
                 write(gen_file, "")
