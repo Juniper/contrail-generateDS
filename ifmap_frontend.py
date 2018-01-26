@@ -364,11 +364,10 @@ class IFMapApiGenerator(object):
                     %(child_field, child_type, is_derived))
             write(gen_file, "")
             if parents:
-                p_class_names = [p_ident.getName() for p_ident, _, _ in parents
-                                 if p_ident.getName() != 'config-root']
+                p_class_names = [p_ident.getName() for p_ident, _, _ in parents]
                 write(gen_file, "    parent_types = %s" %(p_class_names))
             else:
-                write(gen_file, "    parent_types = []")
+                write(gen_file, "    parent_types = ['config-root']")
             write(gen_file, "")
             prop_field_meta_vals = [('%s' %(prop.getName().replace('-', '_')),
                                      '%s' %(prop.getName())) for prop in ident.getProperties()]
