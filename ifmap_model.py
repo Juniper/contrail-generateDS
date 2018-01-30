@@ -119,8 +119,12 @@ class IFMapIdentifier(IFMapObject):
                 return ['default-%s' %(self._name)]
 
         if not parent_type and len(self._parents) > 1:
+            # use config-root if it is one of the possible parents
             parent_names = [p['ident'].getName() for p in self._parents]
-            raise AmbiguousParentType('Ambiguous parents %s' %(parent_names))
+            if "config-root" in parent_names:
+                parent_type = "config-root"
+            else:
+                raise AmbiguousParentType('Ambiguous parents %s' %(parent_names))
 
         if parent_type:
             parent_ident = None
