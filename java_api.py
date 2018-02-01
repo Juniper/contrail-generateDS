@@ -287,37 +287,34 @@ public class %(cls)s extends ApiObjectBase {
     # _GenerateTypename
 
     def _GenerateDefaultParent(self, file, ident):
-        fq_name = ''
+        parents_enumerated = ''
         parents = ident.getParents()
         if parents:
-            (parent, meta, _) = parents[0]
-            quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
-            fq_name = ', '.join(quoted_list)
+            parent_types = map(lambda x: x[0], parents)
+            parents_in_quotes = map(lambda x: '"%s"' % x.getName(), parent_types)
+            parents_enumerated = ', '.join(parents_in_quotes)
 
         decl = """
     @Override
     public List<String> getDefaultParent() {
         return ImmutableList.of(%s);
     }
-""" % fq_name
+""" % parents_enumerated
         file.write(decl)
 
     # _GenerateDefaultParent
 
     def _GenerateDefaultParentType(self, file, ident):
-        def quote(s):
-            return '"' + s + '"'
-
         typename = 'null';
         parents = ident.getParents()
         if parents:
             (parent, meta, _) = parents[0]
-            typename = quote(parent.getName())
+            typename = parent.getName()
 
         decl = """
     @Override
     public String getDefaultParentType() {
-        return %s;
+        return "%s";
     }
 """ % typename
         file.write(decl)
