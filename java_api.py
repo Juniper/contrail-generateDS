@@ -12,6 +12,9 @@ def getLinkInfoType(ident, link_info):
     if xlink.getXsdType():
         return xlink.getCType().getName()
     return 'ApiPropertyBase'
+
+def quoted(s):
+    return '"%s"' % s
     
 class JavaApiGenerator(object):
     def __init__(self, parser, type_map, identifiers, metadata):
@@ -115,7 +118,7 @@ import net.juniper.contrail.api.ApiPropertyBase;
                 elif member.jtypename is 'String':
                     default = 'null'
                     if member.default:
-                        default = '\"' + member.default + '\"'
+                        default = quoted(member.default)
                     file.write(default)
                 elif member.jtypename in ['Integer', 'Long']:
                     default = 'null'
@@ -287,32 +290,29 @@ public class %(cls)s extends ApiObjectBase {
     # _GenerateTypename
 
     def _GenerateDefaultParent(self, file, ident):
-        fq_name = ''
+        parents_enumerated = ''
         parents = ident.getParents()
         if parents:
-            (parent, meta, _) = parents[0]
-            quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
-            fq_name = ', '.join(quoted_list)
+            parent_types = map(lambda x: x[0], parents)
+            parents_in_quotes = map(lambda x: quoted(x.getName()), parent_types)
+            parents_enumerated = ', '.join(parents_in_quotes)
 
         decl = """
     @Override
     public List<String> getDefaultParent() {
         return ImmutableList.of(%s);
     }
-""" % fq_name
+""" % parents_enumerated
         file.write(decl)
 
     # _GenerateDefaultParent
 
     def _GenerateDefaultParentType(self, file, ident):
-        def quote(s):
-            return '"' + s + '"'
-
         typename = 'null';
         parents = ident.getParents()
         if parents:
             (parent, meta, _) = parents[0]
-            typename = quote(parent.getName())
+            typename = quoted(parent.getName())
 
         decl = """
     @Override
