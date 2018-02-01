@@ -111,12 +111,24 @@ class IFMapIdentifier(IFMapObject):
     def getBackReferences(self):
         return self._back_references
 
-    def getDefaultFQName(self, parent_type = None):
+    def getDefaultName(self):
+        return 'default-%s' % self._name
+
+    def getPrimaryParent(self):
+        primary_parent = None
+        if self._parents:
+            primary_parent = self._parents[0]['ident'].getName()
+        return primary_parent
+
+    def getDefaultFQName(self, parent_type = None, disambiguate = False):
         if not self._parents:
             if self._name == 'config-root':
                 return []
             else:
-                return ['default-%s' %(self._name)]
+                return [self.getDefaultName()]
+
+        if not parent_type and disambiguate:
+            parent_type = self.getPrimaryParent()
 
         if not parent_type and len(self._parents) > 1:
             parent_names = [p['ident'].getName() for p in self._parents]
@@ -131,8 +143,8 @@ class IFMapIdentifier(IFMapObject):
         else:
             parent_ident = self._parents[0]['ident']
 
-        fq_name = parent_ident.getDefaultFQName()
-        fq_name.append('default-%s' %(self._name))
+        fq_name = parent_ident.getDefaultFQName(disambiguate = disambiguate)
+        fq_name.append(self.getDefaultName())
         return fq_name
 
     def isDerived(self, parent_ident):

@@ -6,13 +6,17 @@ import os
 import re
 
 from ifmap_global import CamelCase
+from ifmap_model import AmbiguousParentType
 
 def getLinkInfoType(ident, link_info):
     xlink = ident.getLink(link_info)
     if xlink.getXsdType():
         return xlink.getCType().getName()
     return 'ApiPropertyBase'
-    
+
+def quoted(s):
+    return '"%s"' % s
+
 class JavaApiGenerator(object):
     def __init__(self, parser, type_map, identifiers, metadata):
         self._parser = parser
@@ -115,7 +119,7 @@ import net.juniper.contrail.api.ApiPropertyBase;
                 elif member.jtypename is 'String':
                     default = 'null'
                     if member.default:
-                        default = '\"' + member.default + '\"'
+                        default = quoted(member.default)
                     file.write(default)
                 elif member.jtypename in ['Integer', 'Long']:
                     default = 'null'
@@ -261,6 +265,8 @@ public class %(cls)s extends ApiObjectBase {
         self._GenerateTypename(file, ident)
         self._GenerateDefaultParent(file, ident)
         self._GenerateDefaultParentType(file, ident)
+        self._GenerateAmbiguousParentInfo(file, ident)
+        self._GenerateParentSetters(file, ident)
 
         self._GeneratePropertyAccessors(file, ident, 4)
 
@@ -291,9 +297,8 @@ public class %(cls)s extends ApiObjectBase {
         parents = ident.getParents()
         if parents:
             (parent, meta, _) = parents[0]
-            quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
+            quoted_list = map(lambda x: quoted(x), parent.getDefaultFQName(disambiguate = True))
             fq_name = ', '.join(quoted_list)
-
         decl = """
     @Override
     public List<String> getDefaultParent() {
@@ -305,14 +310,11 @@ public class %(cls)s extends ApiObjectBase {
     # _GenerateDefaultParent
 
     def _GenerateDefaultParentType(self, file, ident):
-        def quote(s):
-            return '"' + s + '"'
-
         typename = 'null';
         parents = ident.getParents()
         if parents:
             (parent, meta, _) = parents[0]
-            typename = quote(parent.getName())
+            typename = quoted(parent.getName())
 
         decl = """
     @Override
@@ -321,6 +323,39 @@ public class %(cls)s extends ApiObjectBase {
     }
 """ % typename
         file.write(decl)
+
+    # _GenerateAmbiguousParentInfo
+
+    def _GenerateAmbiguousParentInfo(self, file, ident):
+        ambiguous = 'false';
+        try:
+            ident.getDefaultFQName()
+        except AmbiguousParentType as e:
+            ambiguous = 'true';
+
+        decl = """
+    @Override
+    public boolean hasAmbiguousParents() {
+        return %s;
+    }
+""" % ambiguous
+        file.write(decl)
+
+    # _GenerateDefaultParent
+
+    def _GenerateParentSetters(self, file, ident):
+        parents = ident.getParents()
+        if parents:
+            for parent_info in parents:
+                (parent, _, _) = parent_info
+                typename = parent.getCppName()
+    
+                decl = """
+    public void setParent(%s parent) {
+        super.setParent(parent);
+    }
+""" % typename
+                file.write(decl)
 
     # _GenerateDefaultParentType
 
