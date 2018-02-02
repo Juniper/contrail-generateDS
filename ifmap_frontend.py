@@ -655,7 +655,7 @@ class IFMapApiGenerator(object):
                 del_one_args = "self, ref_obj"
                 set_list_args = "self, ref_obj_list"
                 if link.getXsdType(): # link with attr
-                   set_one_args = set_one_args + ", ref_data"
+                   set_one_args = set_one_args + ", ref_data=None"
                    add_one_args = set_one_args
                    set_list_args = set_list_args + ", ref_data_list"
 
@@ -699,7 +699,8 @@ class IFMapApiGenerator(object):
                 write(gen_file, "        for ref in refs:")
                 write(gen_file, "            if ref['to'] == ref_obj.get_fq_name():")
                 if link.getXsdType(): # link with attr
-                    write(gen_file, "                ref['attr'] = ref_data")
+                    write(gen_file, "                if ref_data:")
+                    write(gen_file, "                    ref['attr'] = ref_data")
                 write(gen_file, "                return")
                 write(gen_file, "")
                 write(gen_file, "        # ref didn't exist before")
