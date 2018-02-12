@@ -650,22 +650,19 @@ class IFMapApiGenerator(object):
                 is_ref = ident.isLinkRef(link_info)
                 if not is_ref:
                     continue
-                set_one_args = "self, ref_obj"
-                add_one_args = "self, ref_obj"
+                set_one_args = "self, ref_obj, ref_data=None"
+                add_one_args = set_one_args
                 del_one_args = "self, ref_obj"
                 set_list_args = "self, ref_obj_list"
+                set_one_val_wa = "[{'to':ref_obj.get_fq_name(), 'attr':ref_data}]"
+                add_one_val_wa = "{'to':ref_obj.get_fq_name(), 'attr':ref_data}"
+                set_one_val = "[{'to':ref_obj.get_fq_name()}]"
+                add_one_val = "{'to':ref_obj.get_fq_name()}"
                 if link.getXsdType(): # link with attr
-                   set_one_args = set_one_args + ", ref_data=None"
-                   add_one_args = set_one_args
                    set_list_args = set_list_args + ", ref_data_list"
-
-                   set_one_val = "[{'to':ref_obj.get_fq_name(), 'attr':ref_data}]"
-                   add_one_val = "{'to':ref_obj.get_fq_name(), 'attr':ref_data}"
                    set_list_val = "[{'to':ref_obj_list[i], 'attr':ref_data_list[i]} for i in range(len(ref_obj_list))]"
                 else: # link with no attr
                    # TODO always put attr with None?
-                   set_one_val = "[{'to':ref_obj.get_fq_name()}]"
-                   add_one_val = "{'to':ref_obj.get_fq_name()}"
                    set_list_val = "ref_obj_list"
                 write(gen_file, "    def set_%s(%s):" %(to_name, set_one_args))
                 write(gen_file, '        """Set %s for %s.' %(to_ident.getName(), ident_name))
@@ -675,7 +672,7 @@ class IFMapApiGenerator(object):
                     write(gen_file, '        :param ref_data: %s object' %(link.getXsdType()))
                 write(gen_file, '        ')
                 write(gen_file, '        """')
-                write(gen_file, "        self.%s_refs = %s" %(to_name, set_one_val))
+                write(gen_file, "        self.%s_refs = %s if ref_data else %s" %(to_name, set_one_val_wa, set_one_val))
                 write(gen_file, "        if ref_obj.uuid:")
                 write(gen_file, "            self.%s_refs[0]['uuid'] = ref_obj.uuid" %(to_name))
                 write(gen_file, "")
@@ -704,7 +701,7 @@ class IFMapApiGenerator(object):
                 write(gen_file, "                return")
                 write(gen_file, "")
                 write(gen_file, "        # ref didn't exist before")
-                write(gen_file, "        ref_info = %s" %(add_one_val))
+                write(gen_file, "        ref_info = %s if ref_data else %s" %(add_one_val_wa, add_one_val))
                 write(gen_file, "        if ref_obj.uuid:")
                 write(gen_file, "            ref_info['uuid'] = ref_obj.uuid")
                 write(gen_file, "")
