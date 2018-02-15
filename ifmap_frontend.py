@@ -657,7 +657,7 @@ class IFMapApiGenerator(object):
                 if link.getXsdType(): # link with attr
                    set_one_args = set_one_args + ", ref_data=None"
                    add_one_args = set_one_args
-                   set_list_args = set_list_args + ", ref_data_list"
+                   set_list_args = set_list_args + ", ref_data_list=None"
 
                    set_one_val = "[{'to':ref_obj.get_fq_name(), 'attr':ref_data}]"
                    add_one_val = "{'to':ref_obj.get_fq_name(), 'attr':ref_data}"
