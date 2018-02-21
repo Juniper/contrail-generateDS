@@ -287,13 +287,9 @@ type %(camel)s struct {
         parents = ident.getParents()
         if parents:
             (parent, meta, _) = parents[0]
-            try:
-                quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
-                parent_fqn = ', '.join(quoted_list)
-                parent_type = parent.getName()
-            except AmbiguousParentType as e:
-                # Ambiguous types don't have default parent
-                pass
+            quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
+            parent_fqn = ', '.join(quoted_list)
+            parent_type = parent.getName()
 
         decl = """
 func (obj *%(camel)s) GetType() string {
