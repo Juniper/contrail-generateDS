@@ -7,6 +7,7 @@ import re
 import sys
 
 from ifmap_global import CamelCase, getGoLangType
+from ifmap_model import AmbiguousParentType
 
 
 class GoLangApiGenerator(object):
@@ -286,9 +287,13 @@ type %(camel)s struct {
         parents = ident.getParents()
         if parents:
             (parent, meta, _) = parents[0]
-            quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
-            parent_fqn = ', '.join(quoted_list)
-            parent_type = parent.getName()
+            try:
+                quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
+                parent_fqn = ', '.join(quoted_list)
+                parent_type = parent.getName()
+            except AmbiguousParentType as e:
+                # Ambiguous types don't have default parent
+                pass
 
         decl = """
 func (obj *%(camel)s) GetType() string {
