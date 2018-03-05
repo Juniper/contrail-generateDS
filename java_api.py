@@ -6,13 +6,17 @@ import os
 import re
 
 from ifmap_global import CamelCase
+from ifmap_model import AmbiguousParentType
 
 def getLinkInfoType(ident, link_info):
     xlink = ident.getLink(link_info)
     if xlink.getXsdType():
         return xlink.getCType().getName()
     return 'ApiPropertyBase'
-    
+
+def quoted(s):
+    return '"%s"' % s
+
 class JavaApiGenerator(object):
     def __init__(self, parser, type_map, identifiers, metadata):
         self._parser = parser
@@ -115,7 +119,7 @@ import net.juniper.contrail.api.ApiPropertyBase;
                 elif member.jtypename is 'String':
                     default = 'null'
                     if member.default:
-                        default = '\"' + member.default + '\"'
+                        default = quoted(member.default)
                     file.write(default)
                 elif member.jtypename in ['Integer', 'Long']:
                     default = 'null'
@@ -215,27 +219,12 @@ public void add%(caml)s(%(argdecl)s) {
        }
                 self._FileWrite(file, decl, indent_level)
 
-    # _GenerateTypePropertyConvinience
+    # _GenerateClass
 
     def _GenerateClass(self, ident, filename):
         file = self._parser.makeFile(filename)
 
-        header = """//
-// Automatically generated.
-//
-package net.juniper.contrail.api.types;
-
-import java.util.List;
-import java.util.ArrayList;
-import com.google.common.collect.ImmutableList;
-
-import net.juniper.contrail.api.ApiObjectBase;
-import net.juniper.contrail.api.ApiPropertyBase;
-import net.juniper.contrail.api.ObjectReference;
-
-public class %(cls)s extends ApiObjectBase {
-""" % {'cls': ident.getCppName() }
-        file.write(header)
+        self._GenerateHeader(file, ident)
 
         for prop in ident.getProperties():
             decl = '    private %s %s;\n' % (prop.getJavaTypename(), prop.getCIdentifierName())
@@ -259,8 +248,8 @@ public class %(cls)s extends ApiObjectBase {
             file.write(decl)
 
         self._GenerateTypename(file, ident)
-        self._GenerateDefaultParent(file, ident)
-        self._GenerateDefaultParentType(file, ident)
+        self._GenerateDefaultParentInfo(file, ident)
+        self._GenerateParentSetters(file, ident)
 
         self._GeneratePropertyAccessors(file, ident, 4)
 
@@ -275,6 +264,24 @@ public class %(cls)s extends ApiObjectBase {
 
         file.write('}')
 
+    def _GenerateHeader(self, file, ident):
+        header = """//
+// Automatically generated.
+//
+package net.juniper.contrail.api.types;
+
+import java.util.List;
+import java.util.ArrayList;
+import com.google.common.collect.Lists;
+
+import net.juniper.contrail.api.ApiObjectBase;
+import net.juniper.contrail.api.ApiPropertyBase;
+import net.juniper.contrail.api.ObjectReference;
+
+public class %s extends ApiObjectBase {
+""" % ident.getCppName()
+        file.write(header)
+
     def _GenerateTypename(self, file, ident):
         decl = """
     @Override
@@ -284,43 +291,50 @@ public class %(cls)s extends ApiObjectBase {
 """ % ident.getName()
         file.write(decl)
 
-    # _GenerateTypename
+    # _GenerateDefaultParentInfo
 
-    def _GenerateDefaultParent(self, file, ident):
-        fq_name = ''
-        parents = ident.getParents()
-        if parents:
-            (parent, meta, _) = parents[0]
-            quoted_list = map(lambda x: '"%s"' % x, parent.getDefaultFQName())
-            fq_name = ', '.join(quoted_list)
-
+    def _GenerateDefaultParentInfo(self, file, ident):
+        parent_fq_name = 'null'
+        parent_type = 'null'
+        try:
+            fq_name = ident.getDefaultFQName()
+            quoted_list = map(lambda x: quoted(x), fq_name[:-1])
+            parent_fq_name = "Lists.newArrayList(%s)" % ', '.join(quoted_list)
+            parents = ident.getParents()
+            if parents:
+                (parent, meta, _) = parents[0]
+                parent_type = quoted(parent.getName())
+        except AmbiguousParentType as e:
+            # Ambiguous types don't have default parent
+            pass
         decl = """
     @Override
     public List<String> getDefaultParent() {
-        return ImmutableList.of(%s);
+        return %(fq_name)s;
     }
-""" % fq_name
-        file.write(decl)
 
-    # _GenerateDefaultParent
-
-    def _GenerateDefaultParentType(self, file, ident):
-        def quote(s):
-            return '"' + s + '"'
-
-        typename = 'null';
-        parents = ident.getParents()
-        if parents:
-            (parent, meta, _) = parents[0]
-            typename = quote(parent.getName())
-
-        decl = """
     @Override
     public String getDefaultParentType() {
-        return %s;
+        return %(type)s;
+    }
+""" % {'fq_name': parent_fq_name, 'type': parent_type }
+        file.write(decl)
+
+    # _GenerateParentSetters
+
+    def _GenerateParentSetters(self, file, ident):
+        parents = ident.getParents()
+        if parents:
+            for parent_info in parents:
+                (parent, _, _) = parent_info
+                typename = parent.getCppName()
+    
+                decl = """
+    public void setParent(%s parent) {
+        super.setParent(parent);
     }
 """ % typename
-        file.write(decl)
+                file.write(decl)
 
     # _GenerateDefaultParentType
 
