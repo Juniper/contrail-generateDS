@@ -11,6 +11,10 @@ class TypeParserGenerator(object):
         print "generating parser for %s" %ctype.getName()
         start = """
 bool %s::JsonParse(const contrail_rapidjson::Value &parent) {
+    if (parent.IsNull())
+        return true;
+    if (!parent.IsObject())
+        return false;
     for (Value::ConstMemberIterator itr = parent.MemberBegin();
          itr != parent.MemberEnd(); ++itr) {
 """ % ctype.getName()
