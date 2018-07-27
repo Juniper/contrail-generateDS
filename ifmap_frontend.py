@@ -1559,6 +1559,8 @@ class IFMapApiGenerator(object):
 
     def _build_heat_parents(self):
         for parent_name in self.cls.parent_types:
+            if parent_name == _BASE_PARENT:
+                continue
             pname = parent_name.replace('-', '_')
             self._make_heat_prop_list(self.parent_list, pname, 'string',
                 None, None, None, None, False, [], False)
