@@ -2345,7 +2345,11 @@ class PyGenerator(object):
                     else:
                         copy_field = 'list(self.%s)' % name
                 else:
-                    hash_fields.append('self.%s' % name)
+                    # hash(None) is not stable between python runs
+                    # instead use a stable value which will likely not be used in object fields.
+                    # >>> hash("None")
+                    # -7985492147856592190
+                    hash_fields.append('self.%s if self.%s is not None else -7985492147856592190' % (name, name))
                     if child.isComplex():
                         copy_field = 'self.%s.copy()' % name
                     else:
