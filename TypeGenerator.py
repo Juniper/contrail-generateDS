@@ -2338,7 +2338,7 @@ class PyGenerator(object):
                 if child.getMaxOccurs() > 1:
                     hash_fields.append('tuple(self.%s or [])' % name)
                 else:
-                    hash_fields.append('self.%s' % name)
+                    hash_fields.append('self.%s if self.%s is not None else 0' % (name, name))
 
         if len(comps) == 0:
             wrt('    def __eq__(self, other): return True\n')
