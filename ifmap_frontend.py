@@ -317,11 +317,10 @@ class IFMapApiGenerator(object):
                     %(child_field, child_type, is_derived))
             write(gen_file, "")
             if parents:
-                p_class_names = [p_ident.getName() for p_ident, _ in parents
-                                 if p_ident.getName() != 'config-root']
+                p_class_names = [p_ident.getName() for p_ident, _ in parents]
                 write(gen_file, "    parent_types = %s" %(p_class_names))
             else:
-                write(gen_file, "    parent_types = []")
+                write(gen_file, "    parent_types = ['config-root']")
             write(gen_file, "")
             prop_field_meta_vals = [('%s' %(prop.getName().replace('-', '_')),
                                      '%s' %(prop.getName())) for prop in ident.getProperties()]
@@ -1510,6 +1509,8 @@ class IFMapApiGenerator(object):
 
     def _build_heat_parents(self):
         for parent_name in self.cls.parent_types:
+            if parent_name == _BASE_PARENT:
+                continue
             pname = parent_name.replace('-', '_')
             self._make_heat_prop_list(self.parent_list, pname, 'string',
                 None, None, None, None, False, [], False)
