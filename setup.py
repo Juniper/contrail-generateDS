@@ -9,6 +9,9 @@ setup(name="generateDS",
 ##VERSION##
     version="2.7c",
 ##VERSION##
+      error 
+      
+      do not merge
     author="Dave Kuhlman",
     author_email="dkuhlman@rexx.com",
     maintainer="Dave Kuhlman",
@@ -35,12 +38,12 @@ XML document.""",
     # include_package_data=True,
     packages = [
         "libgenerateDS",
-        "libgenerateDS.gui",
+        "libgenerateDS  .gui",
         ],
     scripts=[
         "generateDS.py",
         "process_includes.py",
-        "libgenerateDS/gui/generateds_gui.py",
+        "libgenerateDS   /gui/generateds_gui.py",
         "django/gends_run_gen_django.py",
         "django/gends_extract_simple_types.py",
         "django/gends_generate_django.py",
