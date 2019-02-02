@@ -34,111 +34,118 @@ targetNamespace="http://www.contrailsystems.com/2012/VNC-CONFIG/0">
 {% set exists = {} %}
 
 {% for type, schema in definitions.items() %}
-{% if schema.type == "object" %}
+{%     if schema.type == "object" %}
 <xsd:complexType name="{{ type }}">
     <xsd:all>
-        {% for propertyID, property in schema.properties.items() -%}
-        <xsd:element name="{{ propertyID | replace("_", "-")}}" type="{{ property.xmlType }}" 
-            description="{{ property.description }}" {% if property.type == "array" %}maxOccurs="unbounded"{% endif %}/>
-        {% endfor %}
-
+{%         for propertyID, property in schema.properties.items() %}
+        <xsd:element name="{{ propertyID | replace("_", "-")}}" type="{{ property.xmlType }}"
+                     description="{{ property.description }}" {% if property.type == "array" %}maxOccurs="unbounded"{% endif %}/>
+{%         endfor %}
     </xsd:all>
 </xsd:complexType>
-{% else %}
+{%     else %}
 
-{%- if schema.enum %}
+{%-        if schema.enum %}
 <xsd:simpleType name="{{ type }}">
     <xsd:restriction base="xsd:string">
-        {% for element in schema.enum %}
+{%             for element in schema.enum %}
         <xsd:enumeration value="{{ element | e }}"/>
-        {% endfor %}
+{%             endfor %}
     </xsd:restriction>
 </xsd:simpleType>
-{% endif -%}
+{%         endif -%}
 
-{%- if schema.minimum or schema.maximum %}
+
+{%-        if schema.minimum or schema.maximum %}
 <xsd:simpleType name="{{ type }}">
     <xsd:restriction base="xsd:integer">
-    {% if schema.minimum != None -%}
+{%             if schema.minimum != None -%}
     <xsd:minInclusive value="{{ schema.minimum }}"/>
-    {%- endif %}
-    {%- if schema.maximum != None %}
+{%-            endif %}
+{%-            if schema.maximum != None %}
     <xsd:maxInclusive value="{{ schema.maximum }}"/>
-    {% endif -%}
+{%             endif -%}
     </xsd:restriction>
 </xsd:simpleType>
-{% endif -%}
+{%         endif -%}
 
-{% endif%}
+{%     endif%}
 
 {% endfor %}
 
 {% for schema in schemas %}
-{% if schema.type != "abstract"%}
+{%     if schema.type != "abstract"%}
 <xsd:element name="{{ schema.id  | replace("_", "-") }}" type="ifmap:IdentityType"/>
 
-{% for propertyID, property in schema.schema.properties.items() -%}
-{%- if not exists.get(propertyID) -%}
-<xsd:element name="{{ propertyID | replace("_", "-") }}" type="{{ property.xmlType }}"/>
+{%         if schema.schema and schema.schema.properties -%}
+{%             for propertyID, property in schema.schema.properties.items() -%}
+{%-                if not exists.get(propertyID) -%}
+{%-                    set identity = schema.id | replace("_", "-") %}
+{%-                    set property_name = propertyID | replace("_", "-") %}
+{%-                    set property_type = schema.id | replace("_", " ") | title | replace(" ", "") + propertyID | replace("_", " ") | title | replace(" ", "") %}
+{%-                    if property.enum and not exists.get(property.xmlType) %}
+<xsd:element name="{{ identity }}-{{ property_name }}" type="{{ property_type }}"/>
+{%                     else %}
+<xsd:element name="{{ identity }}-{{ property_name }}" type="{{ property.xmlType }}"/>
+{%                     endif %}
 <!--#IFMAP-SEMANTICS-IDL
-     {% if property.collectionType == "map" %}Map{% elif property.collectionType == "list" %}List{% endif %}Property('{{ propertyID | replace("_", "-")}}', '{{ schema.id }}', '{{ property.presence }}', '{{ property.operations }}',
+{%                     set collection_type = property.collectionType | title if property.collectionType else '' %}
+     {{ collection_type }}Property('{{ identity }}-{{ property_name }}', '{{ identity }}', '{{ property.presence | default('optional') }}', '{{ property.operation | default('CRUD') }}',
               '{{ property.description | replace('\'', '\\\'')}}') -->
+{%                     set _dummy = exists.update({propertyID: true}) -%}
+{%-                    if property.enum and not exists.get(property.xmlType) %}
 
-{% set _dummy = exists.update({propertyID: true}) -%}
-{%- if property.enum and not exists.get(property.xmlType) %}
-<xsd:simpleType name="{{ property.xmlType }}">
+<xsd:simpleType name="{{ property_type }}">
     <xsd:restriction base="xsd:string">
-        {% for element in property.enum %}
+{%                         for element in property.enum %}
         <xsd:enumeration value="{{ element | e }}"/>
-        {% endfor %}
-
+{%                         endfor %}
     </xsd:restriction>
 </xsd:simpleType>
-{%- set _dummy = exists.update({property.xmlType: true}) -%}
-{% endif -%}
 
-{%- if (property.minimum or property.maximum ) and not exists.get(property.xmlType) %}
+{%                        set _dummy = exists.update({property.xmlType: true}) -%}
+{%                     endif %}
+{%-                    if (property.minimum or property.maximum ) and not exists.get(property.xmlType) %}
 <xsd:simpleType name="{{ property.xmlType }}">
     <xsd:restriction base="xsd:integer">
-    {% if property.minimum -%}
+{%                         if property.minimum -%}
     <xsd:minInclusive value="{{ property.minimum }}"/>
-    {%- endif %}
-    {%- if property.maximum %}
+{%-                        endif %}
+{%-                        if property.maximum %}
     <xsd:maxInclusive value="{{ property.maximum }}"/>
-    {% endif -%}
+{%                         endif -%}
     </xsd:restriction>
 </xsd:simpleType>
-{%- set _dummy = exists.update({property.xmlType: true}) -%}
-{% endif -%}
+{%-                        set _dummy = exists.update({property.xmlType: true}) -%}
+{%                     endif %}
+{%                 endif -%}
+{%             endfor %}
+{%         endif %}
 
-{%- endif -%}
-{% endfor %}
-
-{% for reference, property in schema.references.items() -%}
-<xsd:element name="{{ schema.id  | replace("_", "-") }}-{{ reference | replace("_", "-") }}" {% if property.xmlType %} type="{{ property.xmlType }}" {% endif %} />
+{%         if schema.references -%}
+{%             for reference, property in schema.references.items() -%}
+{%                 set identity = schema.id  | replace("_", "-") -%}
+{%                 set ref = reference | replace("_", "-") -%}
+{%                 set relation = 'ref, derived' if property.derived else 'ref' -%}
+<xsd:element name="{{ identity }}-{{ ref }}" {% if property.xmlType %} type="{{ property.xmlType }}" {% endif %} />
 <!--#IFMAP-SEMANTICS-IDL
-     Link('{{ schema.id  | replace("_", "-") }}-{{ reference | replace("_", "-") }}', 
-             '{{ schema.id  | replace("_", "-") }}',
-             '{{ reference | replace("_", "-") }}',
-             ['ref'{% if property.derived %}, 'derived' {% endif %}],
-             '{{ property.presence }}',
-             '{{ property.operation }}',
-             '{{ property.description | replace('\'', '\\\'') }}') -->
-{% endfor %}
+     Link('{{ identity }}-{{ ref }}', '{{ identity }}', '{{ ref }}', ['{{ relation }}'], '{{ property.presence }}', '{{ property.operations }}',
+          '{{ property.description | replace('\'', '\\\'') }}') -->
+{%             endfor %}
+{%         endif %}
 
-{% for reference, property in schema.parents.items() -%}
-<xsd:element name="{{ schema.id  | replace("_", "-") }}-{{ reference | replace("_", "-") }}" {% if property.xmlType %} type="{{ property.xmlType }}" {% endif %} />
+{%         if schema.parents -%}
+{%             for reference, property in schema.parents.items() -%}
+{%                 set identity = schema.id  | replace("_", "-") -%}
+{%                 set parent = reference | replace("_", "-") -%}
+{%                 set relation = 'has, derived' if property.derived else 'has' -%}
+<xsd:element name="{{ parent }}-{{ identity }}" {% if property.xmlType %} type="{{ property.xmlType }}" {% endif %} />
 <!--#IFMAP-SEMANTICS-IDL
-     Link('{{ schema.id  | replace("_", "-") }}-{{ reference | replace("_", "-") }}', 
-             '{{ schema.id  | replace("_", "-") }}',
-             '{{ reference | replace("_", "-") }}',
-             ['has'{% if property.derived %}, 'derived' {% endif %}],
-             '{{ property.presence }}',
-             '{{ property.operation }}',
-             '{{ property.description | replace('\'', '\\\'') }}') -->
-{% endfor %}
+     Link('{{ parent }}-{{ identity }}', '{{ parent }}', '{{ identity }}', ['{{ relation }}'], '{{ property.presence }}', '{{ property.operations }}',
+          '{{ property.description | replace('\'', '\\\'') }}') -->
+{%             endfor %}
+{%         endif %}
 
-{% endif %}
+{%     endif %}
 {% endfor %}
-
 </xsd:schema>
