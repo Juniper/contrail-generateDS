@@ -84,7 +84,7 @@ def read_schema(src_path):
 
         process_data(schemas, definitions, schema)
 
-    files = glob.glob(src_path + '/*.yaml')
+    files = glob.glob(src_path + '/*.yml')
     for file_path in files:
         file_handler = open(file_path, 'r')
         try:
