@@ -1906,7 +1906,9 @@ class IFMapApiGenerator(object):
             if val['prop_skip']:
                 continue
             tabs = 8
-            self._set_heat_properties_value(val, tabs, 0, 0, 0)
+            if 'U' in val['prop_opers']:
+                # update resource properties if it is marked 'U'
+                self._set_heat_properties_value(val, tabs, 0, 0, 0)
 
         write(self.gen_file, "")
 
